@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env
+.venv
+venv/
+env/
+ENV/
+.eggs/
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Poetry
+poetry.lock
+
+# Alembic
+# Keep migrations, but not compiled artifacts
+
+# Node (for frontend later)
+node_modules/
+.nuxt/
+.output/
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Logs
+*.log
+logs/
+
+# Docker volumes
+redis_data/
+postgres_data/
+
+# Stripe CLI
+.stripe/

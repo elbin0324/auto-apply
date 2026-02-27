@@ -11,7 +11,7 @@
 | Phase | Name | Status | Completion |
 |-------|------|--------|------------|
 | 1 | Project Scaffold & Configuration | Complete | 10/10 |
-| 2 | Database Models & Migrations | Not Started | 0/14 |
+| 2 | Database Models & Migrations | In Progress (blocked on DB URL) | 12/14 |
 | 3 | Pydantic Schemas | Not Started | 0/8 |
 | 4 | Auth (Supabase JWT) | Not Started | 0/11 |
 | 5 | Profile API | Not Started | 0/14 |
@@ -40,7 +40,12 @@ Completed: 2026-02-27
 
 ## In-Progress Phases
 
-_None yet._
+### Phase 2 — Database Models & Migrations (12/14 — blocked on DB connection)
+- All SQLAlchemy 2.0 models defined: User, Profile, Experience, Education, Skill, Job, Application, GeneratedDocument, Subscription, CreditTransaction, AutoApplyConfig
+- Alembic initialized with async `env.py`
+- Initial migration written: `db/migrations/versions/91febbf95276_initial_schema.py`
+- **Blocked:** `DATABASE_URL` in `backend/.env` still points to localhost — needs Supabase connection string
+- **Next:** User updates `DATABASE_URL`, then run `make migrate` to apply
 
 ---
 

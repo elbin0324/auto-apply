@@ -2,12 +2,18 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import Settings, get_settings
+from db.session import get_db
 
 # ── Settings ──────────────────────────────────────────────────────────────────
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+# ── Database ──────────────────────────────────────────────────────────────────
+
+DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 

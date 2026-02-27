@@ -58,7 +58,12 @@ def do_run_migrations(connection):  # type: ignore[no-untyped-def]
 
 
 async def run_async_migrations() -> None:
-    engine = create_async_engine(get_url(), poolclass=None)
+    # statement_cache_size=0 required for Supabase pgbouncer (transaction mode)
+    engine = create_async_engine(
+        get_url(),
+        poolclass=None,
+        connect_args={"statement_cache_size": 0},
+    )
     async with engine.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await engine.dispose()

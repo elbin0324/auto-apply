@@ -49,8 +49,8 @@
 - [x] **2.10** Create `backend/models/subscription.py` — Subscription + CreditTransaction models
 - [x] **2.11** Create `backend/models/auto_apply_config.py` — AutoApplyConfig model
 - [x] **2.12** Migration written manually at `db/migrations/versions/91febbf95276_initial_schema.py`
-- [!] **2.13** Apply migration — BLOCKED: update `DATABASE_URL` in `backend/.env` to Supabase connection string (see `docs/user-setup-tasks.md` for format), then run `make migrate`
-- [ ] **2.14** Verify all tables exist with correct columns and indexes
+- [x] **2.13** Applied migration to Supabase DB: `alembic upgrade head` (fix: `statement_cache_size=0` for pgbouncer)
+- [x] **2.14** Verified all 11 tables in DB: users, profiles, experiences, educations, skills, jobs, auto_apply_configs, applications, generated_documents, subscriptions, credit_transactions
 
 **Checkpoint:** `alembic upgrade head` succeeds, all tables present in DB.
 

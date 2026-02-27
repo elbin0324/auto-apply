@@ -1,8 +1,8 @@
 # Implementation Status
 
 > Last Updated: 2026-02-27
-> Current Phase: Phase 2 — Database Models & Migrations
-> Backend Progress: 1 / 11 phases complete
+> Current Phase: Phase 3 — Pydantic Schemas
+> Backend Progress: 2 / 11 phases complete
 
 ---
 
@@ -11,7 +11,7 @@
 | Phase | Name | Status | Completion |
 |-------|------|--------|------------|
 | 1 | Project Scaffold & Configuration | Complete | 10/10 |
-| 2 | Database Models & Migrations | In Progress (blocked on DB URL) | 12/14 |
+| 2 | Database Models & Migrations | Complete | 14/14 |
 | 3 | Pydantic Schemas | Not Started | 0/8 |
 | 4 | Auth (Supabase JWT) | Not Started | 0/11 |
 | 5 | Profile API | Not Started | 0/14 |
@@ -25,6 +25,15 @@
 ---
 
 ## Completed Phases
+
+### Phase 2 — Database Models & Migrations
+Completed: 2026-02-27
+- SQLAlchemy 2.0 async engine + session factory
+- DeclarativeBase + TimestampMixin
+- 11 models: User, Profile, Experience, Education, Skill, Job, Application, GeneratedDocument, Subscription, CreditTransaction, AutoApplyConfig
+- GIN index on jobs for full-text search
+- Alembic configured with async env.py (+ `statement_cache_size=0` for Supabase pgbouncer)
+- Migration applied to Supabase — all 11 tables verified
 
 ### Phase 1 — Project Scaffold & Configuration
 Completed: 2026-02-27
@@ -40,12 +49,7 @@ Completed: 2026-02-27
 
 ## In-Progress Phases
 
-### Phase 2 — Database Models & Migrations (12/14 — blocked on DB connection)
-- All SQLAlchemy 2.0 models defined: User, Profile, Experience, Education, Skill, Job, Application, GeneratedDocument, Subscription, CreditTransaction, AutoApplyConfig
-- Alembic initialized with async `env.py`
-- Initial migration written: `db/migrations/versions/91febbf95276_initial_schema.py`
-- **Blocked:** `DATABASE_URL` in `backend/.env` still points to localhost — needs Supabase connection string
-- **Next:** User updates `DATABASE_URL`, then run `make migrate` to apply
+_None — starting Phase 3._
 
 ---
 

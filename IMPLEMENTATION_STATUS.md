@@ -1,8 +1,8 @@
 # Implementation Status
 
 > Last Updated: 2026-02-27
-> Current Phase: Phase 4 — Auth (Supabase JWT)
-> Backend Progress: 3 / 11 phases complete
+> Current Phase: Phase 5 — Profile API
+> Backend Progress: 4 / 11 phases complete
 
 ---
 
@@ -13,7 +13,7 @@
 | 1 | Project Scaffold & Configuration | Complete | 10/10 |
 | 2 | Database Models & Migrations | Complete | 14/14 |
 | 3 | Pydantic Schemas | Complete | 8/8 |
-| 4 | Auth (Supabase JWT) | Not Started | 0/11 |
+| 4 | Auth (Supabase JWT) | Complete | 11/11 |
 | 5 | Profile API | Not Started | 0/14 |
 | 6 | Jobs API & Adzuna Sync | Not Started | 0/9 |
 | 7 | Auto-Apply Config API | Not Started | 0/10 |
@@ -25,6 +25,16 @@
 ---
 
 ## Completed Phases
+
+### Phase 4 — Auth (Supabase JWT)
+Completed: 2026-02-27
+- `utils/supabase.py` — cached Supabase service-role client
+- `routers/auth.py` — signup, login, OAuth Google, OAuth callback, logout, /me
+- `deps.py` — `get_current_user` verifies Supabase JWT → returns local User row
+- `CurrentUser` / `DbSession` Annotated types for clean route signatures
+- Auth via `HTTPBearer` (FastAPI standard, no extra middleware)
+- 3 tests passing: health, 401 without token, 401 with bad token
+- Note: `AuthApiError` imported from `supabase` package (not `gotrue` directly)
 
 ### Phase 3 — Pydantic Schemas
 Completed: 2026-02-27

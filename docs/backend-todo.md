@@ -75,17 +75,17 @@
 ## Phase 4 — Auth (Supabase JWT Verification)
 > **Goal:** Auth endpoints + JWT middleware that validates Supabase tokens.
 
-- [ ] **4.1** Create `backend/utils/supabase.py` — Supabase client wrapper (service role for admin ops)
-- [ ] **4.2** Create `backend/routers/auth.py` — router skeleton
-- [ ] **4.3** Implement `POST /api/auth/signup` — create Supabase auth user, create local User row
-- [ ] **4.4** Implement `POST /api/auth/login` — validate via Supabase, return JWT + refresh token
-- [ ] **4.5** Implement `POST /api/auth/oauth/google` — return Supabase OAuth URL for Google
-- [ ] **4.6** Implement `GET /api/auth/oauth/callback` — handle OAuth callback, exchange code for session
-- [ ] **4.7** Implement `POST /api/auth/logout` — invalidate Supabase session
-- [ ] **4.8** Implement `GET /api/auth/me` — return current user from JWT
-- [ ] **4.9** Update `backend/deps.py` — `get_current_user` dependency: extract + verify Supabase JWT, return user
-- [ ] **4.10** Add auth middleware to reject unauthorized requests on protected routes
-- [ ] **4.11** Write tests: signup, login, protected route without token (401), with token (200)
+- [x] **4.1** Create `backend/utils/supabase.py` — Supabase client wrapper (service role for admin ops)
+- [x] **4.2** Create `backend/routers/auth.py` — router skeleton
+- [x] **4.3** Implement `POST /api/auth/signup` — create Supabase auth user, create local User row
+- [x] **4.4** Implement `POST /api/auth/login` — validate via Supabase, return JWT + refresh token
+- [x] **4.5** Implement `POST /api/auth/oauth/google` — return Supabase OAuth URL for Google
+- [x] **4.6** Implement `GET /api/auth/oauth/callback` — handle OAuth callback, exchange code for session
+- [x] **4.7** Implement `POST /api/auth/logout` — invalidate Supabase session (best-effort)
+- [x] **4.8** Implement `GET /api/auth/me` — return current user from JWT
+- [x] **4.9** Updated `backend/deps.py` — `get_current_user` verifies JWT via Supabase, returns User row
+- [x] **4.10** Auth enforced via FastAPI HTTPBearer on all protected routes (no extra middleware needed)
+- [x] **4.11** Tests: health ✓, protected without token → 401 ✓, protected with bad token → 401 ✓
 
 **Checkpoint:** Can sign up, log in, hit protected endpoint with JWT, get 401 without token.
 

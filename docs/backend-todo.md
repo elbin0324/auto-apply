@@ -59,14 +59,14 @@
 ## Phase 3 — Pydantic Schemas
 > **Goal:** All request/response schemas defined with strict validation.
 
-- [ ] **3.1** Create `backend/schemas/__init__.py`
-- [ ] **3.2** Create `backend/schemas/user.py` — UserCreate, UserResponse, TokenResponse
-- [ ] **3.3** Create `backend/schemas/profile.py` — ExperienceCreate/Response, EducationCreate/Response, SkillCreate/Response, ProfileResponse, ParsedResume
-- [ ] **3.4** Create `backend/schemas/job.py` — JobSearchParams, JobResponse, JobListResponse
-- [ ] **3.5** Create `backend/schemas/application.py` — ApplicationStatus, ApplicationDetail, ApplicationStats
-- [ ] **3.6** Create `backend/schemas/document.py` — DocumentCreate, DocumentResponse
-- [ ] **3.7** Create `backend/schemas/auto_apply.py` — AutoApplyConfig, AutoApplyStatus, ApplyTask, ApplyResult
-- [ ] **3.8** Create `backend/schemas/billing.py` — PlanInfo, CreditPurchase, CheckoutSession, TransactionHistory
+- [x] **3.1** Create `backend/schemas/__init__.py`
+- [x] **3.2** Create `backend/schemas/user.py` — UserCreate, UserResponse, TokenResponse
+- [x] **3.3** Create `backend/schemas/profile.py` — ExperienceCreate/Response, EducationCreate/Response, SkillCreate/Response, ProfileResponse, ProfileUpdate, ParsedResume
+- [x] **3.4** Create `backend/schemas/job.py` — JobSearchParams, JobResponse, JobListResponse
+- [x] **3.5** Create `backend/schemas/application.py` — ApplicationStatus (StrEnum), ApplicationDetail, ApplicationListResponse, ApplicationStats
+- [x] **3.6** Create `backend/schemas/document.py` — DocumentCreate, DocumentResponse, DocumentListResponse
+- [x] **3.7** Create `backend/schemas/auto_apply.py` — AutoApplyConfigUpdate/Response, AutoApplyStatus, QueueStatus, ApplyTask, ApplyResult
+- [x] **3.8** Create `backend/schemas/billing.py` — PlanInfo, CreditPurchase, CheckoutSession, TransactionItem, TransactionHistory
 
 **Checkpoint:** All schemas import cleanly, Pydantic validation tests pass.
 

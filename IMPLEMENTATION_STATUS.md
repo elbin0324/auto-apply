@@ -1,8 +1,8 @@
 # Implementation Status
 
 > Last Updated: 2026-02-27
-> Current Phase: Phase 3 — Pydantic Schemas
-> Backend Progress: 2 / 11 phases complete
+> Current Phase: Phase 4 — Auth (Supabase JWT)
+> Backend Progress: 3 / 11 phases complete
 
 ---
 
@@ -12,7 +12,7 @@
 |-------|------|--------|------------|
 | 1 | Project Scaffold & Configuration | Complete | 10/10 |
 | 2 | Database Models & Migrations | Complete | 14/14 |
-| 3 | Pydantic Schemas | Not Started | 0/8 |
+| 3 | Pydantic Schemas | Complete | 8/8 |
 | 4 | Auth (Supabase JWT) | Not Started | 0/11 |
 | 5 | Profile API | Not Started | 0/14 |
 | 6 | Jobs API & Adzuna Sync | Not Started | 0/9 |
@@ -25,6 +25,14 @@
 ---
 
 ## Completed Phases
+
+### Phase 3 — Pydantic Schemas
+Completed: 2026-02-27
+- 33 schema classes across 7 files (user, profile, job, application, document, auto_apply, billing)
+- All use Pydantic v2 (`ConfigDict(from_attributes=True)`)
+- `ApplicationStatus` uses Python 3.11+ `StrEnum`
+- `ApplyTask` / `ApplyResult` are queue message contracts (shared with agent workers)
+- All schemas import-tested cleanly
 
 ### Phase 2 — Database Models & Migrations
 Completed: 2026-02-27
@@ -49,7 +57,7 @@ Completed: 2026-02-27
 
 ## In-Progress Phases
 
-_None — starting Phase 3._
+_None — starting Phase 4._
 
 ---
 

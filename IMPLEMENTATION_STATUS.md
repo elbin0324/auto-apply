@@ -1,8 +1,8 @@
 # Implementation Status
 
 > Last Updated: 2026-02-27
-> Current Phase: Phase 1 — Project Scaffold & Configuration (NOT STARTED)
-> Backend Progress: 0 / 11 phases complete
+> Current Phase: Phase 2 — Database Models & Migrations
+> Backend Progress: 1 / 11 phases complete
 
 ---
 
@@ -10,7 +10,7 @@
 
 | Phase | Name | Status | Completion |
 |-------|------|--------|------------|
-| 1 | Project Scaffold & Configuration | Not Started | 0/10 |
+| 1 | Project Scaffold & Configuration | Complete | 10/10 |
 | 2 | Database Models & Migrations | Not Started | 0/14 |
 | 3 | Pydantic Schemas | Not Started | 0/8 |
 | 4 | Auth (Supabase JWT) | Not Started | 0/11 |
@@ -26,7 +26,15 @@
 
 ## Completed Phases
 
-_None yet._
+### Phase 1 — Project Scaffold & Configuration
+Completed: 2026-02-27
+- Poetry project initialized with all production + dev dependencies
+- `backend/config.py` — Pydantic Settings loading all env vars from `.env`
+- `backend/main.py` — FastAPI app factory with CORS middleware and lifespan
+- `backend/deps.py` — Auth dependency stubs (implemented in Phase 4)
+- `backend/routers/health.py` — `GET /api/health` returns `{"status":"ok","version":"0.1.0"}`
+- `backend/Makefile` — `dev`, `test`, `migrate`, `lint`, `format` targets
+- Server verified: health endpoint returns 200
 
 ---
 
@@ -47,8 +55,16 @@ _None yet._
 - `.claude/skills/auto-apply-dev.md` — Custom dev skill (created 2026-02-27)
 - `memory/MEMORY.md` — Agent memory (created 2026-02-27)
 
-### Backend
-_None yet — backend/ directory not initialized._
+### Backend — Phase 1
+- `backend/pyproject.toml` — Poetry project config + tool settings (pytest, ruff, mypy)
+- `backend/poetry.lock` — Locked dependencies
+- `backend/config.py` — Pydantic Settings (all env vars)
+- `backend/main.py` — FastAPI app factory (CORS, lifespan, router mount)
+- `backend/deps.py` — Dependency injection stubs (auth stubs for Phase 4)
+- `backend/routers/__init__.py` — Router package
+- `backend/routers/health.py` — GET /api/health
+- `backend/Makefile` — Backend-specific make targets
+- `backend/tests/__init__.py` — Test package stub
 
 ---
 

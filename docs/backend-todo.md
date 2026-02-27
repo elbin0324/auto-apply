@@ -11,23 +11,24 @@
 ## Phase 1 — Project Scaffold & Configuration
 > **Goal:** Running FastAPI server with config, CORS, health check, and DB connection.
 
-- [ ] **1.1** Initialize Poetry project: `cd backend && poetry init`
-- [ ] **1.2** Add core dependencies:
+- [x] **1.1** Initialize Poetry project: `cd backend && poetry init`
+- [x] **1.2** Add core dependencies:
   ```
   fastapi uvicorn[standard] pydantic pydantic-settings
   sqlalchemy[asyncio] asyncpg alembic
   supabase python-jose[cryptography] passlib[bcrypt]
-  httpx python-multipart aiofiles redis arq
+  httpx python-multipart aiofiles arq
   anthropic stripe sentry-sdk
   ```
-- [ ] **1.3** Add dev dependencies: `pytest pytest-asyncio httpx factory-boy`
-- [ ] **1.4** Create `backend/config.py` — Pydantic Settings class loading all env vars (see `ENV_VARS.md`)
-- [ ] **1.5** Create `backend/main.py` — FastAPI app factory with CORS, lifespan context manager, root router mount
-- [ ] **1.6** Create `backend/deps.py` — dependency injection stubs (db session, current user)
-- [ ] **1.7** Create `GET /api/health` endpoint returning `{"status": "ok", "version": "0.1.0"}`
-- [ ] **1.8** Add `Makefile` with targets: `dev`, `migrate`, `test`, `lint`
-- [ ] **1.9** Add `docker-compose.yml` for local Redis (port 6379) and optional Postgres override
-- [ ] **1.10** Verify server starts: `make dev` → `curl http://localhost:8000/api/health`
+  Note: `redis` pulled in transitively by `arq` (arq requires redis<6)
+- [x] **1.3** Add dev dependencies: `pytest pytest-asyncio httpx factory-boy ruff mypy`
+- [x] **1.4** Create `backend/config.py` — Pydantic Settings class loading all env vars
+- [x] **1.5** Create `backend/main.py` — FastAPI app factory with CORS, lifespan context manager, root router mount
+- [x] **1.6** Create `backend/deps.py` — dependency injection stubs (db session, current user)
+- [x] **1.7** Create `GET /api/health` endpoint returning `{"status": "ok", "version": "0.1.0"}`
+- [x] **1.8** Add `backend/Makefile` with targets: `dev`, `migrate`, `test`, `lint`, `format`
+- [x] **1.9** `docker-compose.yml` already exists (root); `backend/.env.example` already exists
+- [x] **1.10** Verified: server starts, `GET /api/health` returns `{"status":"ok","version":"0.1.0"}` with 200
 
 **Checkpoint:** Server starts, health endpoint returns 200, .env loaded correctly.
 
@@ -232,4 +233,4 @@ _Add decisions, blockers, and context here as you work._
 
 | Date | Note |
 |------|------|
-| | |
+| 2026-02-27 | Phase 1 complete. Poetry installed via pip (not system-installed). `arq` requires redis<6 so redis not added explicitly — pulled transitively. Root Makefile and docker-compose.yml were pre-existing. `ruff` and `mypy` added as dev tools. |

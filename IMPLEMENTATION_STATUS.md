@@ -1,8 +1,8 @@
 # Implementation Status
 
 > Last Updated: 2026-02-27
-> Current Phase: Phase 6 — Jobs API & Adzuna Sync
-> Backend Progress: 5 / 11 phases complete
+> Current Phase: Phase 7 — Auto-Apply Config API
+> Backend Progress: 6 / 11 phases complete
 
 ---
 
@@ -15,7 +15,7 @@
 | 3 | Pydantic Schemas | Complete | 8/8 |
 | 4 | Auth (Supabase JWT) | Complete | 11/11 |
 | 5 | Profile API | Complete | 14/14 |
-| 6 | Jobs API & Adzuna Sync | Not Started | 0/9 |
+| 6 | Jobs API & Adzuna Sync | Complete | 9/9 |
 | 7 | Auto-Apply Config API | Not Started | 0/10 |
 | 8 | Applications API | Not Started | 0/7 |
 | 9 | Document Generation API | Not Started | 0/9 |
@@ -25,6 +25,17 @@
 ---
 
 ## Completed Phases
+
+### Phase 6 — Jobs API & Adzuna Sync
+Completed: 2026-02-27
+- `routers/jobs.py` — 4 endpoints: GET /api/jobs (FTS search + filters), GET /api/jobs/:id, GET /api/jobs/:id/match, POST /api/jobs/sync
+- `services/job_sync.py` — Adzuna API client (Canada IT, 5 pages x 50), upsert via PG ON CONFLICT, stale job deactivation (>30 days)
+- `services/job_matcher.py` — heuristic scorer (skill overlap 50pts + title Jaccard 30pts + location match 20pts), bulk pre-compute after sync
+- `models/job_match_score.py` — new table for pre-computed (user_id, job_id, score, factors JSONB)
+- Migration `b3a1c7e42d90` — `job_match_scores` table with unique constraint + indexes
+- Sync endpoint uses internal API key auth (not JWT), scores computed for active users after sync
+- Scheduler deferred to Phase 11; AI scoring upgrade deferred to Phase 9
+- 26 new tests (46 total): auth protection, search, detail, match, sync mock, 14 scorer unit tests
 
 ### Phase 5 — Profile API
 Completed: 2026-02-27
@@ -79,7 +90,7 @@ Completed: 2026-02-27
 
 ## In-Progress Phases
 
-_None — Phase 5 complete. Ready for Phase 6._
+_None — Phase 6 complete. Ready for Phase 7._
 
 ---
 
@@ -105,6 +116,14 @@ _None — Phase 5 complete. Ready for Phase 6._
 - `backend/Makefile` — Backend-specific make targets
 - `backend/tests/__init__.py` — Test package stub
 
+### Backend — Phase 6
+- `backend/models/job_match_score.py` — JobMatchScore model
+- `backend/db/migrations/versions/b3a1c7e42d90_add_job_match_scores.py` — Migration
+- `backend/services/job_sync.py` — Adzuna sync service
+- `backend/services/job_matcher.py` — Heuristic job matching
+- `backend/routers/jobs.py` — Jobs API router
+- `backend/tests/test_jobs.py` — 26 jobs tests
+
 ### Backend — Phase 5
 - `backend/routers/profile.py` — Profile CRUD + resume endpoints
 - `backend/services/__init__.py` — Services package
@@ -125,6 +144,9 @@ _None — Phase 5 complete. Ready for Phase 6._
 | 2026-02-27 | Internal API key (not JWT) for agent→platform communication | Agents are server-side, don't have user context; simpler auth for internal calls |
 | 2026-02-27 | Use `pdfplumber` (not `pymupdf`) for PDF text extraction | Pure Python, simpler API, sufficient for resume text extraction |
 | 2026-02-27 | Sync Supabase storage calls from async handlers | Supabase Python client is sync; bounded file sizes (10MB max) make brief blocking acceptable |
+| 2026-02-27 | Heuristic scorer for MVP, AI scoring later (Phase 9) | Free, fast, no API costs; good enough for initial matching; Claude scoring adds cost per (user, job) pair |
+| 2026-02-27 | Pre-compute match scores after sync (not on-demand) | Better UX for job list; bounded compute (250 jobs x N active users); stored in dedicated table |
+| 2026-02-27 | PostgreSQL `insert` with `on_conflict_do_update` for upserts | Must use `sqlalchemy.dialects.postgresql.insert`, not generic `sqlalchemy.insert` |
 
 ---
 

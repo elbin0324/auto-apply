@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
-from routers import auth, health, profile
+from routers import auth, health, jobs, profile
 
 settings = get_settings()
 
@@ -37,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
     app.include_router(profile.router, prefix="/api")
+    app.include_router(jobs.router, prefix="/api")
 
     return app
 

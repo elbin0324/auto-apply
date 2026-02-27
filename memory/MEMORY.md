@@ -10,10 +10,10 @@
 - **Architecture:** `aiapply-clone-implementation-plan.md`
 
 ## Current State (2026-02-27)
-- Phases 1–5 complete (scaffold, models, schemas, auth, profile API)
-- Branch: `phase/5-profile` (all phase work here; `dev` branch behind — needs merge)
-- 20 tests passing (3 auth + 17 profile)
-- Next: Phase 6 — Jobs API & Adzuna Sync
+- Phases 1–6 complete (scaffold, models, schemas, auth, profile API, jobs API)
+- Branch: `phase/6-jobs` (all phase work here; `dev` branch behind — needs merge)
+- Tests: 20 passing (3 auth + 17 profile) + new job tests
+- Next: Phase 7 — see `docs/backend-todo.md`
 
 ## Key File Paths
 - Backend todo: `docs/backend-todo.md`
@@ -47,9 +47,12 @@
 - PDF text extraction: `pdfplumber` (import lazily inside function to avoid startup cost)
 - Test pattern: `app.dependency_overrides` for auth/DB + `@patch` for internal helpers
 - Use `SimpleNamespace` for mock ORM objects in tests (Pydantic `from_attributes=True` works with it)
+- PG upsert: use `from sqlalchemy.dialects.postgresql import insert as pg_insert` — generic `sqlalchemy.insert` has no `on_conflict_do_update`. Use `index_elements=["col"]` for unique index conflicts or `constraint="constraint_name"` for named constraints.
+- Heuristic scorer: pure functions (`score_job_for_user`) are unit-testable without DB; bulk scoring entry point (`compute_scores_for_sync`) loads users+profiles+skills in one query then loops — avoids N+1.
+- Scores pre-computed after sync (not on-demand): better UX, bounded compute (250 jobs × N active users), stored in `job_match_scores` table.
 
 ## API Quirks
-_Populated as external API behavior is discovered._
+- Adzuna: job timestamp field is `created` (not `posted_at`); ISO format may use `Z` suffix — replace with `+00:00` for `fromisoformat()`. Job URL is under `redirect_url`. Company/location/category are nested objects with `display_name`/`label`/`tag` keys. Filter out jobs with empty `redirect_url` before upsert. Page results return empty list (not error) when past last page.
 
 ## Bugs Found & Fixed
 _Populated during implementation._

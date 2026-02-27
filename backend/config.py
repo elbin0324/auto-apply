@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     # Database
     database_url: str
 
+    @field_validator("database_url")
+    @classmethod
+    def ensure_asyncpg_scheme(cls, v: str) -> str:
+        for plain in ("postgresql://", "postgres://"):
+            if v.startswith(plain):
+                return "postgresql+asyncpg://" + v[len(plain):]
+        return v
+
     # Redis / Queue
     redis_url: str = "redis://localhost:6379"
 

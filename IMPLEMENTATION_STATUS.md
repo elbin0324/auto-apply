@@ -1,8 +1,8 @@
 # Implementation Status
 
 > Last Updated: 2026-02-27
-> Current Phase: Phase 5 — Profile API
-> Backend Progress: 4 / 11 phases complete
+> Current Phase: Phase 6 — Jobs API & Adzuna Sync
+> Backend Progress: 5 / 11 phases complete
 
 ---
 
@@ -14,7 +14,7 @@
 | 2 | Database Models & Migrations | Complete | 14/14 |
 | 3 | Pydantic Schemas | Complete | 8/8 |
 | 4 | Auth (Supabase JWT) | Complete | 11/11 |
-| 5 | Profile API | Not Started | 0/14 |
+| 5 | Profile API | Complete | 14/14 |
 | 6 | Jobs API & Adzuna Sync | Not Started | 0/9 |
 | 7 | Auto-Apply Config API | Not Started | 0/10 |
 | 8 | Applications API | Not Started | 0/7 |
@@ -25,6 +25,18 @@
 ---
 
 ## Completed Phases
+
+### Phase 5 — Profile API
+Completed: 2026-02-27
+- `routers/profile.py` — 8 endpoints: GET/PUT profile, PUT experiences/education/skills, POST resume/upload, POST resume/parse, GET resume/parsed
+- `services/ai_client.py` — Anthropic AsyncAnthropic wrapper with `chat_completion` helper
+- `services/resume_parser.py` — sends PDF text to Claude, returns structured `ParsedResume`
+- `utils/storage.py` — Supabase Storage helpers: `upload_resume`, `get_resume_signed_url`
+- `utils/pdf_parser.py` — `extract_text_from_pdf` using pdfplumber
+- Profile auto-creates on first access (one-to-one with User)
+- Bulk replace pattern: delete existing + insert new for experiences/education/skills
+- Resume flow: upload PDF → store in Supabase Storage → parse via Claude → store JSON in profile
+- 17 new tests (20 total): auth protection, CRUD, upload validation, parse flow mock
 
 ### Phase 4 — Auth (Supabase JWT)
 Completed: 2026-02-27
@@ -67,7 +79,7 @@ Completed: 2026-02-27
 
 ## In-Progress Phases
 
-_None — starting Phase 4._
+_None — Phase 5 complete. Ready for Phase 6._
 
 ---
 
@@ -93,6 +105,15 @@ _None — starting Phase 4._
 - `backend/Makefile` — Backend-specific make targets
 - `backend/tests/__init__.py` — Test package stub
 
+### Backend — Phase 5
+- `backend/routers/profile.py` — Profile CRUD + resume endpoints
+- `backend/services/__init__.py` — Services package
+- `backend/services/ai_client.py` — Anthropic client wrapper
+- `backend/services/resume_parser.py` — Resume parsing via Claude API
+- `backend/utils/storage.py` — Supabase Storage helpers
+- `backend/utils/pdf_parser.py` — PDF text extraction (pdfplumber)
+- `backend/tests/test_profile.py` — 17 profile tests
+
 ---
 
 ## Architectural Decisions Log
@@ -102,6 +123,8 @@ _None — starting Phase 4._
 | 2026-02-27 | Use `arq` (not Celery or BullMQ) for task queue | Lightweight async Python queue, no Node.js dependency, native async support |
 | 2026-02-27 | SQLAlchemy 2.0 directly (not Supabase Python client) for DB queries | Better async support, full ORM power, Alembic migrations |
 | 2026-02-27 | Internal API key (not JWT) for agent→platform communication | Agents are server-side, don't have user context; simpler auth for internal calls |
+| 2026-02-27 | Use `pdfplumber` (not `pymupdf`) for PDF text extraction | Pure Python, simpler API, sufficient for resume text extraction |
+| 2026-02-27 | Sync Supabase storage calls from async handlers | Supabase Python client is sync; bounded file sizes (10MB max) make brief blocking acceptable |
 
 ---
 

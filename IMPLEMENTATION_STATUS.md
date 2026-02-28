@@ -1,8 +1,8 @@
 # Implementation Status
 
 > Last Updated: 2026-02-27
-> Current Phase: Phase 7 — Auto-Apply Config API
-> Backend Progress: 6 / 11 phases complete
+> Current Phase: Phase 9 — Document Generation API
+> Backend Progress: 8 / 11 phases complete
 
 ---
 
@@ -16,8 +16,8 @@
 | 4 | Auth (Supabase JWT) | Complete | 11/11 |
 | 5 | Profile API | Complete | 14/14 |
 | 6 | Jobs API & Adzuna Sync | Complete | 9/9 |
-| 7 | Auto-Apply Config API | Not Started | 0/10 |
-| 8 | Applications API | Not Started | 0/7 |
+| 7 | Auto-Apply Config API | Complete | 10/10 |
+| 8 | Applications API | Complete | 7/7 |
 | 9 | Document Generation API | Not Started | 0/9 |
 | 10 | Billing & Stripe | Not Started | 0/11 |
 | 11 | Hardening & Production | Not Started | 0/10 |
@@ -25,6 +25,33 @@
 ---
 
 ## Completed Phases
+
+### Phase 8 — Applications API
+Completed: 2026-02-27
+- `routers/applications.py` — 3 user-facing endpoints: GET /api/applications (list + filters + pagination), GET /api/applications/stats (aggregates), GET /api/applications/:id (detail with job)
+- `routers/applications.py` (internal_router) — 1 internal endpoint: POST /api/internal/applications/result (agent result callback, X-Internal-API-Key auth)
+- `services/application_service.py` — business logic: list_applications, get_application, get_application_stats, process_agent_result
+- Stats use conditional aggregation (single query): total, applied, pending, failed, skipped, this_week, success_rate
+- Agent result handler: updates Application status to applied/failed, stores screenshot_url, error_message, metadata
+- Credit deduction stubbed — logged only, real enforcement deferred to Phase 10
+- **Integration gap fixes included:**
+  - GAP 2: `verify_internal_api_key` in `deps.py` changed from `HTTPBearer()` to `Header()` for `X-Internal-API-Key` (matches apply-agents)
+  - GAP 3: Added `ExperienceForAgent`/`EducationForAgent`/`SkillForAgent` aliases in `schemas/auto_apply.py`
+  - GAP 1: `POST /api/internal/applications/result` endpoint now exists
+- 23 new tests (108 total): auth protection, list pagination, detail, stats, agent result success/failure/not-found, service unit tests
+
+### Phase 7 — Auto-Apply Config API
+Completed: 2026-02-27
+- `routers/auto_apply.py` — 6 endpoints: GET/PUT /api/auto-apply/config, POST /api/auto-apply/start, POST /api/auto-apply/stop, GET /api/auto-apply/queue, POST /api/auto-apply/review/:id
+- `services/queue_service.py` — Redis queue wrapper (RPUSH/LLEN on `auto_apply:tasks` key), uses `redis.asyncio.Redis` directly
+- `services/auto_apply_service.py` — matching pipeline: query jobs by config filters + pre-computed score threshold (≥40), exclude already-applied, enforce daily limit, create Application rows, push ApplyTask to Redis
+- Config auto-creates on first GET (default: inactive, no titles, limit 25)
+- Start validates target_titles non-empty, sets is_active=True, triggers matching
+- Stop sets is_active=False, marks queued/pending_review applications as skipped
+- Review endpoint: approve (→ queued + push to queue) or reject (→ skipped) pending_review applications
+- Credit check is a stub (returns -1 if no Subscription, allows anyway) — Phase 10 will enforce
+- No migration needed — all models exist from Phase 2
+- 30 new tests (76 total): auth protection, config CRUD, start/stop lifecycle, queue status, review, queue service unit, service unit tests
 
 ### Phase 6 — Jobs API & Adzuna Sync
 Completed: 2026-02-27
@@ -90,7 +117,7 @@ Completed: 2026-02-27
 
 ## In-Progress Phases
 
-_None — Phase 6 complete. Ready for Phase 7._
+_None — Phase 8 complete. Ready for Phase 9._
 
 ---
 
@@ -115,6 +142,17 @@ _None — Phase 6 complete. Ready for Phase 7._
 - `backend/routers/health.py` — GET /api/health
 - `backend/Makefile` — Backend-specific make targets
 - `backend/tests/__init__.py` — Test package stub
+
+### Backend — Phase 8
+- `backend/services/application_service.py` — Application business logic (list, detail, stats, agent result)
+- `backend/routers/applications.py` — Applications router (3 user endpoints) + internal router (1 agent endpoint)
+- `backend/tests/test_applications.py` — 23 applications tests
+
+### Backend — Phase 7
+- `backend/services/queue_service.py` — Redis queue wrapper
+- `backend/services/auto_apply_service.py` — Matching + orchestration logic
+- `backend/routers/auto_apply.py` — Auto-apply config + control endpoints
+- `backend/tests/test_auto_apply.py` — 30 auto-apply tests
 
 ### Backend — Phase 6
 - `backend/models/job_match_score.py` — JobMatchScore model
@@ -147,6 +185,12 @@ _None — Phase 6 complete. Ready for Phase 7._
 | 2026-02-27 | Heuristic scorer for MVP, AI scoring later (Phase 9) | Free, fast, no API costs; good enough for initial matching; Claude scoring adds cost per (user, job) pair |
 | 2026-02-27 | Pre-compute match scores after sync (not on-demand) | Better UX for job list; bounded compute (250 jobs x N active users); stored in dedicated table |
 | 2026-02-27 | PostgreSQL `insert` with `on_conflict_do_update` for upserts | Must use `sqlalchemy.dialects.postgresql.insert`, not generic `sqlalchemy.insert` |
+| 2026-02-27 | Redis list (not arq job API) for task queue | Workers don't exist yet; simple RPUSH/RPOP is mockable and decoupled from worker implementation |
+| 2026-02-27 | Queue depth from Application DB status, not Redis LLEN | DB is the lifecycle source of truth; Redis LLEN only shows unconsumed tasks |
+| 2026-02-27 | Credit check stubbed with -1 sentinel | Phase 10 builds billing; allows auto-apply to function without Subscription row |
+| 2026-02-27 | `verify_internal_api_key` uses `Header()` not `HTTPBearer()` | apply-agents sends `X-Internal-API-Key` custom header; `HTTPBearer()` expects `Authorization: Bearer` format |
+| 2026-02-27 | ForAgent type aliases (not renames) for profile schemas | `ExperienceCreate` etc. still used by Profile API; aliases provide clarity in agent context without breaking existing code |
+| 2026-02-27 | Separate `internal_router` for agent endpoints | Path `/api/internal/applications/result` doesn't fit under `/api/applications` prefix; two router objects in same file keeps related code together |
 
 ---
 

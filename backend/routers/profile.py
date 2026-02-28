@@ -11,6 +11,8 @@ from sqlalchemy.orm import selectinload
 from deps import CurrentUser, DbSession
 from models.profile import Education, Experience, Profile, Skill
 from schemas.profile import (
+    ApplicationPreferences,
+    ApplicationPreferencesUpdate,
     EducationCreate,
     EducationResponse,
     ExperienceCreate,
@@ -139,6 +141,40 @@ async def replace_skills(
     await db.flush()
 
     return [SkillResponse.model_validate(s) for s in new_items]
+
+
+# ── Application preferences ─────────────────────────────────────────────
+
+
+@router.get("/preferences", response_model=ApplicationPreferences | None)
+async def get_preferences(
+    user: CurrentUser, db: DbSession
+) -> ApplicationPreferences | None:
+    profile = await _get_or_create_profile(db, user.id)
+    if not profile.application_preferences:
+        return None
+    return ApplicationPreferences.model_validate(profile.application_preferences)
+
+
+@router.put("/preferences", response_model=ApplicationPreferences)
+async def update_preferences(
+    body: ApplicationPreferencesUpdate, user: CurrentUser, db: DbSession
+) -> ApplicationPreferences:
+    profile = await _get_or_create_profile(db, user.id)
+
+    existing = profile.application_preferences or {}
+    update_data = body.model_dump(exclude_unset=True)
+
+    # Merge custom_answers rather than replacing
+    if "custom_answers" in update_data and isinstance(existing.get("custom_answers"), dict):
+        merged_custom = {**existing["custom_answers"], **update_data["custom_answers"]}
+        update_data["custom_answers"] = merged_custom
+
+    merged = {**existing, **update_data}
+    profile.application_preferences = merged
+    await db.flush()
+
+    return ApplicationPreferences.model_validate(profile.application_preferences)
 
 
 # ── Resume upload & parse ────────────────────────────────────────────────────

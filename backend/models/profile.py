@@ -32,6 +32,7 @@ class Profile(Base, TimestampMixin):
     summary: Mapped[str | None] = mapped_column(Text)
     raw_resume_url: Mapped[str | None] = mapped_column(String)
     parsed_resume: Mapped[dict | None] = mapped_column(JSONB)
+    application_preferences: Mapped[dict | None] = mapped_column(JSONB)
     resume_updated_at: Mapped[datetime | None] = mapped_column()
 
     # Relationships

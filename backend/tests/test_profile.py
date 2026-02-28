@@ -43,6 +43,7 @@ def _mock_profile(**overrides: object) -> SimpleNamespace:
         "raw_resume_url": None,
         "parsed_resume": None,
         "resume_updated_at": None,
+        "application_preferences": None,
         "experiences": [],
         "educations": [],
         "skills": [],
@@ -105,6 +106,12 @@ class TestAuthProtection:
 
     def test_resume_parsed_requires_auth(self) -> None:
         assert client.get("/api/profile/resume/parsed").status_code == 401
+
+    def test_get_preferences_requires_auth(self) -> None:
+        assert client.get("/api/profile/preferences").status_code == 401
+
+    def test_put_preferences_requires_auth(self) -> None:
+        assert client.put("/api/profile/preferences", json={}).status_code == 401
 
 
 # ── Profile CRUD ─────────────────────────────────────────────────────────────
@@ -274,3 +281,107 @@ class TestResume:
         data = resp.json()
         assert data["full_name"] == "John Doe"
         assert profile.parsed_resume is not None
+
+
+# ── Application preferences ─────────────────────────────────────────────
+
+
+class TestApplicationPreferences:
+    def setup_method(self) -> None:
+        self.user = _mock_user()
+        self.session = _mock_db_session()
+        _apply_overrides(user=self.user, session=self.session)
+
+    def teardown_method(self) -> None:
+        _clear_overrides()
+
+    @patch("routers.profile._get_or_create_profile", new_callable=AsyncMock)
+    def test_get_preferences_returns_null_when_unset(
+        self, mock_get: AsyncMock
+    ) -> None:
+        mock_get.return_value = _mock_profile(application_preferences=None)
+
+        resp = client.get("/api/profile/preferences")
+        assert resp.status_code == 200
+        assert resp.json() is None
+
+    @patch("routers.profile._get_or_create_profile", new_callable=AsyncMock)
+    def test_get_preferences_returns_data(self, mock_get: AsyncMock) -> None:
+        prefs = {"authorized_us": True, "requires_sponsorship": False}
+        mock_get.return_value = _mock_profile(application_preferences=prefs)
+
+        resp = client.get("/api/profile/preferences")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["authorized_us"] is True
+        assert data["requires_sponsorship"] is False
+
+    @patch("routers.profile._get_or_create_profile", new_callable=AsyncMock)
+    def test_put_preferences_stores_data(self, mock_get: AsyncMock) -> None:
+        profile = _mock_profile(application_preferences=None)
+        mock_get.return_value = profile
+
+        resp = client.put(
+            "/api/profile/preferences",
+            json={"authorized_us": True, "over_18": True},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["authorized_us"] is True
+        assert data["over_18"] is True
+        assert profile.application_preferences["authorized_us"] is True
+
+    @patch("routers.profile._get_or_create_profile", new_callable=AsyncMock)
+    def test_put_preferences_partial_update(self, mock_get: AsyncMock) -> None:
+        profile = _mock_profile(
+            application_preferences={
+                "authorized_us": True,
+                "requires_sponsorship": False,
+            }
+        )
+        mock_get.return_value = profile
+
+        resp = client.put(
+            "/api/profile/preferences",
+            json={"willing_to_relocate": True},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        # Existing fields preserved
+        assert data["authorized_us"] is True
+        assert data["requires_sponsorship"] is False
+        # New field added
+        assert data["willing_to_relocate"] is True
+
+    @patch("routers.profile._get_or_create_profile", new_callable=AsyncMock)
+    def test_put_preferences_merges_custom_answers(
+        self, mock_get: AsyncMock
+    ) -> None:
+        profile = _mock_profile(
+            application_preferences={
+                "custom_answers": {"Question A": "Answer A"},
+            }
+        )
+        mock_get.return_value = profile
+
+        resp = client.put(
+            "/api/profile/preferences",
+            json={"custom_answers": {"Question B": "Answer B"}},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["custom_answers"]["Question A"] == "Answer A"
+        assert data["custom_answers"]["Question B"] == "Answer B"
+
+    @patch("routers.profile._get_or_create_profile", new_callable=AsyncMock)
+    def test_profile_response_includes_preferences(
+        self, mock_get: AsyncMock
+    ) -> None:
+        prefs = {"authorized_us": True, "how_did_you_hear": "LinkedIn"}
+        mock_get.return_value = _mock_profile(application_preferences=prefs)
+
+        resp = client.get("/api/profile")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["application_preferences"]["authorized_us"] is True
+        assert data["application_preferences"]["how_did_you_hear"] == "LinkedIn"

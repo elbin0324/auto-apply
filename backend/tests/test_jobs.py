@@ -115,7 +115,7 @@ class TestAuthProtection:
 
     def test_sync_requires_internal_key(self) -> None:
         resp = client.post("/api/jobs/sync")
-        assert resp.status_code in (401, 403)
+        assert resp.status_code in (403, 422)
 
 
 # ── Job list ─────────────────────────────────────────────────────────────────

@@ -189,6 +189,62 @@ async def task_rematch_active_users(ctx: dict[str, Any]) -> dict[str, Any]:
             raise
 
 
+async def task_enrich_unenriched_jobs(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Periodic: find jobs with description but no enriched_at, push to enrich queue."""
+    import uuid as _uuid
+
+    from sqlalchemy import select
+
+    from models.job import Job
+    from schemas.enrichment import EnrichJobsTask
+    from services.enrich_queue_service import push_enrich_task
+
+    settings = get_settings()
+    db_factory = ctx["db_factory"]
+    async with db_factory() as db:
+        try:
+            result = await db.execute(
+                select(Job.id, Job.company_id)
+                .where(
+                    Job.is_active.is_(True),
+                    Job.description.isnot(None),
+                    Job.enriched_at.is_(None),
+                )
+                .limit(settings.enrichment_batch_size)
+            )
+            rows = result.fetchall()
+
+            if not rows:
+                return {"jobs_found": 0, "tasks_pushed": 0}
+
+            # Group by company_id for batching
+            by_company: dict[str, list] = {}
+            for job_id, company_id in rows:
+                key = str(company_id) if company_id else "no_company"
+                by_company.setdefault(key, []).append(job_id)
+
+            tasks_pushed = 0
+            for company_key, job_ids in by_company.items():
+                company_id_val = (
+                    _uuid.UUID(company_key)
+                    if company_key != "no_company"
+                    else _uuid.UUID(int=0)
+                )
+                task = EnrichJobsTask(company_id=company_id_val, job_ids=job_ids)
+                await push_enrich_task(task)
+                tasks_pushed += 1
+
+            logger.info(
+                "Enrich scheduler: %d un-enriched jobs found, %d tasks pushed",
+                len(rows),
+                tasks_pushed,
+            )
+            return {"jobs_found": len(rows), "tasks_pushed": tasks_pushed}
+        except Exception:
+            logger.exception("Failed to schedule enrichment")
+            raise
+
+
 # ── Worker Configuration ──────────────────────────────────────────────────────
 
 
@@ -204,6 +260,7 @@ class WorkerSettings:
         task_schedule_crawls,
         task_schedule_user_rescoring,
         task_rematch_active_users,
+        task_enrich_unenriched_jobs,
     ]
 
     cron_jobs = [
@@ -241,6 +298,15 @@ class WorkerSettings:
             run_at_startup=False,
             unique=True,
             timeout=120,
+        ),
+        # Enrich un-enriched jobs via LLM — every 2 hours
+        cron(
+            task_enrich_unenriched_jobs,
+            hour={0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22},
+            minute=30,
+            run_at_startup=True,
+            unique=True,
+            timeout=60,
         ),
     ]
 

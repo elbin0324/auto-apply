@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Numeric, String, Text, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -38,6 +38,15 @@ class Job(Base, TimestampMixin):
     source: Mapped[str] = mapped_column(String, default="adzuna")
     category: Mapped[str | None] = mapped_column(String)
     tags: Mapped[list | None] = mapped_column(JSONB)
+
+    # Enrichment fields (populated by LLM enrichment worker)
+    experience_level: Mapped[str | None] = mapped_column(String)  # entry, mid, senior, lead, executive
+    employment_type: Mapped[str | None] = mapped_column(String)  # full_time, part_time, contract, internship
+    years_experience_min: Mapped[int | None] = mapped_column(Integer)
+    years_experience_max: Mapped[int | None] = mapped_column(Integer)
+    description_clean: Mapped[str | None] = mapped_column(Text)
+    enriched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)

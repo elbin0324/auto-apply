@@ -19,6 +19,7 @@ class User(Base, TimestampMixin):
     )
     supabase_uid: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    role: Mapped[str] = mapped_column(String, nullable=False, server_default="user")
 
     # Relationships
     profile: Mapped["Profile"] = relationship(back_populates="user", uselist=False, lazy="noload")  # type: ignore[name-defined]  # noqa: F821

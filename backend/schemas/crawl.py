@@ -35,6 +35,7 @@ class CrawlQueueStatus(BaseModel):
     score_jobs_queue_depth: int
     score_users_queue_depth: int
     apply_queue_depth: int
+    enrich_queue_depth: int = 0
 
 
 class EmbeddingStats(BaseModel):

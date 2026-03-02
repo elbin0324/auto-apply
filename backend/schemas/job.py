@@ -10,6 +10,8 @@ class JobSearchParams(BaseModel):
     location_type: list[str] | None = None  # remote, hybrid, onsite
     salary_min: float | None = None
     category: str | None = None
+    experience_level: list[str] | None = None  # entry, mid, senior, lead, executive
+    employment_type: list[str] | None = None  # full_time, part_time, contract, internship
     page: int = 1
     per_page: int = 20
     sort_by: str = "posted_at"  # posted_at, salary
@@ -30,6 +32,13 @@ class JobResponse(BaseModel):
     salary_max: float | None = None
     salary_currency: str = "CAD"
     description: str | None = None
+    description_clean: str | None = None
+    requirements: dict | None = None
+    experience_level: str | None = None
+    employment_type: str | None = None
+    years_experience_min: int | None = None
+    years_experience_max: int | None = None
+    enriched_at: datetime | None = None
     tags: list[str] = []
     url: str
     apply_url: str | None = None

@@ -67,6 +67,22 @@ async def get_current_user(
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
+
+# ── Admin auth ────────────────────────────────────────────────────────────────
+
+
+async def require_admin(user: CurrentUser) -> User:
+    """Require the current user to have the 'admin' role."""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return user
+
+
+AdminUser = Annotated[User, Depends(require_admin)]
+
 # ── Internal API key auth ─────────────────────────────────────────────────────
 
 

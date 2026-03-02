@@ -28,6 +28,8 @@ async def list_jobs(
     category: str | None = Query(None),
     source: str | None = Query(None),
     company_id: uuid.UUID | None = Query(None),
+    experience_level: list[str] | None = Query(None),
+    employment_type: list[str] | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     sort_by: str = Query("posted_at"),
@@ -54,6 +56,10 @@ async def list_jobs(
         stmt = stmt.where(Job.source == source)
     if company_id:
         stmt = stmt.where(Job.company_id == company_id)
+    if experience_level:
+        stmt = stmt.where(Job.experience_level.in_(experience_level))
+    if employment_type:
+        stmt = stmt.where(Job.employment_type.in_(employment_type))
 
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total = (await db.execute(count_stmt)).scalar_one()

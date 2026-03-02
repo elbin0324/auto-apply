@@ -18,6 +18,10 @@ const pageTitles: Record<string, string> = {
   "/auto-apply": "Auto-Apply",
   "/applications": "Applications",
   "/profile": "Profile",
+  "/admin": "Admin Overview",
+  "/admin/users": "Admin — Users",
+  "/admin/queues": "Admin — Queues",
+  "/admin/data": "Admin — Data",
 };
 
 export function TopBar() {

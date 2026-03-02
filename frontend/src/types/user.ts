@@ -6,6 +6,7 @@ export interface UserCreate {
 export interface UserResponse {
   id: string;
   email: string;
+  role: string;
 }
 
 export interface TokenResponse {

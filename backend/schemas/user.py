@@ -13,6 +13,7 @@ class UserResponse(BaseModel):
 
     id: UUID
     email: str
+    role: str = "user"
 
 
 class TokenResponse(BaseModel):

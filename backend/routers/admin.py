@@ -1,0 +1,325 @@
+"""Admin panel endpoints — all require admin role."""
+
+import logging
+import uuid
+
+from fastapi import APIRouter, HTTPException, Query, status
+from sqlalchemy import delete, func, select, update
+
+from deps import AdminUser, DbSession
+from models.application import Application
+from models.auto_apply_config import AutoApplyConfig
+from models.company import Company
+from models.job import Job
+from models.profile import Profile
+from models.user import User
+from schemas.admin import (
+    AdminOverview,
+    AdminQueueStatus,
+    AdminUserListResponse,
+    AdminUserSummary,
+    QueueDepths,
+    WipeResult,
+)
+from services.crawl_queue_service import count_crawl_dedup_keys, get_crawl_queue_depth
+from services.queue_service import get_queue_depth
+from services.score_queue_service import get_score_queue_depths
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+# ── Overview ──────────────────────────────────────────────────────────────────
+
+
+@router.get("/overview", response_model=AdminOverview)
+async def get_overview(admin: AdminUser, db: DbSession) -> AdminOverview:
+    """System-wide statistics for the admin dashboard."""
+    user_count = (await db.execute(select(func.count(User.id)))).scalar_one()
+    job_count = (await db.execute(select(func.count(Job.id)))).scalar_one()
+    active_job_count = (
+        await db.execute(select(func.count(Job.id)).where(Job.is_active.is_(True)))
+    ).scalar_one()
+    company_count = (await db.execute(select(func.count(Company.id)))).scalar_one()
+    active_company_count = (
+        await db.execute(
+            select(func.count(Company.id)).where(Company.is_active.is_(True))
+        )
+    ).scalar_one()
+
+    # Application counts by status
+    status_rows = (
+        await db.execute(
+            select(Application.status, func.count(Application.id)).group_by(
+                Application.status
+            )
+        )
+    ).all()
+    application_counts = {row[0]: row[1] for row in status_rows}
+    total_applications = sum(application_counts.values())
+
+    # Queue depths
+    apply_depth = await get_queue_depth()
+    crawl_depth = await get_crawl_queue_depth()
+    score_depths = await get_score_queue_depths()
+
+    return AdminOverview(
+        user_count=user_count,
+        job_count=job_count,
+        active_job_count=active_job_count,
+        company_count=company_count,
+        active_company_count=active_company_count,
+        application_counts=application_counts,
+        total_applications=total_applications,
+        queue_depths=QueueDepths(
+            crawl=crawl_depth,
+            score_jobs=score_depths["score_jobs"],
+            score_users=score_depths["score_users"],
+            apply=apply_depth,
+        ),
+    )
+
+
+# ── Users ─────────────────────────────────────────────────────────────────────
+
+
+@router.get("/users", response_model=AdminUserListResponse)
+async def list_users(
+    admin: AdminUser,
+    db: DbSession,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=200),
+    search: str | None = Query(default=None),
+) -> AdminUserListResponse:
+    """List all users with profile summary and application counts."""
+    # Count subqueries
+    app_count_sq = (
+        select(func.count(Application.id))
+        .where(Application.user_id == User.id)
+        .correlate(User)
+        .scalar_subquery()
+    )
+    applied_count_sq = (
+        select(func.count(Application.id))
+        .where(Application.user_id == User.id, Application.status == "applied")
+        .correlate(User)
+        .scalar_subquery()
+    )
+
+    query = (
+        select(
+            User.id,
+            User.email,
+            User.role,
+            User.created_at,
+            Profile.id.isnot(None).label("has_profile"),
+            Profile.full_name,
+            app_count_sq.label("application_count"),
+            applied_count_sq.label("applied_count"),
+            func.coalesce(AutoApplyConfig.is_active, False).label(
+                "auto_apply_active"
+            ),
+        )
+        .outerjoin(Profile, Profile.user_id == User.id)
+        .outerjoin(AutoApplyConfig, AutoApplyConfig.user_id == User.id)
+    )
+
+    if search:
+        query = query.where(User.email.ilike(f"%{search}%"))
+
+    # Total count
+    count_query = select(func.count()).select_from(User)
+    if search:
+        count_query = count_query.where(User.email.ilike(f"%{search}%"))
+    total = (await db.execute(count_query)).scalar_one()
+
+    # Paginate
+    query = query.order_by(User.created_at.desc())
+    query = query.offset((page - 1) * per_page).limit(per_page)
+
+    rows = (await db.execute(query)).all()
+
+    users = [
+        AdminUserSummary(
+            id=row.id,
+            email=row.email,
+            role=row.role,
+            created_at=row.created_at,
+            has_profile=bool(row.has_profile),
+            full_name=row.full_name,
+            application_count=row.application_count or 0,
+            applied_count=row.applied_count or 0,
+            auto_apply_active=bool(row.auto_apply_active),
+        )
+        for row in rows
+    ]
+
+    return AdminUserListResponse(
+        users=users, total=total, page=page, per_page=per_page
+    )
+
+
+@router.get("/users/{user_id}", response_model=AdminUserSummary)
+async def get_user_detail(
+    user_id: uuid.UUID, admin: AdminUser, db: DbSession
+) -> AdminUserSummary:
+    """Single user detail."""
+    app_count_sq = (
+        select(func.count(Application.id))
+        .where(Application.user_id == User.id)
+        .correlate(User)
+        .scalar_subquery()
+    )
+    applied_count_sq = (
+        select(func.count(Application.id))
+        .where(Application.user_id == User.id, Application.status == "applied")
+        .correlate(User)
+        .scalar_subquery()
+    )
+
+    row = (
+        await db.execute(
+            select(
+                User.id,
+                User.email,
+                User.role,
+                User.created_at,
+                Profile.id.isnot(None).label("has_profile"),
+                Profile.full_name,
+                app_count_sq.label("application_count"),
+                applied_count_sq.label("applied_count"),
+                func.coalesce(AutoApplyConfig.is_active, False).label(
+                    "auto_apply_active"
+                ),
+            )
+            .outerjoin(Profile, Profile.user_id == User.id)
+            .outerjoin(AutoApplyConfig, AutoApplyConfig.user_id == User.id)
+            .where(User.id == user_id)
+        )
+    ).first()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return AdminUserSummary(
+        id=row.id,
+        email=row.email,
+        role=row.role,
+        created_at=row.created_at,
+        has_profile=bool(row.has_profile),
+        full_name=row.full_name,
+        application_count=row.application_count or 0,
+        applied_count=row.applied_count or 0,
+        auto_apply_active=bool(row.auto_apply_active),
+    )
+
+
+# ── Queues ────────────────────────────────────────────────────────────────────
+
+
+@router.get("/queues", response_model=AdminQueueStatus)
+async def get_queues(admin: AdminUser) -> AdminQueueStatus:
+    """Live queue depths for monitoring."""
+    apply_depth = await get_queue_depth()
+    crawl_depth = await get_crawl_queue_depth()
+    score_depths = await get_score_queue_depths()
+    dedup_keys = await count_crawl_dedup_keys()
+
+    return AdminQueueStatus(
+        crawl_queue_depth=crawl_depth,
+        score_jobs_queue_depth=score_depths["score_jobs"],
+        score_users_queue_depth=score_depths["score_users"],
+        apply_queue_depth=apply_depth,
+        crawl_dedup_keys=dedup_keys,
+    )
+
+
+# ── Data management ──────────────────────────────────────────────────────────
+
+
+@router.delete("/companies", response_model=WipeResult)
+async def wipe_companies(
+    admin: AdminUser,
+    db: DbSession,
+    hard: bool = Query(default=False),
+) -> WipeResult:
+    """Wipe all companies. Soft delete by default, hard delete with ?hard=true."""
+    if hard:
+        result = await db.execute(delete(Company))
+        await db.commit()
+        return WipeResult(affected=result.rowcount, action="hard_delete")
+    else:
+        result = await db.execute(
+            update(Company).where(Company.is_active.is_(True)).values(is_active=False)
+        )
+        await db.commit()
+        return WipeResult(affected=result.rowcount, action="soft_delete")
+
+
+@router.delete("/jobs", response_model=WipeResult)
+async def wipe_jobs(
+    admin: AdminUser,
+    db: DbSession,
+    hard: bool = Query(default=False),
+    source: str | None = Query(default=None),
+) -> WipeResult:
+    """Wipe all jobs. Optional source filter. Soft delete by default."""
+    if hard:
+        stmt = delete(Job)
+        if source:
+            stmt = stmt.where(Job.source == source)
+        result = await db.execute(stmt)
+        await db.commit()
+        return WipeResult(affected=result.rowcount, action="hard_delete")
+    else:
+        stmt = update(Job).where(Job.is_active.is_(True)).values(is_active=False)
+        if source:
+            stmt = stmt.where(Job.source == source)
+        result = await db.execute(stmt)
+        await db.commit()
+        return WipeResult(affected=result.rowcount, action="soft_delete")
+
+
+@router.delete(
+    "/companies/{company_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_company(
+    company_id: uuid.UUID,
+    admin: AdminUser,
+    db: DbSession,
+    hard: bool = Query(default=False),
+) -> None:
+    """Delete a single company."""
+    if hard:
+        result = await db.execute(delete(Company).where(Company.id == company_id))
+    else:
+        result = await db.execute(
+            update(Company).where(Company.id == company_id).values(is_active=False)
+        )
+    await db.commit()
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+
+@router.delete("/jobs/by-company/{company_id}", response_model=WipeResult)
+async def delete_jobs_by_company(
+    company_id: uuid.UUID,
+    admin: AdminUser,
+    db: DbSession,
+    hard: bool = Query(default=False),
+) -> WipeResult:
+    """Delete all jobs belonging to a company."""
+    if hard:
+        result = await db.execute(delete(Job).where(Job.company_id == company_id))
+        await db.commit()
+        return WipeResult(affected=result.rowcount, action="hard_delete")
+    else:
+        result = await db.execute(
+            update(Job)
+            .where(Job.company_id == company_id, Job.is_active.is_(True))
+            .values(is_active=False)
+        )
+        await db.commit()
+        return WipeResult(affected=result.rowcount, action="soft_delete")

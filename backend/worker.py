@@ -93,6 +93,58 @@ async def task_discover_jobs(ctx: dict[str, Any]) -> dict[str, Any]:
             raise
 
 
+async def task_schedule_crawls(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Periodic: enqueue stale companies to crawl:companies queue.
+
+    Replaces task_discover_jobs as the primary crawl trigger. Instead of
+    crawling inline, pushes tasks for crawl workers to process independently.
+    """
+    from services.crawl_scheduler import enqueue_stale_companies
+
+    db_factory = ctx["db_factory"]
+    async with db_factory() as db:
+        try:
+            stats = await enqueue_stale_companies(db)
+            await db.commit()
+            logger.info("Scheduled crawl enqueue complete: %s", stats)
+            return stats
+        except Exception:
+            await db.rollback()
+            logger.exception("Scheduled crawl enqueue failed")
+            raise
+
+
+async def task_schedule_user_rescoring(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Periodic: enqueue all active users for re-scoring via score:users queue."""
+    from sqlalchemy import select
+
+    from models.auto_apply_config import AutoApplyConfig
+    from schemas.crawl import ScoreUserTask
+    from services.score_queue_service import push_score_user_task
+
+    db_factory = ctx["db_factory"]
+    async with db_factory() as db:
+        try:
+            result = await db.execute(
+                select(AutoApplyConfig.user_id).where(AutoApplyConfig.is_active.is_(True))
+            )
+            user_ids = result.scalars().all()
+
+            enqueued = 0
+            for user_id in user_ids:
+                await push_score_user_task(
+                    ScoreUserTask(user_id=user_id, reason="scheduled_rescore")
+                )
+                enqueued += 1
+
+            logger.info("Enqueued %d users for re-scoring", enqueued)
+            return {"users_enqueued": enqueued}
+        except Exception:
+            await db.rollback()
+            logger.exception("Failed to schedule user re-scoring")
+            raise
+
+
 async def task_rematch_active_users(ctx: dict[str, Any]) -> dict[str, Any]:
     """Periodic: re-run matching for all users with active auto-apply.
 
@@ -146,7 +198,13 @@ settings = get_settings()
 class WorkerSettings:
     """arq worker configuration with cron jobs for sync and rematch."""
 
-    functions = [task_sync_jobs, task_discover_jobs, task_rematch_active_users]
+    functions = [
+        task_sync_jobs,
+        task_discover_jobs,
+        task_schedule_crawls,
+        task_schedule_user_rescoring,
+        task_rematch_active_users,
+    ]
 
     cron_jobs = [
         # Legacy Adzuna sync — runs if ADZUNA_APP_ID is configured
@@ -158,15 +216,25 @@ class WorkerSettings:
             unique=True,
             timeout=300,
         ),
-        # ATS career page crawling — every 6 hours, offset by 1h from Adzuna
+        # Enqueue stale companies for crawl workers — every 6 hours
         cron(
-            task_discover_jobs,
+            task_schedule_crawls,
+            hour={0, 6, 12, 18},
+            minute=0,
+            run_at_startup=True,
+            unique=True,
+            timeout=60,
+        ),
+        # Enqueue active users for periodic re-scoring — every 6 hours
+        cron(
+            task_schedule_user_rescoring,
             hour={1, 7, 13, 19},
             minute=0,
             run_at_startup=False,
             unique=True,
-            timeout=600,
+            timeout=60,
         ),
+        # Re-match active users using pre-computed scores, queue apply tasks
         cron(
             task_rematch_active_users,
             minute={0, 30},

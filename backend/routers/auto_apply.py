@@ -7,6 +7,8 @@ from sqlalchemy import select
 from deps import CurrentUser, DbSession
 from models.application import Application
 from models.job import Job
+from schemas.crawl import ScoreUserTask
+from services.score_queue_service import push_score_user_task
 from schemas.auto_apply import (
     ApplyTask,
     AutoApplyConfigResponse,
@@ -64,6 +66,7 @@ async def start_auto_apply(user: CurrentUser, db: DbSession) -> dict:
     config.is_active = True
     await db.flush()
 
+    await push_score_user_task(ScoreUserTask(user_id=user.id, reason="auto_apply_enabled"))
     match_stats = await run_matching_for_user(db, user.id, config)
     return {"status": "started", "is_active": True, **match_stats}
 

@@ -194,8 +194,8 @@ async def test_task_rematch_continues_on_individual_user_error() -> None:
 def test_worker_settings_has_cron_jobs() -> None:
     from worker import WorkerSettings
 
-    assert len(WorkerSettings.cron_jobs) == 3
-    assert len(WorkerSettings.functions) == 3
+    assert len(WorkerSettings.cron_jobs) == 4
+    assert len(WorkerSettings.functions) == 5
     assert WorkerSettings.queue_name == "arq:scheduler"
 
 

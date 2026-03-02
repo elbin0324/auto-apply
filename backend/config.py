@@ -50,10 +50,23 @@ class Settings(BaseSettings):
     discovery_concurrency: int = 5  # Max companies to crawl in parallel
     workday_request_delay: float = 1.0  # Seconds between Workday API requests
 
-    # Stripe
-    stripe_secret_key: str
-    stripe_publishable_key: str
-    stripe_webhook_secret: str
+    # Voyage AI embeddings
+    voyage_api_key: str = ""
+    voyage_model: str = "voyage-4-large"
+    voyage_batch_size: int = 128  # texts per API call (max 1000)
+
+    # Crawl queue settings
+    crawl_stale_hours: int = 6  # hours before a company is re-crawled
+    crawl_concurrency: int = 3  # parallel crawls within one worker process
+
+    # Score settings
+    vector_search_limit: int = 200  # top-K from vector search before re-ranking
+    score_min_threshold: float = 15.0  # minimum combined score to store
+
+    # Stripe (optional until billing is implemented)
+    stripe_secret_key: str = ""
+    stripe_publishable_key: str = ""
+    stripe_webhook_secret: str = ""
     stripe_pro_price_id: str = ""
     stripe_premium_price_id: str = ""
     stripe_credits_10_price_id: str = ""

@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -40,6 +41,10 @@ class Job(Base, TimestampMixin):
     posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+
+    # Vector embedding for semantic search (Voyage AI, 1024 dims)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
+    embedding_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (
         Index(

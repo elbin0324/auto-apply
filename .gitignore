@@ -26,11 +26,12 @@ poetry.lock
 # Alembic
 # Keep migrations, but not compiled artifacts
 
-# Node (for frontend later)
+# Node / Frontend
 node_modules/
 .nuxt/
 .output/
-dist/
+frontend/dist/
+frontend/node_modules/
 
 # IDE
 .vscode/

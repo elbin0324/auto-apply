@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import AuthApiError
 from sqlalchemy import select
@@ -71,11 +71,14 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 async def verify_internal_api_key(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(HTTPBearer())],
+    x_internal_api_key: Annotated[str, Header()],
     settings: SettingsDep,
 ) -> None:
-    """Verify INTERNAL_API_KEY for agent → platform requests."""
-    if credentials.credentials != settings.internal_api_key:
+    """Verify INTERNAL_API_KEY for agent → platform requests.
+
+    Agents send the key in the X-Internal-API-Key header.
+    """
+    if x_internal_api_key != settings.internal_api_key:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid internal API key",

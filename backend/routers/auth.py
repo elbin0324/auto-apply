@@ -138,6 +138,9 @@ async def me(request: Request, db: DbSession) -> UserResponse:
     result = await db.execute(select(User).where(User.supabase_uid == auth_user.id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        # Auto-create local user row (e.g. OAuth users who bypassed /signup)
+        user = User(supabase_uid=auth_user.id, email=auth_user.email or "")
+        db.add(user)
+        await db.flush()
 
     return UserResponse.model_validate(user)

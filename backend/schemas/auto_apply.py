@@ -2,6 +2,43 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from schemas.profile import (
+    ApplicationPreferences,
+    EducationCreate,
+    ExperienceCreate,
+    SkillCreate,
+)
+
+# Aliases matching apply-agents naming (same schema, clearer intent)
+ExperienceForAgent = ExperienceCreate
+EducationForAgent = EducationCreate
+SkillForAgent = SkillCreate
+
+
+# ── User profile payload sent to agent workers ──────────────────────────────
+
+
+class UserProfileForAgent(BaseModel):
+    """Applicant profile context included in ApplyTask for the Application Agent.
+
+    Must stay in sync with apply-agents: models/task.py UserProfileForAgent.
+    """
+
+    full_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    location: str | None = None
+    linkedin_url: str | None = None
+    website_url: str | None = None
+    summary: str | None = None
+    experiences: list[ExperienceForAgent] = []
+    educations: list[EducationForAgent] = []
+    skills: list[SkillForAgent] = []
+    application_preferences: ApplicationPreferences | None = None
+
+
+# ── Auto-apply config ───────────────────────────────────────────────────────
+
 
 class AutoApplyConfigUpdate(BaseModel):
     target_titles: list[str] | None = None
@@ -49,15 +86,19 @@ class QueueStatus(BaseModel):
 
 
 class ApplyTask(BaseModel):
-    """Message pushed to Redis queue for agent workers."""
+    """Message pushed to Redis queue for agent workers.
+
+    Must stay in sync with apply-agents: models/task.py ApplyTask.
+    """
 
     application_id: UUID
     user_id: UUID
     job_id: UUID
     job_url: str
     resume_url: str | None = None
+    resume_text: str | None = None
     cover_letter: str | None = None
-    user_profile: dict = {}
+    user_profile: UserProfileForAgent | None = None
 
 
 class ApplyResult(BaseModel):

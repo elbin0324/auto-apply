@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Index, Numeric, String, Text, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,6 +19,11 @@ class Job(Base, TimestampMixin):
     external_id: Mapped[str | None] = mapped_column(String, unique=True, index=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     company: Mapped[str | None] = mapped_column(Text)
+    company_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="SET NULL"),
+        index=True,
+    )
     company_logo_url: Mapped[str | None] = mapped_column(String)
     location: Mapped[str | None] = mapped_column(String, index=True)
     location_type: Mapped[str | None] = mapped_column(String)  # remote, hybrid, onsite
@@ -28,11 +33,12 @@ class Job(Base, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text)
     requirements: Mapped[dict | None] = mapped_column(JSONB)
     url: Mapped[str] = mapped_column(Text, nullable=False)
+    apply_url: Mapped[str | None] = mapped_column(Text)  # Direct application form URL
     source: Mapped[str] = mapped_column(String, default="adzuna")
     category: Mapped[str | None] = mapped_column(String)
     tags: Mapped[list | None] = mapped_column(JSONB)
-    posted_at: Mapped[datetime | None] = mapped_column(index=True)
-    expires_at: Mapped[datetime | None] = mapped_column()
+    posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
 
     __table_args__ = (

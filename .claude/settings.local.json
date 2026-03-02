@@ -11,7 +11,15 @@
       "Bash(AGREE_TO_XCODE_LICENSE=1 git -C /Users/andycraig/GitHub/auto-apply log --oneline)",
       "Bash(python3 -c \":*)",
       "Bash(python3:*)",
-      "mcp__github__get_file_contents"
+      "mcp__github__get_file_contents",
+      "Bash(git branch -D phase/F1-scaffold)",
+      "Bash(git stash pop)",
+      "Bash(git stash drop)",
+      "Bash(pnpm create vite frontend-temp --template react-ts)",
+      "Bash(pnpm install)",
+      "Bash(git)",
+      "Bash(pnpm dlx shadcn@latest init --yes)",
+      "WebFetch(domain:developers.ashbyhq.com)"
     ]
   }
 }

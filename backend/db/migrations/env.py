@@ -14,8 +14,10 @@ from db.base import Base  # noqa: E402
 # Import all models so Alembic can detect them for autogenerate
 import models.application  # noqa: F401, E402
 import models.auto_apply_config  # noqa: F401, E402
+import models.company  # noqa: F401, E402
 import models.document  # noqa: F401, E402
 import models.job  # noqa: F401, E402
+import models.job_match_score  # noqa: F401, E402
 import models.profile  # noqa: F401, E402
 import models.subscription  # noqa: F401, E402
 import models.user  # noqa: F401, E402

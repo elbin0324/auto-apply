@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, ForeignKey, Integer, String, Text, text
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,7 +32,8 @@ class Profile(Base, TimestampMixin):
     summary: Mapped[str | None] = mapped_column(Text)
     raw_resume_url: Mapped[str | None] = mapped_column(String)
     parsed_resume: Mapped[dict | None] = mapped_column(JSONB)
-    resume_updated_at: Mapped[datetime | None] = mapped_column()
+    application_preferences: Mapped[dict | None] = mapped_column(JSONB)
+    resume_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="profile")  # type: ignore[name-defined]  # noqa: F821

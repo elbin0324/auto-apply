@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from deps import CurrentUser, DbSession, verify_internal_api_key
 from models.company import Company
+from models.job import Job
+from models.profile import Profile
 from schemas.company import (
     ATSDetectResult,
     CompanyCreate,
@@ -17,6 +19,7 @@ from schemas.company import (
     CompanyUpdate,
     VALID_ATS_TYPES,
 )
+from schemas.crawl import CrawlQueueStatus, CrawlTask, EmbeddingStats
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +272,123 @@ async def trigger_company_discovery(
     crawl_result = await crawl_company(db, company)
     await db.commit()
     return crawl_result.model_dump()
+
+
+# ── Queue monitoring endpoints ────────────────────────────────────────────
+
+
+@discovery_router.get(
+    "/queue-status",
+    response_model=CrawlQueueStatus,
+    dependencies=[Depends(verify_internal_api_key)],
+)
+async def get_queue_status() -> CrawlQueueStatus:
+    """Get current depth of all processing queues."""
+    from services.crawl_queue_service import get_crawl_queue_depth
+    from services.queue_service import get_queue_depth
+    from services.score_queue_service import get_score_queue_depths
+
+    crawl_depth = await get_crawl_queue_depth()
+    score_depths = await get_score_queue_depths()
+    apply_depth = await get_queue_depth()
+
+    return CrawlQueueStatus(
+        crawl_queue_depth=crawl_depth,
+        score_jobs_queue_depth=score_depths["score_jobs"],
+        score_users_queue_depth=score_depths["score_users"],
+        apply_queue_depth=apply_depth,
+    )
+
+
+@discovery_router.get(
+    "/embedding-stats",
+    response_model=EmbeddingStats,
+    dependencies=[Depends(verify_internal_api_key)],
+)
+async def get_embedding_stats(db: DbSession) -> EmbeddingStats:
+    """Get embedding coverage statistics for jobs and profiles."""
+    jobs_total = (await db.execute(
+        select(func.count()).select_from(Job).where(Job.is_active.is_(True))
+    )).scalar_one()
+    jobs_embedded = (await db.execute(
+        select(func.count()).select_from(Job).where(
+            Job.is_active.is_(True), Job.embedding.isnot(None)
+        )
+    )).scalar_one()
+    profiles_total = (await db.execute(
+        select(func.count()).select_from(Profile)
+    )).scalar_one()
+    profiles_embedded = (await db.execute(
+        select(func.count()).select_from(Profile).where(Profile.embedding.isnot(None))
+    )).scalar_one()
+
+    return EmbeddingStats(
+        jobs_total=jobs_total,
+        jobs_embedded=jobs_embedded,
+        profiles_total=profiles_total,
+        profiles_embedded=profiles_embedded,
+    )
+
+
+@discovery_router.post(
+    "/enqueue",
+    dependencies=[Depends(verify_internal_api_key)],
+)
+async def enqueue_companies_for_crawl(db: DbSession) -> dict:
+    """Enqueue stale companies to the crawl queue (on-demand trigger)."""
+    from services.crawl_scheduler import enqueue_stale_companies
+
+    stats = await enqueue_stale_companies(db)
+    return stats
+
+
+# ── ATS auto-discovery endpoints ──────────────────────────────────────────
+
+
+@discovery_router.post(
+    "/detect",
+    dependencies=[Depends(verify_internal_api_key)],
+)
+async def detect_ats_for_domain(body: dict) -> dict:
+    """Auto-discover ATS type for a single company name or domain."""
+    from services.ats_discovery import discover_ats
+
+    name_or_domain = body.get("domain") or body.get("name")
+    if not name_or_domain:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Provide 'domain' or 'name' in request body",
+        )
+
+    result = await discover_ats(name_or_domain)
+    if result:
+        return result
+    return {"name_or_domain": name_or_domain, "ats_type": None}
+
+
+@discovery_router.post(
+    "/detect-batch",
+    dependencies=[Depends(verify_internal_api_key)],
+)
+async def detect_ats_batch(body: dict) -> dict:
+    """Auto-discover ATS types for a batch of company names or domains."""
+    from services.ats_discovery import discover_ats_batch
+
+    domains = body.get("domains", [])
+    if not domains:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Provide 'domains' list in request body",
+        )
+
+    results = await discover_ats_batch(domains)
+    found = [r for r in results if r.get("ats_type")]
+    return {
+        "total": len(domains),
+        "found": len(found),
+        "not_found": len(domains) - len(found),
+        "results": results,
+    }
 
 
 # ── ATS detection utility ────────────────────────────────────────────────

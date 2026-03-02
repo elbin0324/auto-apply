@@ -1,4 +1,4 @@
-.PHONY: dev test migrate lint services clean help worker seed-companies
+.PHONY: dev test migrate lint services clean help worker seed-companies crawl-worker score-worker backfill-embeddings import-companies
 
 # ── Local Services ────────────────────────────────────────────────────────────
 services:
@@ -24,6 +24,19 @@ worker:
 worker-dev:
 	cd backend && poetry run watchfiles "arq worker.WorkerSettings" --filter python
 
+# ── Crawl & Score Workers ──────────────────────────────────────────────────
+crawl-worker:
+	cd backend && poetry run python crawl_worker.py
+
+crawl-worker-dev:
+	cd backend && poetry run watchfiles "python crawl_worker.py" --filter python
+
+score-worker:
+	cd backend && poetry run python score_worker.py
+
+score-worker-dev:
+	cd backend && poetry run watchfiles "python score_worker.py" --filter python
+
 # ── Database ──────────────────────────────────────────────────────────────────
 migrate:
 	cd backend && poetry run alembic upgrade head
@@ -44,6 +57,18 @@ format:
 # ── Seed Data ─────────────────────────────────────────────────────────────────
 seed-companies:
 	cd backend && poetry run python -m scripts.seed_companies
+
+import-companies:
+	@read -p "JSON file path: " path; cd backend && poetry run python -m scripts.import_companies "$$path"
+
+backfill-embeddings:
+	cd backend && poetry run python -m scripts.backfill_embeddings --jobs --profiles
+
+backfill-job-embeddings:
+	cd backend && poetry run python -m scripts.backfill_embeddings --jobs
+
+backfill-profile-embeddings:
+	cd backend && poetry run python -m scripts.backfill_embeddings --profiles
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
 clean:
@@ -74,5 +99,9 @@ help:
 	@echo "  stripe-listen - Start Stripe webhook listener (local dev)"
 	@echo "  worker        - Start arq background worker (sync + rematch)"
 	@echo "  worker-dev    - Start arq worker with auto-reload"
+	@echo "  crawl-worker  - Start crawl worker (consumes crawl:companies queue)"
+	@echo "  score-worker  - Start score worker (consumes score:jobs + score:users queues)"
 	@echo "  seed-companies - Seed company registry with known tech companies"
+	@echo "  import-companies - Bulk import companies from JSON file"
+	@echo "  backfill-embeddings - Backfill embeddings for all jobs and profiles"
 	@echo "  docs          - Open API docs in browser"

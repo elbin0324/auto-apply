@@ -10,6 +10,8 @@ from sqlalchemy.orm import selectinload
 
 from deps import CurrentUser, DbSession
 from models.profile import Education, Experience, Profile, Skill
+from schemas.crawl import ScoreUserTask
+from services.score_queue_service import push_score_user_task
 from schemas.profile import (
     ApplicationPreferences,
     ApplicationPreferencesUpdate,
@@ -77,6 +79,7 @@ async def update_profile(
         setattr(profile, field, value)
 
     await db.flush()
+    await push_score_user_task(ScoreUserTask(user_id=user.id, reason="profile_update"))
     return ProfileResponse.model_validate(profile)
 
 
@@ -100,6 +103,7 @@ async def replace_experiences(
         new_items.append(exp)
     await db.flush()
 
+    await push_score_user_task(ScoreUserTask(user_id=user.id, reason="profile_update"))
     return [ExperienceResponse.model_validate(e) for e in new_items]
 
 
@@ -140,6 +144,7 @@ async def replace_skills(
         new_items.append(skill)
     await db.flush()
 
+    await push_score_user_task(ScoreUserTask(user_id=user.id, reason="profile_update"))
     return [SkillResponse.model_validate(s) for s in new_items]
 
 

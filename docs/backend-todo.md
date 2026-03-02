@@ -163,6 +163,26 @@
 
 ---
 
+## Phase 9A — Background Scheduling & Continuous Auto-Apply
+> **Goal:** Job sync runs on a schedule. Auto-apply becomes truly continuous by periodically re-matching jobs for active users.
+> **Architecture:** arq worker process (separate from FastAPI) with cron jobs, using same Redis instance but distinct queue name (`arq:scheduler`).
+> **Branch:** `phase/9A-scheduling`
+
+- [x] **9A.1** Create `backend/worker.py` — arq `WorkerSettings` with `on_startup`/`on_shutdown` hooks that initialize `AsyncSessionLocal` from `db/session.py`
+- [x] **9A.2** Implement `task_sync_jobs` background task — calls `run_sync()` from `services/job_sync.py` + `compute_scores_for_sync()` from `services/job_matcher.py` (same logic as `POST /api/jobs/sync` but non-blocking)
+- [x] **9A.3** Implement `task_rematch_active_users` background task — queries all `AutoApplyConfig` where `is_active=True`, calls `run_matching_for_user()` for each (existing function handles dedup, daily limits, queue push)
+- [x] **9A.4** Register cron schedules in `WorkerSettings`: sync every 6 hours (`hour={0,6,12,18}`), rematch every 30 minutes (`minute={0,30}`)
+- [x] **9A.5** Make job sync configurable — add `adzuna_sync_country`, `adzuna_sync_categories`, `adzuna_sync_pages` to `config.py` Settings; replace hardcoded constants in `services/job_sync.py`
+- [x] **9A.6** Add `worker` and `worker-dev` targets to Makefile: `poetry run arq worker.WorkerSettings`
+- [x] **9A.7** Add `POST /api/internal/scheduler/rematch` endpoint (internal API key auth) for manually triggering a rematch cycle
+- [x] **9A.8** Add `GET /api/health/scheduler` endpoint — reads arq worker heartbeat from Redis to report scheduler status
+- [x] **9A.9** Write tests: `task_sync_jobs` and `task_rematch_active_users` with mocked db + services, verify correct calls and error handling (11 tests, all passing)
+- [x] **9A.10** Update `IMPLEMENTATION_STATUS.md` and this file
+
+**Checkpoint:** `make worker` starts arq worker, sync runs every 6h, re-matching runs every 30min for active users, new jobs are automatically matched and queued.
+
+---
+
 ## Phase 9 — Document Generation API
 > **Goal:** On-demand cover letter and tailored resume generation.
 
@@ -238,3 +258,4 @@ _Add decisions, blockers, and context here as you work._
 | 2026-02-27 | Phase 5 complete. Profile CRUD, bulk replace for experiences/education/skills, resume upload to Supabase Storage, PDF text extraction via pdfplumber, resume parsing via Claude API (claude-sonnet-4-6), and parsed resume retrieval. 17 new tests (20 total). Supabase storage client is sync — follows same pattern as auth (acceptable for bounded file sizes). |
 | 2026-02-27 | Phase 6 complete. Jobs API with Adzuna sync (Canada IT, 5 pages x 50), Postgres FTS search, heuristic match scoring (skill 50pts + title 30pts + location 20pts). New `job_match_scores` table + migration. Scores pre-computed after sync for active users. Scheduler deferred to Phase 11. AI scoring deferred to Phase 9. 26 new tests (46 total). PostgreSQL-specific `insert` with `on_conflict_do_update` for upserts. |
 | 2026-02-27 | Phase 8 complete. Applications API with list/detail/stats + internal agent result endpoint. Also fixed 3 integration gaps: (1) `verify_internal_api_key` changed from `HTTPBearer()` to `Header()` for `X-Internal-API-Key` (matches apply-agents), (2) added `ExperienceForAgent`/`EducationForAgent`/`SkillForAgent` aliases in schemas, (3) `POST /api/internal/applications/result` endpoint for agent workers. 23 new tests (108 total). Credit deduction stubbed — real enforcement deferred to Phase 10. |
+| 2026-03-01 | Phase 9A complete. arq background worker (`worker.py`) with two cron tasks: `task_sync_jobs` (every 6h) and `task_rematch_active_users` (every 30min). Job sync config now configurable via env vars (country, categories, pages). Scheduler health endpoint at `GET /api/health/scheduler`. Manual rematch trigger at `POST /api/internal/scheduler/rematch`. 11 new tests (119 total). |

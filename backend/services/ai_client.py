@@ -15,7 +15,7 @@ def get_anthropic_client() -> anthropic.AsyncAnthropic:
 async def chat_completion(
     prompt: str,
     system: str = "",
-    model: str = "claude-sonnet-4-6-20250514",
+    model: str = "claude-sonnet-4-20250514",
     max_tokens: int = 4096,
 ) -> str:
     client = get_anthropic_client()

@@ -13,9 +13,6 @@ from models.job import Job
 logger = logging.getLogger(__name__)
 
 ADZUNA_BASE_URL = "https://api.adzuna.com/v1/api/jobs"
-SYNC_COUNTRY = "ca"
-SYNC_CATEGORY = "it-jobs"
-SYNC_PAGES = 5
 RESULTS_PER_PAGE = 50
 STALE_DAYS = 30
 
@@ -25,13 +22,15 @@ async def fetch_adzuna_page(
     app_id: str,
     app_key: str,
     page: int,
+    country: str = "ca",
+    category: str = "it-jobs",
 ) -> list[dict[str, Any]]:
-    url = f"{ADZUNA_BASE_URL}/{SYNC_COUNTRY}/search/{page}"
+    url = f"{ADZUNA_BASE_URL}/{country}/search/{page}"
     params = {
         "app_id": app_id,
         "app_key": app_key,
         "results_per_page": RESULTS_PER_PAGE,
-        "category": SYNC_CATEGORY,
+        "category": category,
         "sort_by": "date",
         "content-type": "application/json",
     }
@@ -122,32 +121,47 @@ async def run_sync(db: AsyncSession) -> dict[str, Any]:
     all_external_ids: list[str] = []
     total_fetched = 0
 
+    country = settings.adzuna_sync_country
+    categories = [
+        c.strip() for c in settings.adzuna_sync_categories.split(",") if c.strip()
+    ]
+    pages = settings.adzuna_sync_pages
+
     async with httpx.AsyncClient() as client:
-        for page in range(1, SYNC_PAGES + 1):
-            try:
-                results = await fetch_adzuna_page(
-                    client,
-                    settings.adzuna_app_id,
-                    settings.adzuna_api_key,
-                    page,
+        for category in categories:
+            for page in range(1, pages + 1):
+                try:
+                    results = await fetch_adzuna_page(
+                        client,
+                        settings.adzuna_app_id,
+                        settings.adzuna_api_key,
+                        page,
+                        country=country,
+                        category=category,
+                    )
+                except httpx.HTTPStatusError as e:
+                    logger.error(
+                        "Adzuna %s page %d failed: %s", category, page, e
+                    )
+                    break
+                except httpx.TimeoutException:
+                    logger.error("Adzuna %s page %d timed out", category, page)
+                    break
+
+                if not results:
+                    logger.info(
+                        "Adzuna %s page %d empty, stopping", category, page
+                    )
+                    break
+
+                job_rows = [_parse_adzuna_result(r) for r in results]
+                job_rows = [r for r in job_rows if r.get("url")]
+                upserted_ids = await upsert_jobs(db, job_rows)
+                all_external_ids.extend(upserted_ids)
+                total_fetched += len(results)
+                logger.info(
+                    "Synced %s page %d: %d jobs", category, page, len(results)
                 )
-            except httpx.HTTPStatusError as e:
-                logger.error("Adzuna page %d failed: %s", page, e)
-                break
-            except httpx.TimeoutException:
-                logger.error("Adzuna page %d timed out", page)
-                break
-
-            if not results:
-                logger.info("Adzuna page %d empty, stopping", page)
-                break
-
-            job_rows = [_parse_adzuna_result(r) for r in results]
-            job_rows = [r for r in job_rows if r.get("url")]
-            upserted_ids = await upsert_jobs(db, job_rows)
-            all_external_ids.extend(upserted_ids)
-            total_fetched += len(results)
-            logger.info("Synced page %d: %d jobs", page, len(results))
 
     deactivated = await deactivate_stale_jobs(db, all_external_ids)
 

@@ -1,0 +1,205 @@
+import { useState, useEffect } from "react";
+import { Loader2, Save } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { TagInput } from "./tag-input";
+import { useUpdateAutoApplyConfig } from "@/hooks/use-auto-apply-status";
+import type { AutoApplyConfigResponse } from "@/types/auto-apply";
+
+const locationTypes = ["remote", "hybrid", "onsite"] as const;
+const experienceLevels = [
+  { value: "", label: "Any" },
+  { value: "entry", label: "Entry" },
+  { value: "mid", label: "Mid" },
+  { value: "senior", label: "Senior" },
+  { value: "lead", label: "Lead" },
+  { value: "executive", label: "Executive" },
+];
+
+interface ConfigFormProps {
+  config: AutoApplyConfigResponse;
+}
+
+export function ConfigForm({ config }: ConfigFormProps) {
+  const mutation = useUpdateAutoApplyConfig();
+
+  const [targetTitles, setTargetTitles] = useState<string[]>([]);
+  const [targetLocations, setTargetLocations] = useState<string[]>([]);
+  const [excludedCompanies, setExcludedCompanies] = useState<string[]>([]);
+  const [preferredIndustries, setPreferredIndustries] = useState<string[]>([]);
+  const [locationTypePref, setLocationTypePref] = useState<string[]>([]);
+  const [experienceLevel, setExperienceLevel] = useState("");
+  const [minSalary, setMinSalary] = useState<string>("");
+  const [maxSalary, setMaxSalary] = useState<string>("");
+  const [dailyLimit, setDailyLimit] = useState<string>("20");
+  const [requireReview, setRequireReview] = useState(true);
+
+  useEffect(() => {
+    setTargetTitles(config.target_titles ?? []);
+    setTargetLocations(config.target_locations ?? []);
+    setExcludedCompanies(config.excluded_companies ?? []);
+    setPreferredIndustries(config.preferred_industries ?? []);
+    setLocationTypePref(config.location_type_pref ?? []);
+    setExperienceLevel(config.experience_level ?? "");
+    setMinSalary(config.min_salary?.toString() ?? "");
+    setMaxSalary(config.max_salary?.toString() ?? "");
+    setDailyLimit(config.daily_apply_limit.toString());
+    setRequireReview(config.require_review);
+  }, [config]);
+
+  const save = () => {
+    mutation.mutate({
+      target_titles: targetTitles.length ? targetTitles : null,
+      target_locations: targetLocations.length ? targetLocations : null,
+      excluded_companies: excludedCompanies.length ? excludedCompanies : null,
+      preferred_industries: preferredIndustries.length
+        ? preferredIndustries
+        : null,
+      location_type_pref: locationTypePref.length ? locationTypePref : null,
+      experience_level: experienceLevel || null,
+      min_salary: minSalary ? Number(minSalary) : null,
+      max_salary: maxSalary ? Number(maxSalary) : null,
+      daily_apply_limit: Number(dailyLimit) || 20,
+      require_review: requireReview,
+    });
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="space-y-1.5">
+        <Label>Target Job Titles</Label>
+        <TagInput
+          value={targetTitles}
+          onChange={setTargetTitles}
+          placeholder="e.g. Software Engineer (press Enter to add)"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Target Locations</Label>
+        <TagInput
+          value={targetLocations}
+          onChange={setTargetLocations}
+          placeholder="e.g. San Francisco, CA"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Excluded Companies</Label>
+        <TagInput
+          value={excludedCompanies}
+          onChange={setExcludedCompanies}
+          placeholder="Companies to skip"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Preferred Industries</Label>
+        <TagInput
+          value={preferredIndustries}
+          onChange={setPreferredIndustries}
+          placeholder="e.g. Technology, Finance"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Location Type</Label>
+        <div className="flex gap-4 pt-1">
+          {locationTypes.map((type) => (
+            <label
+              key={type}
+              className="flex items-center gap-1.5 text-sm text-text-secondary"
+            >
+              <input
+                type="checkbox"
+                checked={locationTypePref.includes(type)}
+                onChange={(e) => {
+                  setLocationTypePref((prev) =>
+                    e.target.checked
+                      ? [...prev, type]
+                      : prev.filter((t) => t !== type),
+                  );
+                }}
+                className="rounded border-border-card"
+              />
+              {type}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="space-y-1.5">
+          <Label>Min Salary</Label>
+          <Input
+            type="number"
+            value={minSalary}
+            onChange={(e) => setMinSalary(e.target.value)}
+            placeholder="50000"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Max Salary</Label>
+          <Input
+            type="number"
+            value={maxSalary}
+            onChange={(e) => setMaxSalary(e.target.value)}
+            placeholder="200000"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Experience Level</Label>
+          <select
+            value={experienceLevel}
+            onChange={(e) => setExperienceLevel(e.target.value)}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            {experienceLevels.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label>Daily Apply Limit</Label>
+          <Input
+            type="number"
+            min={1}
+            max={100}
+            value={dailyLimit}
+            onChange={(e) => setDailyLimit(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center justify-between rounded-lg border border-border-subtle p-3">
+          <Label>Require Review Before Applying</Label>
+          <Switch
+            checked={requireReview}
+            onCheckedChange={setRequireReview}
+          />
+        </div>
+      </div>
+
+      <Button onClick={save} disabled={mutation.isPending}>
+        {mutation.isPending ? (
+          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+        ) : (
+          <Save className="mr-1.5 h-4 w-4" />
+        )}
+        Save Configuration
+      </Button>
+
+      {mutation.isSuccess && (
+        <p className="text-sm text-accent-green">Configuration saved.</p>
+      )}
+      {mutation.isError && (
+        <p className="text-sm text-red-400">Failed to save. Please try again.</p>
+      )}
+    </div>
+  );
+}

@@ -63,7 +63,7 @@ async def parse_resume_text(raw_text: str) -> ParsedResume:
     response_text = await chat_completion(
         prompt=f"Parse this resume:\n\n{raw_text}",
         system=RESUME_PARSE_SYSTEM,
-        model="claude-sonnet-4-6-20250514",
+        model="claude-sonnet-4-20250514",
         max_tokens=4096,
     )
 

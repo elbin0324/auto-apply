@@ -8,8 +8,18 @@ logger = logging.getLogger(__name__)
 RESUMES_BUCKET = "resumes"
 
 
+def _ensure_bucket_exists(supabase) -> None:
+    """Create the resumes bucket if it doesn't exist."""
+    try:
+        supabase.storage.get_bucket(RESUMES_BUCKET)
+    except Exception:
+        logger.info("Creating storage bucket '%s'", RESUMES_BUCKET)
+        supabase.storage.create_bucket(RESUMES_BUCKET, options={"public": False})
+
+
 def upload_resume(user_id: UUID, file_bytes: bytes, content_type: str = "application/pdf") -> str:
     supabase = get_supabase()
+    _ensure_bucket_exists(supabase)
     path = f"{user_id}/resume.pdf"
 
     supabase.storage.from_(RESUMES_BUCKET).upload(

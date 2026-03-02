@@ -26,6 +26,8 @@ async def list_jobs(
     location_type: list[str] | None = Query(None),
     salary_min: float | None = Query(None),
     category: str | None = Query(None),
+    source: str | None = Query(None),
+    company_id: uuid.UUID | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     sort_by: str = Query("posted_at"),
@@ -48,6 +50,10 @@ async def list_jobs(
         stmt = stmt.where(Job.salary_min >= salary_min)
     if category:
         stmt = stmt.where(Job.category == category)
+    if source:
+        stmt = stmt.where(Job.source == source)
+    if company_id:
+        stmt = stmt.where(Job.company_id == company_id)
 
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total = (await db.execute(count_stmt)).scalar_one()

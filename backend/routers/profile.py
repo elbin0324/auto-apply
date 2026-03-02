@@ -250,6 +250,26 @@ async def parse_resume(user: CurrentUser, db: DbSession) -> ParsedResume:
     parsed = await parse_resume_text(raw_text)
 
     profile.parsed_resume = parsed.model_dump(mode="json")
+
+    # Populate profile fields from parsed data
+    for field in ("full_name", "email", "phone", "location", "linkedin_url", "website_url", "summary"):
+        value = getattr(parsed, field, None)
+        if value:
+            setattr(profile, field, value)
+
+    # Replace experiences, educations, skills with parsed data
+    profile.experiences.clear()
+    for exp in parsed.experiences:
+        profile.experiences.append(Experience(profile_id=profile.id, **exp.model_dump()))
+
+    profile.educations.clear()
+    for edu in parsed.educations:
+        profile.educations.append(Education(profile_id=profile.id, **edu.model_dump()))
+
+    profile.skills.clear()
+    for skill in parsed.skills:
+        profile.skills.append(Skill(profile_id=profile.id, **skill.model_dump()))
+
     await db.flush()
 
     return parsed

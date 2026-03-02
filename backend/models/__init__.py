@@ -1,5 +1,6 @@
 from models.application import Application
 from models.auto_apply_config import AutoApplyConfig
+from models.company import Company
 from models.document import GeneratedDocument
 from models.job import Job
 from models.job_match_score import JobMatchScore
@@ -10,6 +11,7 @@ from models.user import User
 __all__ = [
     "Application",
     "AutoApplyConfig",
+    "Company",
     "CreditTransaction",
     "Education",
     "Experience",

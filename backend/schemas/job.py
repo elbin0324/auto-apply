@@ -22,6 +22,7 @@ class JobResponse(BaseModel):
     external_id: str | None = None
     title: str
     company: str | None = None
+    company_id: UUID | None = None
     company_logo_url: str | None = None
     location: str | None = None
     location_type: str | None = None
@@ -31,6 +32,7 @@ class JobResponse(BaseModel):
     description: str | None = None
     tags: list[str] = []
     url: str
+    apply_url: str | None = None
     source: str = "adzuna"
     category: str | None = None
     posted_at: datetime | None = None

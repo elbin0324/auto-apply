@@ -1,4 +1,4 @@
-.PHONY: dev test migrate lint services clean help
+.PHONY: dev test migrate lint services clean help worker seed-companies
 
 # ── Local Services ────────────────────────────────────────────────────────────
 services:
@@ -9,30 +9,41 @@ services-stop:
 
 # ── Backend ───────────────────────────────────────────────────────────────────
 dev:
-	cd backend && uvicorn main:app --reload --port 8000
+	cd backend && poetry run uvicorn main:app --reload --port 8000
 
 test:
-	cd backend && pytest tests/ -v
+	cd backend && poetry run pytest tests/ -v
 
 test-cov:
-	cd backend && pytest tests/ -v --cov=. --cov-report=html
+	cd backend && poetry run pytest tests/ -v --cov=. --cov-report=html
+
+# ── Background Worker ────────────────────────────────────────────────────────
+worker:
+	cd backend && poetry run arq worker.WorkerSettings
+
+worker-dev:
+	cd backend && poetry run watchfiles "arq worker.WorkerSettings" --filter python
 
 # ── Database ──────────────────────────────────────────────────────────────────
 migrate:
-	cd backend && alembic upgrade head
+	cd backend && poetry run alembic upgrade head
 
 migrate-down:
-	cd backend && alembic downgrade -1
+	cd backend && poetry run alembic downgrade -1
 
 migration:
-	@read -p "Migration name: " name; cd backend && alembic revision --autogenerate -m "$$name"
+	@read -p "Migration name: " name; cd backend && poetry run alembic revision --autogenerate -m "$$name"
 
 # ── Code Quality ──────────────────────────────────────────────────────────────
 lint:
-	cd backend && ruff check . && mypy .
+	cd backend && poetry run ruff check . && poetry run mypy .
 
 format:
-	cd backend && ruff format .
+	cd backend && poetry run ruff format .
+
+# ── Seed Data ─────────────────────────────────────────────────────────────────
+seed-companies:
+	cd backend && poetry run python -m scripts.seed_companies
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
 clean:
@@ -61,4 +72,7 @@ help:
 	@echo "  format        - Format code with ruff"
 	@echo "  clean         - Remove cache files"
 	@echo "  stripe-listen - Start Stripe webhook listener (local dev)"
+	@echo "  worker        - Start arq background worker (sync + rematch)"
+	@echo "  worker-dev    - Start arq worker with auto-reload"
+	@echo "  seed-companies - Seed company registry with known tech companies"
 	@echo "  docs          - Open API docs in browser"

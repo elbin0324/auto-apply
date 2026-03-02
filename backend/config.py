@@ -39,9 +39,16 @@ class Settings(BaseSettings):
     # AI
     anthropic_api_key: str
 
-    # Job data
-    adzuna_app_id: str
-    adzuna_api_key: str
+    # Job data — Adzuna (optional legacy source)
+    adzuna_app_id: str = ""
+    adzuna_api_key: str = ""
+    adzuna_sync_country: str = "ca"
+    adzuna_sync_categories: str = "it-jobs"  # comma-separated for multiple
+    adzuna_sync_pages: int = 5
+
+    # Job discovery — ATS crawlers
+    discovery_concurrency: int = 5  # Max companies to crawl in parallel
+    workday_request_delay: float = 1.0  # Seconds between Workday API requests
 
     # Stripe
     stripe_secret_key: str

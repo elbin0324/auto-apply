@@ -25,7 +25,7 @@ from services.queue_service import push_apply_task
 
 logger = logging.getLogger(__name__)
 
-SCORE_THRESHOLD = 40
+SCORE_THRESHOLD = 15
 
 
 async def get_or_create_config(
@@ -172,7 +172,9 @@ async def run_matching_for_user(
 
     # 2. Config filters
     if config.location_type_pref:
-        stmt = stmt.where(Job.location_type.in_(config.location_type_pref))
+        stmt = stmt.where(
+            Job.location_type.in_(config.location_type_pref) | Job.location_type.is_(None)
+        )
 
     if config.min_salary is not None:
         stmt = stmt.where(
@@ -244,7 +246,7 @@ async def run_matching_for_user(
                 application_id=application.id,
                 user_id=user_id,
                 job_id=job.id,
-                job_url=job.url,
+                job_url=job.apply_url or job.url,
                 resume_url=resume_url,
                 resume_text=resume_text,
                 user_profile=user_profile,

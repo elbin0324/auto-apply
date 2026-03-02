@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     discovery_concurrency: int = 5  # Max companies to crawl in parallel
     workday_request_delay: float = 1.0  # Seconds between Workday API requests
 
+    # Job enrichment (LLM-based description processing)
+    enrichment_model: str = "claude-haiku-4-5-20251001"
+    enrichment_max_tokens: int = 2048
+    enrichment_batch_size: int = 50  # max jobs to enrich per periodic run
+
     # Voyage AI embeddings
     voyage_api_key: str = ""
     voyage_model: str = "voyage-4-large"

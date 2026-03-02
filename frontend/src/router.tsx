@@ -5,6 +5,7 @@ import {
   Outlet,
 } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/layout/protected-route";
+import { AdminRoute } from "@/components/layout/admin-route";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import LandingPage from "@/pages/landing";
 import LoginPage from "@/pages/login";
@@ -16,6 +17,10 @@ import JobDetailPage from "@/pages/job-detail";
 import AutoApplyPage from "@/pages/auto-apply";
 import ApplicationsPage from "@/pages/applications";
 import ApplicationDetailPage from "@/pages/application-detail";
+import AdminOverviewPage from "@/pages/admin/overview";
+import AdminUsersPage from "@/pages/admin/users";
+import AdminQueuesPage from "@/pages/admin/queues";
+import AdminDataPage from "@/pages/admin/data-management";
 
 const rootRoute = createRootRoute({
   component: Outlet,
@@ -125,6 +130,55 @@ const applicationDetailRoute = createRoute({
   ),
 });
 
+// Admin routes
+const adminOverviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  component: () => (
+    <AdminRoute>
+      <DashboardLayout>
+        <AdminOverviewPage />
+      </DashboardLayout>
+    </AdminRoute>
+  ),
+});
+
+const adminUsersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/users",
+  component: () => (
+    <AdminRoute>
+      <DashboardLayout>
+        <AdminUsersPage />
+      </DashboardLayout>
+    </AdminRoute>
+  ),
+});
+
+const adminQueuesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/queues",
+  component: () => (
+    <AdminRoute>
+      <DashboardLayout>
+        <AdminQueuesPage />
+      </DashboardLayout>
+    </AdminRoute>
+  ),
+});
+
+const adminDataRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/data",
+  component: () => (
+    <AdminRoute>
+      <DashboardLayout>
+        <AdminDataPage />
+      </DashboardLayout>
+    </AdminRoute>
+  ),
+});
+
 const routeTree = rootRoute.addChildren([
   landingRoute,
   loginRoute,
@@ -136,6 +190,10 @@ const routeTree = rootRoute.addChildren([
   autoApplyRoute,
   applicationsRoute,
   applicationDetailRoute,
+  adminOverviewRoute,
+  adminUsersRoute,
+  adminQueuesRoute,
+  adminDataRoute,
 ]);
 
 export const router = createRouter({ routeTree });

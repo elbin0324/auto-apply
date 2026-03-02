@@ -285,18 +285,21 @@ async def trigger_company_discovery(
 async def get_queue_status() -> CrawlQueueStatus:
     """Get current depth of all processing queues."""
     from services.crawl_queue_service import get_crawl_queue_depth
+    from services.enrich_queue_service import get_enrich_queue_depth
     from services.queue_service import get_queue_depth
     from services.score_queue_service import get_score_queue_depths
 
     crawl_depth = await get_crawl_queue_depth()
     score_depths = await get_score_queue_depths()
     apply_depth = await get_queue_depth()
+    enrich_depth = await get_enrich_queue_depth()
 
     return CrawlQueueStatus(
         crawl_queue_depth=crawl_depth,
         score_jobs_queue_depth=score_depths["score_jobs"],
         score_users_queue_depth=score_depths["score_users"],
         apply_queue_depth=apply_depth,
+        enrich_queue_depth=enrich_depth,
     )
 
 

@@ -74,3 +74,15 @@ async def get_crawl_queue_depth() -> int:
         return await redis.llen(CRAWL_QUEUE_KEY)
     finally:
         await redis.aclose()
+
+
+async def count_crawl_dedup_keys() -> int:
+    """Count active crawl dedup keys using SCAN (non-blocking)."""
+    redis = await get_redis()
+    try:
+        count = 0
+        async for _ in redis.scan_iter(match="crawl:dedup:*", count=100):
+            count += 1
+        return count
+    finally:
+        await redis.aclose()

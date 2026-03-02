@@ -6,6 +6,10 @@ import {
   FileText,
   User,
   LogOut,
+  Shield,
+  Users,
+  Activity,
+  Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
@@ -24,6 +28,13 @@ const navItems = [
   { to: "/auto-apply", label: "Auto-Apply", icon: Zap },
   { to: "/applications", label: "Applications", icon: FileText },
   { to: "/profile", label: "Profile", icon: User },
+] as const;
+
+const adminNavItems = [
+  { to: "/admin", label: "Admin", icon: Shield },
+  { to: "/admin/users", label: "Users", icon: Users },
+  { to: "/admin/queues", label: "Queues", icon: Activity },
+  { to: "/admin/data", label: "Data", icon: Database },
 ] as const;
 
 export function MobileSidebar() {
@@ -85,6 +96,38 @@ export function MobileSidebar() {
               </Link>
             );
           })}
+
+          {user?.role === "admin" && (
+            <>
+              <div className="my-2 border-t border-border-subtle" />
+              {adminNavItems.map(({ to, label, icon: Icon }) => {
+                const isActive = currentPath === to;
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    onClick={() => setSidebarOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200",
+                      isActive
+                        ? "bg-accent-purple/15 text-accent-purple"
+                        : "text-text-secondary hover:bg-border-subtle hover:text-text-primary",
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "h-5 w-5 shrink-0",
+                        isActive
+                          ? "text-accent-purple"
+                          : "text-text-muted",
+                      )}
+                    />
+                    <span>{label}</span>
+                  </Link>
+                );
+              })}
+            </>
+          )}
         </nav>
 
         {/* Bottom */}

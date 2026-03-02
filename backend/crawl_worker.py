@@ -20,7 +20,9 @@ from db.session import AsyncSessionLocal  # noqa: E402
 from models.company import Company  # noqa: E402
 from models.job import Job  # noqa: E402
 from schemas.crawl import ScoreJobsTask  # noqa: E402
+from schemas.enrichment import EnrichJobsTask  # noqa: E402
 from services.crawl_queue_service import clear_crawl_dedup, pop_crawl_task  # noqa: E402
+from services.enrich_queue_service import push_enrich_task  # noqa: E402
 from services.job_discovery import crawl_company  # noqa: E402
 from services.score_queue_service import push_score_jobs_task  # noqa: E402
 
@@ -76,8 +78,15 @@ async def process_crawl_task(task: object) -> None:
                 )
                 await push_score_jobs_task(score_task)
 
+                # Push to enrich queue for LLM enrichment
+                enrich_task = EnrichJobsTask(
+                    company_id=task.company_id,
+                    job_ids=job_ids,
+                )
+                await push_enrich_task(enrich_task)
+
             logger.info(
-                "Crawl complete for %s: %d jobs found, %d pushed to scoring",
+                "Crawl complete for %s: %d jobs found, %d pushed to scoring + enrichment",
                 task.company_slug,
                 crawl_result.jobs_found,
                 len(job_ids),

@@ -1,0 +1,47 @@
+import uuid
+from datetime import datetime
+
+from sqlalchemy import Boolean, Index, Numeric, String, Text, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from db.base import Base, TimestampMixin
+
+
+class Job(Base, TimestampMixin):
+    __tablename__ = "jobs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    external_id: Mapped[str | None] = mapped_column(String, unique=True, index=True)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    company: Mapped[str | None] = mapped_column(Text)
+    company_logo_url: Mapped[str | None] = mapped_column(String)
+    location: Mapped[str | None] = mapped_column(String, index=True)
+    location_type: Mapped[str | None] = mapped_column(String)  # remote, hybrid, onsite
+    salary_min: Mapped[float | None] = mapped_column(Numeric)
+    salary_max: Mapped[float | None] = mapped_column(Numeric)
+    salary_currency: Mapped[str] = mapped_column(String, default="CAD")
+    description: Mapped[str | None] = mapped_column(Text)
+    requirements: Mapped[dict | None] = mapped_column(JSONB)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    source: Mapped[str] = mapped_column(String, default="adzuna")
+    category: Mapped[str | None] = mapped_column(String)
+    tags: Mapped[list | None] = mapped_column(JSONB)
+    posted_at: Mapped[datetime | None] = mapped_column(index=True)
+    expires_at: Mapped[datetime | None] = mapped_column()
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+
+    __table_args__ = (
+        Index(
+            "idx_jobs_search",
+            text(
+                "to_tsvector('english', "
+                "coalesce(title, '') || ' ' || coalesce(company, '') || ' ' || coalesce(description, ''))"
+            ),
+            postgresql_using="gin",
+        ),
+    )

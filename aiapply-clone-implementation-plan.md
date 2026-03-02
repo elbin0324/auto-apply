@@ -1,44 +1,49 @@
-# AIApply Clone — Full Implementation Plan
+# ApplyAgent — Unified Implementation Plan
+
+> **Last Updated:** 2026-02-27
+> **Audited From:** Actual code in both repositories (not prior markdown docs)
 
 ## Project Overview
 
 A commercial SaaS platform that helps job seekers find, manage, and auto-apply to jobs using AI. The platform parses resumes, matches users to jobs, generates tailored application materials, and submits applications via headless browser agents.
 
-**Codename:** *ApplyAgent* (placeholder)
+**Two repositories:**
+
+| Repo | Purpose | Location |
+|------|---------|----------|
+| `auto-apply` | Platform — FastAPI backend + Nuxt 3 frontend | Repo 1 |
+| `apply-agents` | Agent workers — headless browser + Claude AI | Repo 2 |
 
 ---
 
 ## Architecture Overview
 
-Two separate repositories with clear separation of concerns:
-
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    REPO 1: apply-platform                │
+│                    REPO 1: auto-apply                    │
 │                                                          │
 │  ┌──────────────┐     ┌──────────────────────────────┐  │
 │  │  Nuxt 3 SPA  │────▶│  FastAPI Backend              │  │
-│  │  (Vue 3)     │     │  ├── Auth (Supabase)          │  │
-│  │              │     │  ├── REST API                  │  │
-│  │  Pages:      │     │  ├── Pydantic Models           │  │
-│  │  - Dashboard │     │  ├── Resume Parser             │  │
-│  │  - Job Board │     │  ├── Billing (Stripe)          │  │
-│  │  - Profile   │     │  ├── Job Sync (Adzuna)         │  │
-│  │  - Settings  │     │  └── WebSocket (status)        │  │
+│  │  (Vue 3)     │     │  ├── Auth (Supabase JWT)      │  │
+│  │              │     │  ├── REST API (7 routers)      │  │
+│  │  NOT STARTED │     │  ├── Resume Parser (Claude)    │  │
+│  │              │     │  ├── Job Sync (Adzuna)         │  │
+│  │              │     │  ├── Auto-Apply Config         │  │
+│  │              │     │  └── Queue Service (Redis)     │  │
 │  └──────────────┘     └──────────────┬───────────────┘  │
 │                                       │                   │
 │                              ┌────────▼────────┐         │
 │                              │    Supabase      │         │
-│                              │  ┌── Postgres    │         │
+│                              │  ├── Postgres 15 │         │
 │                              │  ├── Auth        │         │
-│                              │  ├── Storage     │         │
-│                              │  └── Realtime    │         │
+│                              │  └── Storage     │         │
 │                              └────────┬────────┘         │
 └───────────────────────────────────────┼──────────────────┘
                                         │
                               ┌─────────▼─────────┐
-                              │    Redis / BullMQ  │
-                              │    (Job Queue)     │
+                              │    Redis 7         │
+                              │    RPUSH / LPOP    │
+                              │    auto_apply:tasks│
                               └─────────┬─────────┘
                                         │
 ┌───────────────────────────────────────┼──────────────────┐
@@ -48,10 +53,9 @@ Two separate repositories with clear separation of concerns:
 │  │              Agent Worker Pool                       │ │
 │  │                                                      │ │
 │  │  ┌──────────────┐  ┌──────────────┐  ┌───────────┐ │ │
-│  │  │  Orchestrator │  │  Form Filler  │  │  AI Engine│ │ │
-│  │  │  (picks jobs, │  │  (headless    │  │  (Claude/ │ │ │
-│  │  │   manages     │  │   browser,    │  │   GPT for │ │ │
-│  │  │   workflow)   │  │   fills forms)│  │   answers)│ │ │
+│  │  │  Orchestrator │  │ Browser Agent│  │Application│ │ │
+│  │  │  (job_proc,  │  │ (Claude tool │  │  Agent    │ │ │
+│  │  │   workflow)  │  │  use loop)   │  │ (answers) │ │ │
 │  │  └──────────────┘  └──────────────┘  └───────────┘ │ │
 │  │                                                      │ │
 │  │  ┌──────────────┐  ┌──────────────┐                 │ │
@@ -68,418 +72,95 @@ Two separate repositories with clear separation of concerns:
 
 | Layer | Technology | Rationale |
 |-------|-----------|-----------|
-| **Frontend** | Nuxt 3 (Vue 3 Composition API) | SSR for SEO on marketing pages, SPA mode for dashboard. Your primary framework. |
-| **UI Library** | Nuxt UI v3 + Tailwind CSS | Production-ready components, consistent design system |
-| **Backend** | FastAPI (Python 3.12+) | Async, Pydantic-native, great for AI integrations |
-| **Database** | Supabase (Postgres 15) | Auth, storage, realtime, row-level security |
-| **ORM** | SQLAlchemy 2.0 + Alembic | Async support, mature migration system |
-| **Queue** | Redis + BullMQ (or `arq` for Python) | Job queue between platform and agents |
-| **Agent Runtime** | Python + headless browser | Separate process pool for application submission |
-| **Headless Browser** | Playwright or Selenium | Browser automation for form filling |
-| **AI Provider** | Anthropic Claude API (primary) | Resume parsing, cover letter gen, form field intelligence |
-| **Job Data** | Adzuna API | Free tier, legitimate, good coverage |
+| **Backend** | FastAPI (Python 3.12+) | Async, Pydantic-native, AI integrations |
+| **ORM** | SQLAlchemy 2.0 async + Alembic | Full async, mature migrations |
+| **Database** | Supabase (Postgres 15) | Auth, storage, RLS |
+| **Auth** | Supabase Auth (JWT verification) | No custom auth system |
+| **Queue** | Redis 7 (RPUSH/LPOP, `redis.asyncio`) | Simple, reliable task dispatch |
+| **Agent Runtime** | Python 3.12+ + Playwright (Chromium) | Two-agent Claude tool-use architecture |
+| **AI Provider** | Anthropic Claude (`claude-sonnet-4-6`) | Resume parsing, form filling, cover letters |
+| **Job Data** | Adzuna API | Free tier, Canadian IT jobs |
 | **Payments** | Stripe | Subscriptions + metered credits |
-| **File Storage** | Supabase Storage | Resume PDFs, screenshots, generated docs |
-| **Hosting** | Railway or Fly.io (API), Vercel (Nuxt) | Cost-effective for early SaaS |
-| **Monitoring** | Sentry + PostHog | Error tracking + product analytics |
+| **File Storage** | Supabase Storage | Resumes, screenshots |
+| **Frontend** | Nuxt 3 (Vue 3) + Nuxt UI v3 | SSR + SPA hybrid |
+| **PDF Parsing** | pdfplumber | Pure Python, no system deps |
 
 ---
 
-## Repo 1: `auto-apply`
+## Implementation Status (Code-Audited 2026-02-27)
 
-### Directory Structure
+### auto-apply (Platform — Repo 1)
 
-```
-auto-apply/
-├── frontend/                    # Nuxt 3 SPA
-│   ├── nuxt.config.ts
-│   ├── app.vue
-│   ├── pages/
-│   │   ├── index.vue            # Landing / marketing page
-│   │   ├── login.vue
-│   │   ├── signup.vue
-│   │   ├── dashboard/
-│   │   │   ├── index.vue        # Overview: stats, recent activity
-│   │   │   ├── jobs.vue         # Job board with search/filter
-│   │   │   ├── applications.vue # Track submitted applications
-│   │   │   ├── profile.vue      # Resume upload, parsed data, edit
-│   │   │   ├── auto-apply.vue   # Auto-apply settings & controls
-│   │   │   ├── documents.vue    # Generated resumes & cover letters
-│   │   │   └── settings.vue     # Account, billing, preferences
-│   │   └── pricing.vue
-│   ├── components/
-│   │   ├── job/
-│   │   │   ├── JobCard.vue
-│   │   │   ├── JobFilters.vue
-│   │   │   ├── JobDetail.vue
-│   │   │   └── JobMatchScore.vue
-│   │   ├── profile/
-│   │   │   ├── ResumeUploader.vue
-│   │   │   ├── ParsedResumeView.vue
-│   │   │   ├── ExperienceEditor.vue
-│   │   │   └── SkillsManager.vue
-│   │   ├── auto-apply/
-│   │   │   ├── ApplyPreferences.vue
-│   │   │   ├── ApplyQueue.vue
-│   │   │   ├── ApplyStatusFeed.vue
-│   │   │   └── CreditBalance.vue
-│   │   ├── billing/
-│   │   │   ├── PlanSelector.vue
-│   │   │   ├── CreditPurchase.vue
-│   │   │   └── UsageHistory.vue
-│   │   └── shared/
-│   │       ├── AppNav.vue
-│   │       ├── AppSidebar.vue
-│   │       └── StatusBadge.vue
-│   ├── composables/
-│   │   ├── useAuth.ts
-│   │   ├── useApi.ts
-│   │   ├── useJobs.ts
-│   │   ├── useProfile.ts
-│   │   ├── useAutoApply.ts
-│   │   └── useBilling.ts
-│   ├── stores/                  # Pinia stores
-│   │   ├── auth.ts
-│   │   ├── jobs.ts
-│   │   ├── profile.ts
-│   │   └── applications.ts
-│   ├── middleware/
-│   │   └── auth.global.ts
-│   └── plugins/
-│       └── supabase.client.ts
-│
-├── backend/                     # FastAPI
-│   ├── main.py                  # App entry, CORS, lifespan
-│   ├── config.py                # Settings via pydantic-settings
-│   ├── deps.py                  # Dependency injection (db, auth, etc.)
-│   ├── routers/
-│   │   ├── auth.py              # Login, signup, OAuth callback
-│   │   ├── profile.py           # CRUD profile, resume upload/parse
-│   │   ├── jobs.py              # Job board listing, search, detail
-│   │   ├── applications.py      # Application status, history
-│   │   ├── auto_apply.py        # Auto-apply preferences, start/stop
-│   │   ├── documents.py         # Generated resumes, cover letters
-│   │   ├── billing.py           # Stripe webhooks, plan management
-│   │   └── webhooks.py          # External service callbacks
-│   ├── models/
-│   │   ├── __init__.py
-│   │   ├── user.py              # SQLAlchemy User model
-│   │   ├── profile.py           # Profile, experience, education, skills
-│   │   ├── job.py               # Job listing model
-│   │   ├── application.py       # Application tracking
-│   │   ├── document.py          # Generated documents
-│   │   ├── subscription.py      # Plans, credits
-│   │   └── auto_apply_config.py # User auto-apply preferences
-│   ├── schemas/                 # Pydantic schemas (request/response)
-│   │   ├── __init__.py
-│   │   ├── user.py
-│   │   ├── profile.py
-│   │   ├── job.py
-│   │   ├── application.py
-│   │   ├── document.py
-│   │   ├── billing.py
-│   │   └── auto_apply.py
-│   ├── services/
-│   │   ├── resume_parser.py     # AI-powered resume parsing
-│   │   ├── job_sync.py          # Adzuna API sync
-│   │   ├── job_matcher.py       # Match score calculation
-│   │   ├── document_gen.py      # Resume/cover letter generation
-│   │   ├── stripe_service.py    # Billing logic
-│   │   ├── queue_service.py     # Push jobs to Redis queue
-│   │   └── ai_client.py        # Anthropic/OpenAI client wrapper
-│   ├── db/
-│   │   ├── session.py           # Async SQLAlchemy session
-│   │   └── migrations/          # Alembic migrations
-│   │       ├── env.py
-│   │       └── versions/
-│   └── utils/
-│       ├── pdf_parser.py        # PDF text extraction
-│       └── storage.py           # Supabase storage helpers
-│
-├── docker-compose.yml           # Local dev: Redis, optional Postgres
-├── Makefile                     # Dev commands
-├── pyproject.toml               # Python deps (Poetry)
-└── README.md
-```
+| Phase | Name | Status | Tests | Key Files |
+|-------|------|--------|-------|-----------|
+| 1 | Project Scaffold | **DONE** | 3 | `main.py`, `config.py`, `deps.py` |
+| 2 | DB Models & Migrations | **DONE** | — | 11 models, 3 migrations |
+| 3 | Pydantic Schemas | **DONE** | — | 33 schemas across 7 files |
+| 4 | Auth (Supabase JWT) | **DONE** | 3 | `routers/auth.py` (6 endpoints) |
+| 5 | Profile API | **DONE** | 17 | `routers/profile.py` (10 endpoints) |
+| 6 | Jobs & Adzuna Sync | **DONE** | 26 | `routers/jobs.py`, `job_sync.py`, `job_matcher.py` |
+| 7 | Auto-Apply Config | **DONE** | 30 | `routers/auto_apply.py`, `auto_apply_service.py`, `queue_service.py` |
+| 8 | Applications API | **DONE** | 23 | `routers/applications.py`, `application_service.py` |
+| 9 | Document Generation | **NOT STARTED** | — | — |
+| 10 | Billing & Stripe | **NOT STARTED** | — | Credit check stub returns -1 |
+| 11 | Hardening & Production | **NOT STARTED** | — | — |
+| — | Frontend (Nuxt 3) | **NOT STARTED** | — | Empty `/frontend/` directory |
+
+**Totals:** 8/11 backend phases complete. 108 tests passing. ~3,800 lines production code. Frontend is empty.
+
+### apply-agents (Workers — Repo 2)
+
+| Phase | Name | Status | Tests | Key Files |
+|-------|------|--------|-------|-----------|
+| 1 | Scaffold & Config | **DONE** | 5 | `main.py`, `config.py`, models/ |
+| 2 | Browser Automation | **DONE** | 34 | browser/ (manager, context, tools, page_analyzer, anti_detect, captcha, cookie_banner) |
+| 3 | AI Agents | **DONE** | 19 | agents/ (browser_agent, application_agent), ai/ (client, prompts) |
+| 4 | Orchestration | **DONE** | 5 | orchestrator/ (job_processor, workflow, retry_handler) |
+| 5 | Reporter & Screenshot | **DONE** | 12 | reporter/ (status, screenshot) |
+| 6 | Hardening | **DONE** | — | Dockerfile, Makefile, startup validation, graceful shutdown |
+
+**Totals:** 6/6 phases complete. 75 tests passing. ~4,300 lines production code. Production-ready.
 
 ---
 
-## Repo 2: `apply-agents`
+## Integration Contract
 
-### Directory Structure
+### Queue Protocol
 
-```
-apply-agents/
-├── main.py                      # Worker entry point
-├── config.py                    # Settings
-├── orchestrator/
-│   ├── __init__.py
-│   ├── job_processor.py         # Picks application jobs from queue
-│   ├── workflow.py              # Full application workflow state machine
-│   └── retry_handler.py         # Retry logic with exponential backoff
-├── browser/
-│   ├── __init__.py
-│   ├── manager.py               # Browser pool management
-│   ├── context.py               # Fresh browser context per application
-│   ├── anti_detect.py           # Fingerprint randomization, stealth
-│   └── captcha.py               # CAPTCHA detection & handling strategy
-├── applicator/
-│   ├── __init__.py
-│   ├── base.py                  # Base applicator interface
-│   ├── generic.py               # Generic form-filling applicator
-│   ├── platforms/
-│   │   ├── greenhouse.py        # Greenhouse ATS
-│   │   ├── lever.py             # Lever ATS
-│   │   ├── workday.py           # Workday
-│   │   ├── taleo.py             # Taleo
-│   │   ├── icims.py             # iCIMS
-│   │   ├── indeed.py            # Indeed Easy Apply
-│   │   └── linkedin.py          # LinkedIn Easy Apply
-│   └── field_mapper.py          # AI-powered field detection & mapping
-├── ai/
-│   ├── __init__.py
-│   ├── client.py                # AI API client
-│   ├── field_analyzer.py        # Analyze form fields, determine answers
-│   ├── cover_letter_gen.py      # Generate tailored cover letters
-│   ├── resume_tailor.py         # Tailor resume to job description
-│   └── prompts/
-│       ├── field_analysis.py    # Prompt templates for form analysis
-│       ├── cover_letter.py
-│       └── resume_tailor.py
-├── reporter/
-│   ├── __init__.py
-│   ├── status.py                # Report status back to platform
-│   └── screenshot.py            # Capture & upload screenshots
-├── models/
-│   ├── __init__.py
-│   ├── job_task.py              # Pydantic model for queue messages
-│   ├── application_result.py    # Result of an application attempt
-│   └── form_field.py            # Detected form field model
-├── docker-compose.yml
-├── Dockerfile                   # With browser dependencies
-├── pyproject.toml
-└── README.md
-```
+| Direction | Medium | Key / Endpoint | Auth |
+|-----------|--------|----------------|------|
+| Platform → Agent | Redis RPUSH | `auto_apply:tasks` | Direct Redis connection |
+| Agent → Platform | HTTP POST | `{PLATFORM_API_URL}/api/internal/applications/result` | `X-Internal-API-Key` header |
 
----
-
-## Database Schema
-
-### Core Tables
-
-```sql
--- Supabase handles auth.users internally
--- We extend with a profiles table
-
-CREATE TABLE profiles (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    full_name TEXT,
-    email TEXT,
-    phone TEXT,
-    location TEXT,
-    linkedin_url TEXT,
-    website_url TEXT,
-    summary TEXT,
-    raw_resume_url TEXT,           -- Supabase Storage path
-    parsed_resume JSONB,           -- Structured parsed data
-    resume_updated_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(user_id)
-);
-
-CREATE TABLE experiences (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    company TEXT NOT NULL,
-    title TEXT NOT NULL,
-    location TEXT,
-    start_date DATE,
-    end_date DATE,                 -- NULL = current
-    description TEXT,
-    bullets JSONB,                 -- Array of bullet points
-    sort_order INT DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE educations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    institution TEXT NOT NULL,
-    degree TEXT,
-    field_of_study TEXT,
-    start_date DATE,
-    end_date DATE,
-    gpa TEXT,
-    sort_order INT DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE skills (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    category TEXT,                 -- 'technical', 'soft', 'language', 'tool'
-    proficiency TEXT,              -- 'beginner', 'intermediate', 'advanced', 'expert'
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE jobs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    external_id TEXT UNIQUE,       -- Adzuna job ID
-    title TEXT NOT NULL,
-    company TEXT,
-    company_logo_url TEXT,
-    location TEXT,
-    location_type TEXT,            -- 'remote', 'hybrid', 'onsite'
-    salary_min NUMERIC,
-    salary_max NUMERIC,
-    salary_currency TEXT DEFAULT 'CAD',
-    description TEXT,
-    requirements JSONB,            -- Parsed requirements
-    url TEXT NOT NULL,              -- Original job posting URL
-    source TEXT DEFAULT 'adzuna',
-    category TEXT,
-    tags JSONB,                    -- Array of tags/keywords
-    posted_at TIMESTAMPTZ,
-    expires_at TIMESTAMPTZ,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_jobs_search ON jobs USING GIN (
-    to_tsvector('english', coalesce(title, '') || ' ' || coalesce(company, '') || ' ' || coalesce(description, ''))
-);
-CREATE INDEX idx_jobs_location ON jobs(location);
-CREATE INDEX idx_jobs_posted ON jobs(posted_at DESC);
-CREATE INDEX idx_jobs_active ON jobs(is_active) WHERE is_active = TRUE;
-
-CREATE TABLE auto_apply_configs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    is_active BOOLEAN DEFAULT FALSE,
-    target_titles JSONB,           -- ["Software Engineer", "Full Stack Developer"]
-    target_locations JSONB,        -- ["Toronto, ON", "Remote"]
-    min_salary NUMERIC,
-    max_salary NUMERIC,
-    excluded_companies JSONB,      -- ["Company A", "Company B"]
-    preferred_industries JSONB,
-    location_type_pref JSONB,      -- ["remote", "hybrid"]
-    experience_level TEXT,         -- 'entry', 'mid', 'senior', 'lead'
-    daily_apply_limit INT DEFAULT 25,
-    require_review BOOLEAN DEFAULT FALSE, -- If true, queue for user review before applying
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(user_id)
-);
-
-CREATE TABLE applications (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    job_id UUID REFERENCES jobs(id),
-    status TEXT NOT NULL DEFAULT 'queued',
-        -- 'queued', 'pending_review', 'in_progress', 'applied',
-        -- 'failed', 'skipped', 'withdrawn'
-    applied_at TIMESTAMPTZ,
-    resume_used_url TEXT,          -- Tailored resume used
-    cover_letter_used TEXT,        -- Generated cover letter
-    screenshot_url TEXT,           -- Confirmation screenshot
-    error_message TEXT,
-    metadata JSONB,                -- ATS platform detected, form fields, etc.
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_applications_user ON applications(user_id, created_at DESC);
-CREATE INDEX idx_applications_status ON applications(status);
-
-CREATE TABLE generated_documents (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    job_id UUID REFERENCES jobs(id),
-    doc_type TEXT NOT NULL,        -- 'resume', 'cover_letter'
-    content TEXT,                  -- Raw text content
-    file_url TEXT,                 -- Storage path for PDF
-    match_score NUMERIC,           -- AI-computed match percentage
-    metadata JSONB,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE subscriptions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    stripe_customer_id TEXT,
-    stripe_subscription_id TEXT,
-    plan TEXT NOT NULL DEFAULT 'free',  -- 'free', 'pro', 'premium'
-    status TEXT NOT NULL DEFAULT 'active',
-    credits_remaining INT DEFAULT 0,
-    credits_used_total INT DEFAULT 0,
-    current_period_start TIMESTAMPTZ,
-    current_period_end TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(user_id)
-);
-
-CREATE TABLE credit_transactions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    amount INT NOT NULL,           -- Positive = add, negative = consume
-    reason TEXT,                   -- 'subscription_renewal', 'credit_purchase', 'application_sent'
-    reference_id UUID,             -- Link to application or purchase
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
----
-
-## Pydantic Schemas (Key Examples)
+### ApplyTask (Platform pushes, Agent consumes)
 
 ```python
-# backend/schemas/profile.py
-from pydantic import BaseModel, Field
-from datetime import date
-from typing import Optional
-from uuid import UUID
+class ApplyTask(BaseModel):
+    application_id: UUID       # Correlation ID
+    user_id: UUID
+    job_id: UUID
+    job_url: str               # Agent navigates here
+    resume_url: str | None     # Pre-signed Supabase Storage URL
+    resume_text: str | None    # Raw resume text
+    cover_letter: str | None   # Pre-generated cover letter
+    user_profile: UserProfileForAgent | None
+```
 
-class ExperienceCreate(BaseModel):
-    company: str
-    title: str
-    location: str | None = None
-    start_date: date
-    end_date: date | None = None
-    description: str | None = None
-    bullets: list[str] = []
+### ApplyResult (Agent posts back to Platform)
 
-class EducationCreate(BaseModel):
-    institution: str
-    degree: str | None = None
-    field_of_study: str | None = None
-    start_date: date | None = None
-    end_date: date | None = None
-    gpa: str | None = None
+```python
+class ApplyResult(BaseModel):
+    application_id: UUID       # Must match task
+    success: bool
+    screenshot_url: str | None # Supabase Storage URL
+    error_message: str | None
+    metadata: dict = {}        # fields_filled, agent_turns, duration, tokens, cost
+```
 
-class SkillCreate(BaseModel):
-    name: str
-    category: str = "technical"
-    proficiency: str = "intermediate"
+### UserProfileForAgent (Nested in ApplyTask)
 
-class ProfileResponse(BaseModel):
-    id: UUID
-    full_name: str | None
-    email: str | None
-    phone: str | None
-    location: str | None
-    linkedin_url: str | None
-    summary: str | None
-    experiences: list[ExperienceCreate] = []
-    educations: list[EducationCreate] = []
-    skills: list[SkillCreate] = []
-
-class ParsedResume(BaseModel):
-    """Structured output from AI resume parsing"""
+```python
+class UserProfileForAgent(BaseModel):
     full_name: str | None = None
     email: str | None = None
     phone: str | None = None
@@ -487,470 +168,520 @@ class ParsedResume(BaseModel):
     linkedin_url: str | None = None
     website_url: str | None = None
     summary: str | None = None
-    experiences: list[ExperienceCreate] = []
-    educations: list[EducationCreate] = []
-    skills: list[SkillCreate] = []
-    raw_text: str = ""
-
-
-# backend/schemas/job.py
-class JobSearchParams(BaseModel):
-    query: str | None = None
-    location: str | None = None
-    location_type: list[str] | None = None  # remote, hybrid, onsite
-    salary_min: float | None = None
-    category: str | None = None
-    page: int = 1
-    per_page: int = 20
-    sort_by: str = "posted_at"  # posted_at, match_score, salary
-
-class JobResponse(BaseModel):
-    id: UUID
-    title: str
-    company: str | None
-    company_logo_url: str | None
-    location: str | None
-    location_type: str | None
-    salary_min: float | None
-    salary_max: float | None
-    description: str | None
-    tags: list[str] = []
-    url: str
-    posted_at: str | None
-    match_score: float | None = None  # Computed per-user
-
-class JobListResponse(BaseModel):
-    jobs: list[JobResponse]
-    total: int
-    page: int
-    per_page: int
-
-
-# backend/schemas/auto_apply.py
-class AutoApplyConfig(BaseModel):
-    is_active: bool = False
-    target_titles: list[str] = []
-    target_locations: list[str] = []
-    min_salary: float | None = None
-    max_salary: float | None = None
-    excluded_companies: list[str] = []
-    preferred_industries: list[str] = []
-    location_type_pref: list[str] = ["remote", "hybrid"]
-    experience_level: str = "mid"
-    daily_apply_limit: int = 25
-    require_review: bool = False
-
-class ApplicationStatus(BaseModel):
-    id: UUID
-    job_title: str
-    company: str
-    status: str
-    applied_at: str | None
-    screenshot_url: str | None
-    error_message: str | None
-
-
-# backend/schemas/billing.py
-class PlanInfo(BaseModel):
-    plan: str
-    credits_remaining: int
-    credits_used_total: int
-    current_period_end: str | None
-
-class CreditPurchase(BaseModel):
-    quantity: int = Field(ge=10, le=500)
-    # 10 credits = $10, 50 = $40, 100 = $60, 250 = $120
+    experiences: list[ExperienceForAgent] = []
+    educations: list[EducationForAgent] = []
+    skills: list[SkillForAgent] = []
+    application_preferences: ApplicationPreferences | None = None
 ```
 
 ---
 
-## Queue Contract (Between Repos)
+## Known Integration Gaps (Must Fix Before E2E)
 
-The platform pushes tasks to Redis, and agents consume them.
+These are verified mismatches between the two repos as of 2026-02-27:
 
-```python
-# Shared schema (can be a small shared package or duplicated)
-from pydantic import BaseModel
-from uuid import UUID
+### GAP 1: Missing Result Endpoint (CRITICAL)
 
-class ApplyTask(BaseModel):
-    """Message pushed to Redis queue by platform, consumed by agents"""
-    task_id: UUID
-    application_id: UUID
-    user_id: UUID
-    job_url: str
-    job_title: str
-    company: str
+**Problem:** `apply-agents` POSTs results to `POST /api/internal/applications/result`, but this endpoint **does not exist** in `auto-apply`. The auto-apply router (`routers/auto_apply.py`) has no handler for incoming agent results.
 
-    # User profile data needed for form filling
-    profile: dict          # Full parsed profile
-    resume_url: str        # Supabase storage URL for resume PDF
-    cover_letter: str      # Pre-generated cover letter text
-    tailored_resume: dict | None = None  # Tailored resume data if generated
+**Fix:** Create `POST /api/internal/applications/result` in auto-apply that:
+- Accepts `ApplyResult` body
+- Authenticates via internal API key
+- Updates the `applications` table (status, screenshot_url, error_message, metadata, applied_at)
+- Returns 200 OK
 
-    # Preferences
-    require_screenshot: bool = True
-    max_retries: int = 2
-    priority: int = 5      # 1=highest, 10=lowest
+### GAP 2: Auth Header Mismatch (CRITICAL)
 
-class ApplyResult(BaseModel):
-    """Result pushed back by agent"""
-    task_id: UUID
-    application_id: UUID
-    status: str            # 'applied', 'failed', 'skipped', 'needs_captcha'
-    screenshot_url: str | None = None
-    error_message: str | None = None
-    ats_platform: str | None = None  # Detected ATS: greenhouse, lever, etc.
-    fields_filled: dict | None = None  # Record of what was filled
-    duration_seconds: float | None = None
+**Problem:** `apply-agents` sends results with `X-Internal-API-Key` custom header, but `auto-apply`'s `verify_internal_api_key` dependency expects `Authorization: Bearer {key}` (via FastAPI's `HTTPBearer()`).
+
+**Fix:** Either:
+- **Option A (recommended):** Change `auto-apply`'s internal key verification to read `X-Internal-API-Key` header directly instead of using `HTTPBearer()`
+- **Option B:** Change `apply-agents` to send `Authorization: Bearer {key}` instead
+
+### GAP 3: Nested Type Name Mismatch (MEDIUM)
+
+**Problem:** `auto-apply` serializes profile data using `ExperienceCreate`, `EducationCreate`, `SkillCreate` class names. `apply-agents` deserializes into `ExperienceForAgent`, `EducationForAgent`, `SkillForAgent`. The **field structures are identical** so JSON serialization works, but the naming inconsistency makes the codebase harder to maintain.
+
+**Fix:** Rename the classes in `auto-apply` schemas to `ExperienceForAgent`, etc., or create dedicated `ForAgent` aliases. Since Pydantic serializes to plain JSON (class names aren't in the wire format), this works today but should be cleaned up.
+
+### GAP 4: Applications API Not Built (BLOCKING)
+
+**Problem:** Phase 8 (Applications API) is not started. This means:
+- No `GET /api/applications` for users to see their application history
+- No `GET /api/applications/{id}` for application detail
+- No `GET /api/applications/stats` for dashboard aggregates
+- The internal result endpoint (GAP 1) has no router to live in
+
+**Fix:** Implement Phase 8. The result endpoint can live in a new `routers/applications.py` or in `routers/auto_apply.py`.
+
+---
+
+## Database Schema
+
+### Tables (11 — all created, 3 migrations applied)
+
+```sql
+-- Mirrors Supabase auth.users
+CREATE TABLE users (
+    id UUID PRIMARY KEY,
+    supabase_uid TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE profiles (
+    id UUID PRIMARY KEY,
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    full_name TEXT, email TEXT, phone TEXT, location TEXT,
+    linkedin_url TEXT, website_url TEXT, summary TEXT,
+    raw_resume_url TEXT,
+    parsed_resume JSONB,
+    resume_updated_at TIMESTAMPTZ,
+    application_preferences JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE experiences (
+    id UUID PRIMARY KEY,
+    profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    company TEXT NOT NULL, title TEXT NOT NULL, location TEXT,
+    start_date DATE, end_date DATE, description TEXT,
+    bullets JSONB, sort_order INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE educations (
+    id UUID PRIMARY KEY,
+    profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    institution TEXT NOT NULL, degree TEXT, field_of_study TEXT,
+    start_date DATE, end_date DATE, gpa TEXT,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE skills (
+    id UUID PRIMARY KEY,
+    profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    name TEXT NOT NULL, category TEXT, proficiency TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE jobs (
+    id UUID PRIMARY KEY,
+    external_id TEXT UNIQUE,
+    title TEXT NOT NULL, company TEXT, company_logo_url TEXT,
+    location TEXT, location_type TEXT,
+    salary_min NUMERIC, salary_max NUMERIC, salary_currency TEXT DEFAULT 'CAD',
+    description TEXT, requirements JSONB, url TEXT NOT NULL,
+    source TEXT DEFAULT 'adzuna', category TEXT, tags JSONB,
+    posted_at TIMESTAMPTZ, expires_at TIMESTAMPTZ,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+-- GIN index on title + company + description for FTS
+
+CREATE TABLE job_match_scores (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    job_id UUID NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    score NUMERIC NOT NULL, factors JSONB,
+    computed_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, job_id)
+);
+
+CREATE TABLE auto_apply_configs (
+    id UUID PRIMARY KEY,
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    is_active BOOLEAN DEFAULT FALSE,
+    target_titles JSONB, target_locations JSONB,
+    min_salary NUMERIC, max_salary NUMERIC,
+    excluded_companies JSONB, preferred_industries JSONB,
+    location_type_pref JSONB, experience_level TEXT,
+    daily_apply_limit INT DEFAULT 25,
+    require_review BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE applications (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    job_id UUID REFERENCES jobs(id),
+    status TEXT NOT NULL DEFAULT 'queued',
+    applied_at TIMESTAMPTZ,
+    resume_used_url TEXT, cover_letter_used TEXT,
+    screenshot_url TEXT, error_message TEXT,
+    metadata JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE generated_documents (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    job_id UUID REFERENCES jobs(id),
+    doc_type TEXT NOT NULL, content TEXT, file_url TEXT,
+    match_score NUMERIC, metadata JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE subscriptions (
+    id UUID PRIMARY KEY,
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    stripe_customer_id TEXT, stripe_subscription_id TEXT,
+    plan TEXT NOT NULL DEFAULT 'free',
+    status TEXT NOT NULL DEFAULT 'active',
+    credits_remaining INT DEFAULT 0,
+    credits_used_total INT DEFAULT 0,
+    current_period_start TIMESTAMPTZ,
+    current_period_end TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE credit_transactions (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount INT NOT NULL,
+    reason TEXT, reference_id UUID,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 ```
 
 ---
 
-## Key API Endpoints
+## API Endpoints
 
-### Auth
-```
-POST   /api/auth/signup              # Email/password registration
-POST   /api/auth/login               # Email/password login
-POST   /api/auth/oauth/google        # Google OAuth initiate
-GET    /api/auth/oauth/callback      # OAuth callback
-POST   /api/auth/logout
-GET    /api/auth/me                  # Current user info
-```
-
-### Profile
-```
-GET    /api/profile                  # Get current user profile
-PUT    /api/profile                  # Update profile fields
-POST   /api/profile/resume/upload    # Upload resume PDF
-POST   /api/profile/resume/parse     # Trigger AI parsing of uploaded resume
-GET    /api/profile/resume/parsed    # Get parsed resume data
-PUT    /api/profile/experiences      # Bulk update experiences
-PUT    /api/profile/education        # Bulk update education
-PUT    /api/profile/skills           # Bulk update skills
-```
-
-### Jobs
-```
-GET    /api/jobs                     # Search/list jobs (with filters)
-GET    /api/jobs/:id                 # Job detail
-GET    /api/jobs/:id/match           # Get match score for current user
-POST   /api/jobs/sync                # Admin: trigger Adzuna sync
-```
-
-### Auto-Apply
-```
-GET    /api/auto-apply/config        # Get auto-apply settings
-PUT    /api/auto-apply/config        # Update settings
-POST   /api/auto-apply/start         # Activate auto-apply
-POST   /api/auto-apply/stop          # Deactivate
-GET    /api/auto-apply/queue         # Current queue status
-POST   /api/auto-apply/review/:id    # Approve/reject pending application
-```
-
-### Applications
-```
-GET    /api/applications             # List all applications (paginated)
-GET    /api/applications/:id         # Application detail with screenshot
-GET    /api/applications/stats       # Aggregate stats (applied, pending, etc.)
-```
-
-### Documents
-```
-POST   /api/documents/cover-letter   # Generate cover letter for a job
-POST   /api/documents/resume/tailor  # Tailor resume for a job
-GET    /api/documents                # List generated documents
-GET    /api/documents/:id/download   # Download PDF
-```
-
-### Billing
-```
-GET    /api/billing/plan             # Current plan & credit balance
-POST   /api/billing/checkout         # Create Stripe checkout session
-POST   /api/billing/credits/purchase # Purchase additional credits
-POST   /api/billing/webhooks/stripe  # Stripe webhook handler
-GET    /api/billing/history          # Transaction history
-POST   /api/billing/portal           # Stripe customer portal session
-```
-
----
-
-## Agent Worker Design (Repo 2)
-
-### Application Workflow State Machine
+### Implemented (auto-apply backend)
 
 ```
-                    ┌──────────┐
-                    │  QUEUED   │
-                    └────┬─────┘
-                         │
-                    ┌────▼─────┐
-                    │ STARTING │  Pick up task, launch browser
-                    └────┬─────┘
-                         │
-                    ┌────▼──────────┐
-                    │ NAVIGATING    │  Go to job URL
-                    └────┬──────────┘
-                         │
-                    ┌────▼──────────┐
-                    │ DETECTING ATS │  Identify form platform
-                    └────┬──────────┘
-                         │
-              ┌──────────┼───────────┐
-              ▼          ▼           ▼
-        ┌──────────┐ ┌────────┐ ┌────────┐
-        │Greenhouse│ │ Lever  │ │Generic │  Platform-specific handlers
-        └────┬─────┘ └───┬────┘ └───┬────┘
-              └──────────┼──────────┘
-                         │
-                    ┌────▼──────────┐
-                    │ FILLING FORM  │  AI analyzes fields → fills answers
-                    └────┬──────────┘
-                         │
-                    ┌────▼──────────┐
-                    │ REVIEWING     │  Validate all required fields filled
-                    └────┬──────────┘
-                         │
-                    ┌────▼──────────┐
-                    │ SUBMITTING    │  Click submit, capture screenshot
-                    └────┬──────────┘
-                         │
-              ┌──────────┼───────────┐
-              ▼                      ▼
-        ┌──────────┐          ┌──────────┐
-        │ APPLIED  │          │  FAILED  │
-        └──────────┘          └──────────┘
+# Health
+GET    /api/health                         → {"status": "ok", "version": "0.1.0"}
+
+# Auth (Phase 4)
+POST   /api/auth/signup                    → Create Supabase user + local row
+POST   /api/auth/login                     → Email/password → JWT
+POST   /api/auth/oauth/google              → Supabase OAuth URL
+GET    /api/auth/oauth/callback            → Handle callback, return token
+POST   /api/auth/logout                    → Revoke session
+GET    /api/auth/me                        → Current user info
+
+# Profile (Phase 5)
+GET    /api/profile                        → Full profile (auto-creates)
+PUT    /api/profile                        → Update fields
+PUT    /api/profile/experiences            → Bulk replace
+PUT    /api/profile/education              → Bulk replace
+PUT    /api/profile/skills                 → Bulk replace
+GET    /api/profile/preferences            → Application screening Q&A
+PUT    /api/profile/preferences            → Set/merge preferences
+POST   /api/profile/resume/upload          → PDF to Supabase Storage
+POST   /api/profile/resume/parse           → PDF → Claude → structured JSON
+GET    /api/profile/resume/parsed          → Get parsed resume
+
+# Jobs (Phase 6)
+GET    /api/jobs                           → FTS search + filters + pagination
+GET    /api/jobs/{id}                      → Job detail with match score
+GET    /api/jobs/{id}/match                → Match score details
+POST   /api/jobs/sync                      → Adzuna sync (internal API key)
+
+# Auto-Apply (Phase 7)
+GET    /api/auto-apply/config              → Get config (auto-creates)
+PUT    /api/auto-apply/config              → Update preferences
+POST   /api/auto-apply/start              → Activate + match + push to queue
+POST   /api/auto-apply/stop               → Deactivate + mark pending as skipped
+GET    /api/auto-apply/queue              → Queue depth + pending count
+POST   /api/auto-apply/review/{id}        → Approve/reject pending application
 ```
 
-### ATS Platform Detection
+### Not Yet Implemented
 
-```python
-# apply-agents/applicator/field_mapper.py
-
-ATS_SIGNATURES = {
-    "greenhouse": [
-        "boards.greenhouse.io",
-        "grnh.se",
-        'id="grnhse_app"',
-    ],
-    "lever": [
-        "jobs.lever.co",
-        "lever-jobs-iframe",
-    ],
-    "workday": [
-        "myworkdayjobs.com",
-        "wd5.myworkdayjobs.com",
-    ],
-    "icims": [
-        "icims.com",
-        "careers-icims",
-    ],
-    "taleo": [
-        "taleo.net",
-        "oracle.taleo",
-    ],
-    "indeed": [
-        "indeed.com/applystart",
-        "indeedapply",
-    ],
-    "linkedin": [
-        "linkedin.com/jobs",
-        "easy-apply",
-    ],
-}
-
-def detect_ats(url: str, page_source: str) -> str:
-    """Detect ATS platform from URL and page source"""
-    for platform, signatures in ATS_SIGNATURES.items():
-        for sig in signatures:
-            if sig in url or sig in page_source:
-                return platform
-    return "generic"
 ```
+# Applications (Phase 8) — NOT STARTED
+GET    /api/applications                   → List applications (paginated, filtered)
+GET    /api/applications/{id}              → Application detail with screenshot
+GET    /api/applications/stats             → Aggregate stats
+POST   /api/internal/applications/result   → Agent result callback (internal key)
 
-### AI-Powered Form Filling
+# Documents (Phase 9) — NOT STARTED
+POST   /api/documents/cover-letter         → Generate cover letter for job
+POST   /api/documents/resume/tailor        → Tailor resume for job
+GET    /api/documents                      → List generated documents
+GET    /api/documents/{id}/download        → Download PDF
 
-```python
-# apply-agents/ai/field_analyzer.py
-
-FIELD_ANALYSIS_PROMPT = """
-You are analyzing a job application form. Given the form fields detected
-on the page and the applicant's profile, determine the correct value
-for each field.
-
-Form fields detected:
-{fields_json}
-
-Applicant profile:
-{profile_json}
-
-Job title: {job_title}
-Company: {company}
-
-For each field, return a JSON object with:
-- field_id: the field identifier
-- value: the value to fill in
-- confidence: 0-1 how confident you are
-- reasoning: brief explanation
-
-For fields you cannot determine (e.g., "How did you hear about us?"),
-use reasonable defaults. For salary expectations, use the applicant's
-preferences. For "Are you authorized to work in [country]?" type
-questions, answer based on the applicant's location.
-
-Return ONLY valid JSON array.
-"""
+# Billing (Phase 10) — NOT STARTED
+GET    /api/billing/plan                   → Current plan & credits
+POST   /api/billing/checkout               → Create Stripe checkout session
+POST   /api/billing/credits/purchase       → Purchase additional credits
+POST   /api/billing/webhooks/stripe        → Stripe webhook handler
+GET    /api/billing/history                → Transaction history
+POST   /api/billing/portal                 → Stripe customer portal
 ```
 
 ---
 
-## Adzuna Job Sync Service
+## Agent Worker Architecture (apply-agents — COMPLETE)
 
-```python
-# backend/services/job_sync.py
-
-import httpx
-from config import settings
-
-ADZUNA_BASE = "https://api.adzuna.com/v1/api/jobs"
-
-async def sync_jobs(
-    country: str = "ca",  # Canada
-    category: str = "it-jobs",
-    pages: int = 5,
-    results_per_page: int = 50,
-) -> int:
-    """
-    Sync jobs from Adzuna API into local database.
-    Run on a schedule (e.g., every 6 hours via cron or scheduler).
-    """
-    total_synced = 0
-
-    async with httpx.AsyncClient() as client:
-        for page in range(1, pages + 1):
-            response = await client.get(
-                f"{ADZUNA_BASE}/{country}/search/{page}",
-                params={
-                    "app_id": settings.ADZUNA_APP_ID,
-                    "app_key": settings.ADZUNA_API_KEY,
-                    "results_per_page": results_per_page,
-                    "category": category,
-                    "content-type": "application/json",
-                    "sort_by": "date",
-                },
-            )
-            data = response.json()
-
-            for result in data.get("results", []):
-                # Upsert into jobs table
-                await upsert_job(
-                    external_id=result["id"],
-                    title=result.get("title"),
-                    company=result.get("company", {}).get("display_name"),
-                    location=result.get("location", {}).get("display_name"),
-                    description=result.get("description"),
-                    url=result.get("redirect_url"),
-                    salary_min=result.get("salary_min"),
-                    salary_max=result.get("salary_max"),
-                    posted_at=result.get("created"),
-                    category=result.get("category", {}).get("label"),
-                    tags=result.get("category", {}).get("tag"),
-                )
-                total_synced += 1
-
-    return total_synced
 ```
+main.py (poll Redis via LPOP)
+  └─→ job_processor.process_task(task, browser_pool)
+      ├─ Acquire browser from pool
+      ├─ Create isolated context (randomized fingerprint)
+      ├─ Download resume to temp file
+      ├─ Navigate to job_url
+      ├─ Dismiss cookie banners & popups
+      ├─ Pre-flight: CAPTCHA detection, login wall detection
+      └─ BrowserAgent.run()
+           │  Claude tool-use conversation loop (max 50 turns):
+           │  get_page_info() → Claude reasons → execute tool → repeat
+           │
+           │  Tools (9):
+           │    get_page_info, take_screenshot, click, fill_field,
+           │    select_option, upload_file, scroll,
+           │    ask_application_agent, mark_complete
+           │
+           └─ ask_application_agent → ApplicationAgent.answer()
+                 │  Single Claude call with full profile context
+                 │  Returns: { value, confidence, reasoning }
+                 │  Confidence < 0.6 → skip field
+                 └─ Can trigger cover letter generation on demand
+      ├─ Upload screenshot to Supabase
+      ├─ Calculate token usage + cost estimate
+      ├─ POST ApplyResult to platform API
+      └─ Clean up (close context, return browser, delete temp resume)
+```
+
+### Agent Features (All Implemented)
+
+- Browser pool with acquire/release (configurable size)
+- Per-task browser context with randomized viewport, locale, timezone, user-agent
+- 5 WebDriver stealth patches + 14 tracker domains blocked
+- CAPTCHA detection (reCAPTCHA, hCaptcha, Cloudflare Turnstile)
+- Login wall detection
+- Cookie banner/popup dismissal (35+ selectors)
+- Keystroke-by-keystroke typing with realistic delays (30-100ms)
+- Interaction delays between actions (500-2000ms)
+- Conversation context trimming (sliding screenshot window, message limit)
+- Token tracking and cost estimation (Sonnet pricing)
+- Graceful shutdown on SIGINT/SIGTERM
+- Startup validation (fails fast on missing env vars)
+- Dockerfile with multi-stage build (Playwright + Chromium)
 
 ---
 
-## Phased Development Plan
+## Remaining Work — Unified Roadmap
 
-### Phase 1: Foundation (Weeks 1-3)
+### PHASE A: Integration Bridge (Priority 1 — Unblocks E2E)
 
-**Goal:** Monorepo scaffold, auth, profile, resume upload/parse
+These tasks connect the two repos so they can work together end-to-end.
 
-| Task | Effort | Details |
-|------|--------|---------|
-| Init Nuxt 3 project with Nuxt UI + Tailwind | 2h | Frontend scaffold |
-| Init FastAPI project with Poetry | 1h | Backend scaffold |
-| Supabase project setup | 1h | Auth providers, storage buckets, DB |
-| SQLAlchemy models + Alembic migrations | 4h | All core tables |
-| Pydantic schemas (all request/response) | 3h | Strict validation |
-| Auth flow (email + Google OAuth) | 6h | Supabase auth integration both sides |
-| Profile CRUD API | 4h | Full profile management |
-| Resume upload to Supabase Storage | 2h | PDF upload, URL storage |
-| AI resume parser service | 6h | PDF → text → Claude → ParsedResume |
-| Profile editing UI (experiences, skills, education) | 8h | Vue components with inline editing |
-| Resume uploader component | 3h | Drag-drop, progress, preview |
-| Dashboard layout + navigation | 4h | Sidebar, responsive layout |
-| **Total** | **~44h** | |
+- [ ] **A.1** Fix internal API key auth mismatch
+  - Change `auto-apply/backend/deps.py` `verify_internal_api_key` to read `X-Internal-API-Key` header directly (not HTTPBearer)
+  - OR change `apply-agents/reporter/status.py` to send `Authorization: Bearer {key}`
 
-### Phase 2: Job Board (Weeks 4-5)
+- [ ] **A.2** Create `POST /api/internal/applications/result` endpoint in auto-apply
+  - Accept `ApplyResult` body
+  - Auth: internal API key
+  - Update `applications` table: set status to `applied` or `failed`, set `screenshot_url`, `error_message`, `metadata`, `applied_at`
+  - Return 200 OK
+  - Write tests
 
-**Goal:** Adzuna integration, job search, match scoring
+- [ ] **A.3** Clean up schema naming (ExperienceCreate → ExperienceForAgent aliases)
+  - Ensure JSON wire format is compatible (it is today, but naming should be consistent)
 
-| Task | Effort | Details |
-|------|--------|---------|
-| Adzuna API integration service | 4h | Sync, upsert, scheduling |
-| Job search API with full-text search | 4h | Postgres FTS, filters |
-| Job match scoring service | 6h | AI-powered profile↔job matching |
-| Job board page with filters | 8h | Search, filter, pagination, cards |
-| Job detail page | 4h | Full description, match score, apply CTA |
-| Scheduled job sync (cron) | 2h | APScheduler or Celery beat |
-| **Total** | **~28h** | |
+- [ ] **A.4** Verify queue contract end-to-end
+  - Write an integration test that: serializes ApplyTask in auto-apply format → deserializes in apply-agents format
+  - Write a test that: serializes ApplyResult in apply-agents format → posts to auto-apply result endpoint
+  - Can be done with just Pydantic (no Redis/HTTP needed)
 
-### Phase 3: Auto-Apply Core (Weeks 6-9)
+### PHASE B: Applications API (Platform Phase 8)
 
-**Goal:** Auto-apply config, queue, agent worker MVP
+User-facing endpoints for viewing application history and status.
 
-| Task | Effort | Details |
-|------|--------|---------|
-| Auto-apply config API | 3h | CRUD preferences |
-| Auto-apply settings UI | 6h | Form builder for preferences |
-| Redis queue setup + BullMQ/arq | 4h | Queue infrastructure |
-| Queue service (platform → Redis) | 4h | Job matching → task creation |
-| Agent repo scaffold | 2h | Project structure, Docker |
-| Browser manager (pool, contexts) | 8h | Playwright/Selenium setup |
-| ATS platform detection | 4h | URL + DOM signature matching |
-| Generic form filler | 16h | AI field analysis + form interaction |
-| Greenhouse applicator | 8h | Platform-specific handler |
-| Lever applicator | 6h | Platform-specific handler |
-| Screenshot capture + upload | 3h | Confirmation evidence |
-| Status reporter (agent → platform) | 4h | Update application status via API/queue |
-| Application tracking UI | 8h | Status feed, screenshots, stats |
-| **Total** | **~76h** | |
+- [ ] **B.1** Create `routers/applications.py` with:
+  - `GET /api/applications` — List with filters (status, date range), pagination
+  - `GET /api/applications/{id}` — Detail with screenshot URL, metadata
+  - `GET /api/applications/stats` — Aggregates (total, by status, success rate, this week/month)
+- [ ] **B.2** Create `services/application_service.py` for business logic
+- [ ] **B.3** Write tests (auth, CRUD, filters, stats)
+- [ ] **B.4** Mount router in `main.py`
 
-### Phase 4: Billing & Polish (Weeks 10-12)
+### PHASE C: Document Generation (Platform Phase 9)
 
-**Goal:** Monetization, credit system, production hardening
+AI-powered cover letters and tailored resumes.
 
-| Task | Effort | Details |
-|------|--------|---------|
-| Stripe integration (subscriptions) | 8h | Checkout, webhooks, portal |
-| Credit system (purchase + consume) | 6h | Transaction tracking |
-| Billing UI (plans, credits, history) | 6h | Plan selector, usage dashboard |
-| Rate limiting + credit enforcement | 4h | Middleware |
-| Error handling + retry logic (agents) | 6h | Exponential backoff, dead letter |
-| Anti-detection (browser fingerprinting) | 6h | Stealth mode for agents |
-| Dashboard overview page | 4h | Stats, charts, recent activity |
-| Email notifications | 4h | Application status, credit low |
-| Landing page + pricing page | 8h | Marketing / conversion |
-| **Total** | **~52h** | |
+- [ ] **C.1** Create `services/document_gen.py`
+  - Cover letter generation via Claude (job description + user profile → tailored letter)
+  - Resume tailoring via Claude (highlight relevant skills/experience for specific job)
+- [ ] **C.2** Create `routers/documents.py` with:
+  - `POST /api/documents/cover-letter` — Generate cover letter for a job
+  - `POST /api/documents/resume/tailor` — Tailor resume for a job
+  - `GET /api/documents` — List generated documents
+  - `GET /api/documents/{id}/download` — Download as PDF
+- [ ] **C.3** PDF generation (reportlab or weasyprint) for downloadable documents
+- [ ] **C.4** Write tests
 
-### Phase 5: Scale & Harden (Weeks 13-16)
+### PHASE D: Billing & Stripe (Platform Phase 10)
 
-| Task | Effort | Details |
-|------|--------|---------|
-| Workday applicator | 10h | Complex multi-step forms |
-| Indeed Easy Apply applicator | 6h | |
-| LinkedIn Easy Apply applicator | 8h | |
-| CAPTCHA handling strategy | 8h | Detection, 2captcha/hCaptcha solver |
-| Load testing agent pool | 4h | Concurrent browser management |
-| Monitoring + alerting (Sentry) | 4h | |
-| Product analytics (PostHog) | 3h | Funnels, feature usage |
-| User onboarding flow | 6h | Guided setup wizard |
-| **Total** | **~49h** | |
+Monetization: subscriptions, credits, enforcement.
+
+- [ ] **D.1** Create `services/stripe_service.py`
+  - Checkout session creation (for plan subscription)
+  - Credit pack purchase
+  - Customer portal session
+  - Webhook event processing (subscription created/updated/deleted, payment succeeded/failed)
+- [ ] **D.2** Create `routers/billing.py` with:
+  - `GET /api/billing/plan` — Current plan & credit balance
+  - `POST /api/billing/checkout` — Create Stripe checkout session
+  - `POST /api/billing/credits/purchase` — Purchase credit pack
+  - `POST /api/billing/webhooks/stripe` — Webhook handler (signature verification)
+  - `GET /api/billing/history` — Transaction history
+  - `POST /api/billing/portal` — Stripe customer portal session
+- [ ] **D.3** Credit enforcement in auto-apply flow
+  - Replace stub `check_credits()` with real credit check against subscriptions table
+  - Deduct credits when tasks are queued (create credit_transaction records)
+  - Block auto-apply start if credits_remaining <= 0
+- [ ] **D.4** Write tests
+
+### PHASE E: Platform Hardening (Platform Phase 11)
+
+Production readiness for the backend.
+
+- [ ] **E.1** Structured logging with structlog (replace print/basic logging)
+- [ ] **E.2** Sentry integration for error tracking
+- [ ] **E.3** Global exception handlers (422 → user-friendly JSON, 500 → generic)
+- [ ] **E.4** Startup validation (check required env vars, DB connectivity, Redis connectivity)
+- [ ] **E.5** Backend Dockerfile
+- [ ] **E.6** Rate limiting middleware (per-user, per-IP)
+- [ ] **E.7** Integration tests with real DB (marked slow, optional in CI)
+
+### PHASE F: End-to-End Testing
+
+Verify the full pipeline works across both repos.
+
+- [ ] **F.1** Local E2E setup documentation
+  - Both repos running locally
+  - Shared Redis instance
+  - Shared Supabase project
+  - Matching `.env` files (INTERNAL_API_KEY, REDIS_URL, SUPABASE_URL, etc.)
+- [ ] **F.2** Manual E2E smoke test
+  1. Create user, upload resume, parse resume
+  2. Sync jobs from Adzuna
+  3. Configure auto-apply preferences
+  4. Start auto-apply → verify tasks appear in Redis
+  5. Start apply-agents worker → verify it picks up task
+  6. Verify agent navigates to job URL, fills form (or detects CAPTCHA/login wall)
+  7. Verify ApplyResult posted back to platform
+  8. Verify application status updated in DB
+  9. Verify user can see updated status via `GET /api/applications`
+- [ ] **F.3** Contract test suite (can run without external services)
+  - ApplyTask serialization roundtrip
+  - ApplyResult serialization roundtrip
+  - UserProfileForAgent field compatibility
+
+### PHASE G: Frontend (Nuxt 3)
+
+Build the user-facing SPA. Depends on all backend phases being complete.
+
+- [ ] **G.1** Scaffold Nuxt 3 project with Nuxt UI v3 + Tailwind
+- [ ] **G.2** Auth flow (login, signup, Google OAuth, session management)
+- [ ] **G.3** Dashboard layout (sidebar, nav, responsive)
+- [ ] **G.4** Profile page (resume upload, parsed data editor, preferences)
+- [ ] **G.5** Job board page (search, filters, pagination, match scores)
+- [ ] **G.6** Auto-apply settings page (config, start/stop, queue status)
+- [ ] **G.7** Applications page (status feed, screenshots, stats)
+- [ ] **G.8** Billing page (plan selector, credits, usage history)
+- [ ] **G.9** Landing page + pricing page
+
+---
+
+## Environment Variables
+
+### auto-apply (backend/.env)
+
+```bash
+# Database
+DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/postgres
+
+# Supabase
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# AI
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Jobs
+ADZUNA_APP_ID=xxx
+ADZUNA_API_KEY=xxx
+
+# Billing
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRO_PRICE_ID=price_...
+STRIPE_PREMIUM_PRICE_ID=price_...
+
+# Internal (shared with apply-agents)
+INTERNAL_API_KEY=your-shared-internal-api-key
+
+# App
+ENV=development
+ALLOWED_ORIGINS=http://localhost:3000
+```
+
+### apply-agents (.env)
+
+```bash
+# Redis (same instance as platform)
+REDIS_URL=redis://localhost:6379
+
+# Platform API
+PLATFORM_API_URL=http://localhost:8000
+INTERNAL_API_KEY=your-shared-internal-api-key  # Must match platform
+
+# Supabase (for screenshot uploads)
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+# AI
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Browser
+BROWSER_POOL_SIZE=2
+HEADLESS=true
+BROWSER_TIMEOUT=60000
+
+# Worker
+WORKER_CONCURRENCY=2
+MAX_RETRIES=2
+POLL_INTERVAL=5
+
+# Agent
+BROWSER_AGENT_MODEL=claude-sonnet-4-6
+APPLICATION_AGENT_MODEL=claude-sonnet-4-6
+MAX_AGENT_TURNS=50
+```
+
+**Shared values that MUST match:**
+- `REDIS_URL` — same Redis instance
+- `INTERNAL_API_KEY` — same secret
+- `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` — same Supabase project
+
+---
+
+## Pricing Model
+
+| Plan | Monthly | Features |
+|------|---------|----------|
+| **Free** | $0 | Job board access, 3 resume parses, 1 cover letter/day |
+| **Pro** | $19/mo | Unlimited parsing, unlimited cover letters, 25 auto-apply credits/mo |
+| **Premium** | $39/mo | Everything in Pro + 100 auto-apply credits/mo + priority queue |
+| **Credit Packs** | $10-$120 | 10 ($10), 50 ($40), 100 ($60), 250 ($120) |
 
 ---
 
@@ -961,7 +692,6 @@ async def sync_jobs(
 │           Vercel                 │
 │  ┌───────────────────────────┐  │
 │  │     Nuxt 3 Frontend       │  │
-│  │     (SSR + SPA hybrid)    │  │
 │  └───────────────────────────┘  │
 └──────────────┬──────────────────┘
                │ API calls
@@ -969,98 +699,40 @@ async def sync_jobs(
 │      Railway / Fly.io            │
 │  ┌───────────────────────────┐  │
 │  │     FastAPI Backend        │  │
-│  │     (2+ instances)         │  │
 │  └───────────────────────────┘  │
 │  ┌───────────────────────────┐  │
-│  │     Redis                  │  │
+│  │     Redis 7                │  │
 │  └───────────────────────────┘  │
 └──────────────┬──────────────────┘
                │
 ┌──────────────▼──────────────────┐
-│      Dedicated VPS / Railway     │
+│      Dedicated VPS               │
 │  ┌───────────────────────────┐  │
 │  │  Agent Workers (Docker)    │  │
-│  │  - Playwright + Chromium   │  │
-│  │  - 2-4 concurrent          │  │
-│  │  - Auto-scaling            │  │
+│  │  Playwright + Chromium     │  │
+│  │  2-4 concurrent            │  │
 │  └───────────────────────────┘  │
 └─────────────────────────────────┘
                │
 ┌──────────────▼──────────────────┐
 │          Supabase                │
-│  ├── Postgres                    │
+│  ├── Postgres 15                 │
 │  ├── Auth                        │
-│  ├── Storage (resumes, screens)  │
-│  └── Realtime (status updates)   │
+│  └── Storage                     │
 └─────────────────────────────────┘
 ```
 
 ---
 
-## Pricing Model (Suggested)
+## Architectural Decisions (Locked)
 
-| Plan | Monthly | Features |
-|------|---------|----------|
-| **Free** | $0 | Job board access, 3 resume parses, 1 cover letter/day |
-| **Pro** | $19/mo ($15/mo annual) | Unlimited parsing, unlimited cover letters, resume scanner, 25 auto-apply credits/mo |
-| **Premium** | $39/mo ($29/mo annual) | Everything in Pro + 100 auto-apply credits/mo + priority queue |
-| **Credit Packs** | $10-$120 | 10 ($10), 50 ($40), 100 ($60), 250 ($120) — add-on to any plan |
-
----
-
-## Environment Variables
-
-```bash
-# Platform (.env)
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-DATABASE_URL=postgresql+asyncpg://...
-REDIS_URL=redis://localhost:6379
-ADZUNA_APP_ID=xxx
-ADZUNA_API_KEY=xxx
-ANTHROPIC_API_KEY=sk-ant-...
-STRIPE_SECRET_KEY=sk_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_PRO_PRICE_ID=price_...
-STRIPE_PREMIUM_PRICE_ID=price_...
-
-# Agents (.env)
-REDIS_URL=redis://...
-PLATFORM_API_URL=https://api.yourdomain.com
-PLATFORM_API_KEY=internal-secret-key
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-ANTHROPIC_API_KEY=sk-ant-...
-BROWSER_POOL_SIZE=4
-HEADLESS=true
-```
-
----
-
-## Key Technical Decisions & Rationale
-
-1. **Two repos, not a monolith:** Agents need heavy browser deps (Chromium ~400MB), different scaling characteristics, and independent deployment. The platform is a lightweight API; agents are resource-intensive workers.
-
-2. **Supabase over raw Postgres:** Gets you auth, storage, and realtime for free. You can still use SQLAlchemy for the ORM layer and bypass the Supabase client for DB operations if you prefer raw SQL performance.
-
-3. **Redis queue over Supabase Realtime for task dispatch:** Reliable message delivery with retries, dead letter queues, and backpressure. Supabase Realtime is great for pushing status updates *to the frontend* but not for critical task orchestration.
-
-4. **Platform-specific ATS handlers:** Generic form filling works ~60% of the time. Purpose-built handlers for Greenhouse, Lever, Workday (the top 3 ATS platforms) dramatically improve success rates. Generic handler as fallback.
-
-5. **AI for form field analysis:** Instead of brittle CSS selectors, use Claude to analyze the DOM/form structure and determine what each field expects. This is the key differentiator from simple bots.
-
-6. **Credit system on top of subscription:** Mirrors AIApply's model and aligns incentives — users pay base for tools, pay per-application for the expensive part (agent compute + AI tokens).
-
----
-
-## Risk Factors & Mitigations
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Job boards blocking automated applications | High | Rotate IPs, realistic browser fingerprints, rate limiting, residential proxies |
-| ATS form changes breaking applicators | Medium | AI-powered field analysis as fallback, monitoring for failures, quick patch cycle |
-| CAPTCHA on application forms | Medium | 2captcha/hCaptcha solver integration, skip + notify user strategy |
-| Adzuna API rate limits / data quality | Low | Cache aggressively, add secondary sources later |
-| AI hallucination in form filling | Medium | Confidence thresholds, validation step before submit, screenshot evidence |
-| Stripe billing edge cases | Low | Use Stripe's hosted checkout + customer portal to minimize custom billing code |
+1. **Supabase for Auth** — JWT verification only in backend; no custom auth system
+2. **SQLAlchemy 2.0 async** — not Supabase Python client for DB queries
+3. **Redis list (RPUSH/LPOP)** — not arq job API, not Celery
+4. **Two repos** — `auto-apply` (platform) and `apply-agents` (workers) stay separate
+5. **Two-agent design** — Browser Agent (tool-use loop) + Application Agent (single call)
+6. **No hardcoded ATS logic** — agents navigate any form dynamically
+7. **Credits per application** — one credit consumed per auto-apply task dispatched
+8. **Internal API key** — agent workers authenticate to platform with shared key, not user JWTs
+9. **pdfplumber** — pure Python PDF parsing, no system dependencies
+10. **Heuristic job matching** — skill + title + location scoring (0-100), not AI-based (yet)

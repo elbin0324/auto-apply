@@ -1,7 +1,6 @@
 import uuid
 from datetime import date, datetime
 
-from pgvector.sqlalchemy import Vector
 from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -35,10 +34,6 @@ class Profile(Base, TimestampMixin):
     parsed_resume: Mapped[dict | None] = mapped_column(JSONB)
     application_preferences: Mapped[dict | None] = mapped_column(JSONB)
     resume_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-    # Vector embedding for semantic search (Voyage AI, 1024 dims)
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
-    embedding_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="profile")  # type: ignore[name-defined]  # noqa: F821

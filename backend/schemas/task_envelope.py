@@ -13,8 +13,8 @@ from pydantic import BaseModel, Field
 class TaskEnvelope(BaseModel):
     """Wrapper for any queue task payload.
 
-    The ``payload`` field contains the serialized inner task (CrawlTask,
-    ScoreJobsTask, etc.) as a JSON string.  This avoids type coupling
+    The ``payload`` field contains the serialized inner task (ScoreJobsTask,
+    EnrichJobsTask, etc.) as a JSON string.  This avoids type coupling
     while providing consistent metadata across all queues.
     """
 

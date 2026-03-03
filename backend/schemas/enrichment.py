@@ -6,9 +6,8 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class EnrichJobsTask(BaseModel):
-    """Pushed to enrich:jobs queue after a crawl completes."""
+    """Pushed to enrich:jobs queue after scoring completes."""
 
-    company_id: UUID
     job_ids: list[UUID]
 
 

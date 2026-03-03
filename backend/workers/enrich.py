@@ -38,8 +38,7 @@ class EnrichWorker(BaseWorker[EnrichJobsTask]):
                 stats = await enrich_jobs_batch(db, task.job_ids)
                 await db.commit()
                 logger.info(
-                    "Enrich complete for company %s: %d enriched, %d skipped, %d failed, %d salary backfills",
-                    task.company_id,
+                    "Enrich complete: %d enriched, %d skipped, %d failed, %d salary backfills",
                     stats.jobs_enriched,
                     stats.jobs_skipped,
                     stats.jobs_failed,
@@ -47,10 +46,10 @@ class EnrichWorker(BaseWorker[EnrichJobsTask]):
                 )
             except Exception:
                 await db.rollback()
-                logger.exception("Error processing enrich task for company %s", task.company_id)
+                logger.exception("Error processing enrich task for %d jobs", len(task.job_ids))
 
     def task_label(self, task: EnrichJobsTask) -> str:
-        return f"company:{task.company_id}"
+        return f"jobs:{len(task.job_ids)}"
 
 
 if __name__ == "__main__":

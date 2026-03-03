@@ -24,7 +24,6 @@ class JobResponse(BaseModel):
     external_id: str | None = None
     title: str
     company: str | None = None
-    company_id: UUID | None = None
     company_logo_url: str | None = None
     location: str | None = None
     location_type: str | None = None

@@ -293,6 +293,40 @@ async def trigger_fetch(admin: AdminUser, db: DbSession) -> TriggerResult:
     )
 
 
+@router.post("/triggers/fetch/{user_id}", response_model=TriggerResult)
+async def trigger_fetch_for_user(
+    user_id: uuid.UUID, admin: AdminUser, db: DbSession
+) -> TriggerResult:
+    """Immediately fetch + score jobs for a single user via arq task."""
+    from services.auto_apply_service import enqueue_immediate_fetch
+
+    settings = get_settings()
+    if not settings.jsearch_api_key:
+        return TriggerResult(
+            triggered="job_fetch_user",
+            detail="JSearch API key not configured",
+        )
+
+    # Verify user exists and has an active config
+    config_result = await db.execute(
+        select(AutoApplyConfig).where(AutoApplyConfig.user_id == user_id)
+    )
+    config = config_result.scalar_one_or_none()
+    if not config:
+        raise HTTPException(status_code=404, detail="No auto-apply config for this user")
+    if not config.target_titles:
+        return TriggerResult(
+            triggered="job_fetch_user",
+            detail="User has no target titles configured",
+        )
+
+    await enqueue_immediate_fetch(user_id)
+    return TriggerResult(
+        triggered="job_fetch_user",
+        detail=f"Enqueued fetch+score task for user {user_id}",
+    )
+
+
 @router.post("/triggers/enrich", response_model=TriggerResult)
 async def trigger_enrich(admin: AdminUser, db: DbSession) -> TriggerResult:
     """Immediately enqueue un-enriched jobs for LLM enrichment."""

@@ -13,7 +13,7 @@ from config import get_settings
 
 logger = logging.getLogger(__name__)
 
-JSEARCH_BASE_URL = "https://jsearch.p.rapidapi.com/search"
+JSEARCH_BASE_URL = "https://api.openwebninja.com/jsearch/search"
 
 
 def _parse_employment_type(raw: str | None) -> str | None:
@@ -158,8 +158,7 @@ async def search_jobs(
         return []
 
     headers = {
-        "x-rapidapi-host": "jsearch.p.rapidapi.com",
-        "x-rapidapi-key": settings.jsearch_api_key,
+        "x-api-key": settings.jsearch_api_key,
     }
 
     params: dict[str, Any] = {

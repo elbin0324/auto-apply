@@ -2,8 +2,13 @@ import { Navigate } from "@tanstack/react-router";
 import { useAuthStore } from "@/stores/auth-store";
 import { Loader2 } from "lucide-react";
 
-export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { is_loading, is_authenticated, user } = useAuthStore();
+/**
+ * Like ProtectedRoute but only checks authentication — does NOT check
+ * onboarding_completed. Used for the onboarding page itself to avoid
+ * a redirect loop.
+ */
+export function AuthOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { is_loading, is_authenticated } = useAuthStore();
 
   if (is_loading) {
     return (
@@ -15,10 +20,6 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!is_authenticated) {
     return <Navigate to="/login" />;
-  }
-
-  if (user && !user.onboarding_completed) {
-    return <Navigate to="/onboarding" />;
   }
 
   return <>{children}</>;

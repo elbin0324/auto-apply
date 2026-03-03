@@ -7,6 +7,7 @@ export interface UserResponse {
   id: string;
   email: string;
   role: string;
+  onboarding_completed: boolean;
 }
 
 export interface TokenResponse {

@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import String, text
+from sqlalchemy import Boolean, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,6 +20,9 @@ class User(Base, TimestampMixin):
     supabase_uid: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     role: Mapped[str] = mapped_column(String, nullable=False, server_default="user")
+    onboarding_completed: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
 
     # Relationships
     profile: Mapped["Profile"] = relationship(back_populates="user", uselist=False, lazy="noload")  # type: ignore[name-defined]  # noqa: F821

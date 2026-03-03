@@ -5,7 +5,9 @@ from fastapi.responses import RedirectResponse
 from supabase import AuthApiError
 from sqlalchemy import select
 
-from deps import DbSession, SettingsDep
+from deps import CurrentUser, DbSession, SettingsDep
+from models.auto_apply_config import AutoApplyConfig
+from models.profile import Profile
 from models.user import User
 from schemas.user import TokenResponse, UserCreate, UserResponse
 from utils.supabase import get_supabase
@@ -143,4 +145,30 @@ async def me(request: Request, db: DbSession) -> UserResponse:
         db.add(user)
         await db.flush()
 
+    return UserResponse.model_validate(user)
+
+
+@router.post("/complete-onboarding", response_model=UserResponse)
+async def complete_onboarding(user: CurrentUser, db: DbSession) -> UserResponse:
+    """Mark onboarding as complete. Validates required profile + config data exists."""
+    # Check profile has required fields
+    result = await db.execute(select(Profile).where(Profile.user_id == user.id))
+    profile = result.scalar_one_or_none()
+    if not profile or not profile.full_name or not profile.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Profile must have name and email before completing onboarding.",
+        )
+
+    # Check auto-apply config has target titles
+    result = await db.execute(select(AutoApplyConfig).where(AutoApplyConfig.user_id == user.id))
+    config = result.scalar_one_or_none()
+    if not config or not config.target_titles:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one target job title is required before completing onboarding.",
+        )
+
+    user.onboarding_completed = True
+    await db.flush()
     return UserResponse.model_validate(user)

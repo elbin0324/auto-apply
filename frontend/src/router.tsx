@@ -17,6 +17,8 @@ import JobDetailPage from "@/pages/job-detail";
 import AutoApplyPage from "@/pages/auto-apply";
 import ApplicationsPage from "@/pages/applications";
 import ApplicationDetailPage from "@/pages/application-detail";
+import OnboardingPage from "@/pages/onboarding";
+import { AuthOnlyRoute } from "@/components/layout/auth-only-route";
 import AdminOverviewPage from "@/pages/admin/overview";
 import AdminUsersPage from "@/pages/admin/users";
 import AdminQueuesPage from "@/pages/admin/queues";
@@ -43,6 +45,17 @@ const signupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/signup",
   component: SignupPage,
+});
+
+// Onboarding route (auth-only, no dashboard layout, no onboarding check)
+const onboardingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/onboarding",
+  component: () => (
+    <AuthOnlyRoute>
+      <OnboardingPage />
+    </AuthOnlyRoute>
+  ),
 });
 
 // Protected routes (wrapped with dashboard layout)
@@ -183,6 +196,7 @@ const routeTree = rootRoute.addChildren([
   landingRoute,
   loginRoute,
   signupRoute,
+  onboardingRoute,
   dashboardRoute,
   profileRoute,
   jobsRoute,

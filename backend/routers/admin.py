@@ -357,6 +357,40 @@ async def trigger_enrich(admin: AdminUser, db: DbSession) -> TriggerResult:
     )
 
 
+@router.post("/triggers/rescore", response_model=TriggerResult)
+async def trigger_rescore(admin: AdminUser, db: DbSession) -> TriggerResult:
+    """Push all active jobs to the score queue for LLM rescoring.
+
+    Unlike /triggers/fetch, this does NOT re-fetch from JSearch — it rescores
+    existing jobs in the DB. Useful after deploying a new scoring model or
+    switching from heuristic to LLM scoring.
+    """
+    from schemas.crawl import ScoreJobsTask
+    from services.score_queue_service import push_score_jobs_task
+
+    result = await db.execute(
+        select(Job.id).where(Job.is_active.is_(True))
+    )
+    job_ids = list(result.scalars().all())
+
+    if not job_ids:
+        return TriggerResult(triggered="rescore", detail="No active jobs found")
+
+    # Batch into chunks to avoid huge single tasks
+    batch_size = 50
+    tasks_pushed = 0
+    for i in range(0, len(job_ids), batch_size):
+        batch = job_ids[i : i + batch_size]
+        task = ScoreJobsTask(job_ids=batch)
+        await push_score_jobs_task(task, source="admin_rescore")
+        tasks_pushed += 1
+
+    return TriggerResult(
+        triggered="rescore",
+        detail=f"Pushed {len(job_ids)} jobs in {tasks_pushed} batches to score queue",
+    )
+
+
 @router.post("/triggers/rematch", response_model=TriggerResult)
 async def trigger_rematch(admin: AdminUser, db: DbSession) -> TriggerResult:
     """Immediately re-run matching for all active auto-apply users."""

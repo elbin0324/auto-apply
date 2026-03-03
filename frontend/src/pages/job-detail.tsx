@@ -8,11 +8,16 @@ import {
   Send,
   X,
   Undo2,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CompanyLogo } from "@/components/ui/company-logo";
+import { JobStatusBadge } from "@/components/ui/job-status-badge";
 import { useJobDetail, useJobMatch } from "@/hooks/use-job-detail";
 import { useQueueJob, useSkipJob, useUnskipJob } from "@/hooks/use-job-actions";
+import { useReviewApplication } from "@/hooks/use-auto-apply-status";
 import { formatSalaryRange, formatDate } from "@/lib/utils";
 
 export default function JobDetailPage() {
@@ -22,15 +27,7 @@ export default function JobDetailPage() {
   const queueMutation = useQueueJob();
   const skipMutation = useSkipJob();
   const unskipMutation = useUnskipJob();
-
-  const statusConfig: Record<string, { label: string; className: string }> = {
-    pending_review: { label: "Pending Review", className: "text-amber-400 bg-amber-400/15" },
-    queued: { label: "Queued", className: "text-accent-blue bg-accent-blue/15" },
-    in_progress: { label: "Applying...", className: "text-purple-400 bg-purple-400/15" },
-    applied: { label: "Applied", className: "text-accent-green bg-accent-green/15" },
-    skipped: { label: "Skipped", className: "text-text-muted bg-text-muted/10" },
-    failed: { label: "Failed", className: "text-red-400 bg-red-400/15" },
-  };
+  const reviewMutation = useReviewApplication();
 
   if (isLoading) {
     return (
@@ -55,6 +52,13 @@ export default function JobDetailPage() {
     );
   }
 
+  const scoreColor =
+    match && match.score >= 80
+      ? "bg-accent-green"
+      : match && match.score >= 60
+        ? "bg-accent-blue"
+        : "bg-text-muted";
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       {/* Back */}
@@ -68,21 +72,32 @@ export default function JobDetailPage() {
 
       {/* Header */}
       <div className="rounded-xl border border-border-subtle bg-bg-card p-6">
-        <h1 className="text-xl font-bold text-text-primary">{job.title}</h1>
-        <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-text-secondary">
-          <span className="flex items-center gap-1.5">
-            <Building2 className="h-4 w-4" />
-            {job.company ?? "Unknown"}
-          </span>
-          {job.location && (
-            <span className="flex items-center gap-1.5">
-              <MapPin className="h-4 w-4" />
-              {job.location}
-            </span>
-          )}
-          {job.location_type && (
-            <Badge variant="outline">{job.location_type}</Badge>
-          )}
+        <div className="flex items-start gap-4">
+          <CompanyLogo
+            name={job.company}
+            logoUrl={job.company_logo_url}
+            size="lg"
+          />
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl font-bold text-text-primary">
+              {job.title}
+            </h1>
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-text-secondary">
+              <span className="flex items-center gap-1.5">
+                <Building2 className="h-4 w-4" />
+                {job.company ?? "Unknown"}
+              </span>
+              {job.location && (
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4" />
+                  {job.location}
+                </span>
+              )}
+              {job.location_type && (
+                <Badge variant="outline">{job.location_type}</Badge>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-4">
@@ -99,14 +114,7 @@ export default function JobDetailPage() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          {job.application_status && statusConfig[job.application_status] && (
-            <Badge
-              variant="secondary"
-              className={`text-sm ${statusConfig[job.application_status].className}`}
-            >
-              {statusConfig[job.application_status].label}
-            </Badge>
-          )}
+          <JobStatusBadge status={job.application_status} className="text-sm" />
 
           {job.application_status == null && (
             <>
@@ -131,6 +139,42 @@ export default function JobDetailPage() {
               </Button>
             </>
           )}
+
+          {job.application_status === "pending_review" &&
+            job.application_id && (
+              <>
+                <Button
+                  disabled={reviewMutation.isPending}
+                  onClick={() =>
+                    reviewMutation.mutate({
+                      applicationId: job.application_id!,
+                      action: "approve",
+                    })
+                  }
+                >
+                  {reviewMutation.isPending ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                  )}
+                  Approve
+                </Button>
+                <Button
+                  variant="outline"
+                  className="text-red-400 hover:text-red-300 hover:border-red-400/50"
+                  disabled={reviewMutation.isPending}
+                  onClick={() =>
+                    reviewMutation.mutate({
+                      applicationId: job.application_id!,
+                      action: "reject",
+                    })
+                  }
+                >
+                  <XCircle className="mr-1.5 h-4 w-4" />
+                  Reject
+                </Button>
+              </>
+            )}
 
           {job.application_status === "skipped" && (
             <Button
@@ -163,13 +207,7 @@ export default function JobDetailPage() {
           <div className="mt-2 flex items-center gap-3">
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-border-subtle">
               <div
-                className={`h-full rounded-full transition-all ${
-                  match.score >= 80
-                    ? "bg-accent-green"
-                    : match.score >= 60
-                      ? "bg-accent-blue"
-                      : "bg-text-muted"
-                }`}
+                className={`h-full rounded-full transition-all ${scoreColor}`}
                 style={{ width: `${match.score}%` }}
               />
             </div>

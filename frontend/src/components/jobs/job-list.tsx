@@ -21,15 +21,18 @@ export function JobList({
 }: JobListProps) {
   if (isLoading) {
     return (
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="space-y-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-xl border border-border-subtle bg-bg-card p-5 space-y-3"
+            className="flex items-center gap-4 rounded-xl border border-border-subtle bg-bg-card px-5 py-4"
           >
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-3 w-1/2" />
-            <Skeleton className="h-3 w-2/3" />
+            <Skeleton className="h-10 w-10 rounded-lg" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-2/5" />
+              <Skeleton className="h-3 w-3/5" />
+            </div>
+            <Skeleton className="h-6 w-14 rounded-full" />
           </div>
         ))}
       </div>
@@ -42,7 +45,7 @@ export function JobList({
         <Briefcase className="h-10 w-10 text-text-muted" />
         <p className="text-sm text-text-secondary">No jobs found</p>
         <p className="text-xs text-text-muted">
-          Try adjusting your search or filters
+          Try adjusting your filters
         </p>
       </div>
     );
@@ -50,7 +53,7 @@ export function JobList({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="space-y-3">
         {jobs.map((job) => (
           <JobCard key={job.id} job={job} />
         ))}

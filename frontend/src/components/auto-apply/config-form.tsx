@@ -3,6 +3,7 @@ import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SectionCard } from "@/components/ui/section-card";
 import { TagInput } from "./tag-input";
 import { useUpdateAutoApplyConfig } from "@/hooks/use-auto-apply-status";
 import type { AutoApplyConfigResponse } from "@/types/auto-apply";
@@ -21,7 +22,8 @@ const applyModes = [
   {
     value: "safe" as const,
     label: "Safe",
-    description: "We find and score jobs. You manually queue individual jobs to apply.",
+    description:
+      "We find and score jobs. You manually queue individual jobs to apply.",
   },
   {
     value: "hybrid" as const,
@@ -52,7 +54,9 @@ export function ConfigForm({ config }: ConfigFormProps) {
   const [minSalary, setMinSalary] = useState<string>("");
   const [maxSalary, setMaxSalary] = useState<string>("");
   const [dailyLimit, setDailyLimit] = useState<string>("20");
-  const [applyMode, setApplyMode] = useState<"safe" | "hybrid" | "auto">("safe");
+  const [applyMode, setApplyMode] = useState<"safe" | "hybrid" | "auto">(
+    "safe",
+  );
   const [autoApplyThreshold, setAutoApplyThreshold] = useState<string>("70");
 
   useEffect(() => {
@@ -88,179 +92,207 @@ export function ConfigForm({ config }: ConfigFormProps) {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-1.5">
-        <Label>Target Job Titles</Label>
-        <TagInput
-          value={targetTitles}
-          onChange={setTargetTitles}
-          placeholder="e.g. Software Engineer (press Enter to add)"
-        />
-      </div>
+    <div className="space-y-6">
+      {/* Section 1: Search criteria */}
+      <SectionCard
+        title="What jobs to find"
+        description="Define the roles, locations, and criteria for your job search."
+      >
+        <div className="space-y-5">
+          <div className="space-y-1.5">
+            <Label>Target Job Titles</Label>
+            <TagInput
+              value={targetTitles}
+              onChange={setTargetTitles}
+              placeholder="e.g. Software Engineer (press Enter to add)"
+            />
+          </div>
 
-      <div className="space-y-1.5">
-        <Label>Target Locations</Label>
-        <TagInput
-          value={targetLocations}
-          onChange={setTargetLocations}
-          placeholder="e.g. San Francisco, CA"
-        />
-      </div>
+          <div className="space-y-1.5">
+            <Label>Target Locations</Label>
+            <TagInput
+              value={targetLocations}
+              onChange={setTargetLocations}
+              placeholder="e.g. San Francisco, CA"
+            />
+          </div>
 
-      <div className="space-y-1.5">
-        <Label>Excluded Companies</Label>
-        <TagInput
-          value={excludedCompanies}
-          onChange={setExcludedCompanies}
-          placeholder="Companies to skip"
-        />
-      </div>
+          <div className="space-y-1.5">
+            <Label>Location Type</Label>
+            <div className="flex gap-4 pt-1">
+              {locationTypes.map((type) => (
+                <label
+                  key={type}
+                  className="flex items-center gap-1.5 text-sm text-text-secondary capitalize"
+                >
+                  <input
+                    type="checkbox"
+                    checked={locationTypePref.includes(type)}
+                    onChange={(e) => {
+                      setLocationTypePref((prev) =>
+                        e.target.checked
+                          ? [...prev, type]
+                          : prev.filter((t) => t !== type),
+                      );
+                    }}
+                    className="rounded border-border-card"
+                  />
+                  {type}
+                </label>
+              ))}
+            </div>
+          </div>
 
-      <div className="space-y-1.5">
-        <Label>Preferred Industries</Label>
-        <TagInput
-          value={preferredIndustries}
-          onChange={setPreferredIndustries}
-          placeholder="e.g. Technology, Finance"
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>Location Type</Label>
-        <div className="flex gap-4 pt-1">
-          {locationTypes.map((type) => (
-            <label
-              key={type}
-              className="flex items-center gap-1.5 text-sm text-text-secondary"
-            >
-              <input
-                type="checkbox"
-                checked={locationTypePref.includes(type)}
-                onChange={(e) => {
-                  setLocationTypePref((prev) =>
-                    e.target.checked
-                      ? [...prev, type]
-                      : prev.filter((t) => t !== type),
-                  );
-                }}
-                className="rounded border-border-card"
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label>Min Salary</Label>
+              <Input
+                type="number"
+                value={minSalary}
+                onChange={(e) => setMinSalary(e.target.value)}
+                placeholder="50000"
               />
-              {type}
-            </label>
-          ))}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Max Salary</Label>
+              <Input
+                type="number"
+                value={maxSalary}
+                onChange={(e) => setMaxSalary(e.target.value)}
+                placeholder="200000"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Experience Level</Label>
+              <select
+                value={experienceLevel}
+                onChange={(e) => setExperienceLevel(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                {experienceLevels.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
-      </div>
+      </SectionCard>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="space-y-1.5">
-          <Label>Min Salary</Label>
-          <Input
-            type="number"
-            value={minSalary}
-            onChange={(e) => setMinSalary(e.target.value)}
-            placeholder="50000"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Max Salary</Label>
-          <Input
-            type="number"
-            value={maxSalary}
-            onChange={(e) => setMaxSalary(e.target.value)}
-            placeholder="200000"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Experience Level</Label>
-          <select
-            value={experienceLevel}
-            onChange={(e) => setExperienceLevel(e.target.value)}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
-          >
-            {experienceLevels.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      {/* Section 2: Automation rules */}
+      <SectionCard
+        title="How to apply"
+        description="Control how aggressively the system applies on your behalf."
+      >
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <Label>Apply Mode</Label>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {applyModes.map((mode) => (
+                <button
+                  key={mode.value}
+                  type="button"
+                  onClick={() => setApplyMode(mode.value)}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    applyMode === mode.value
+                      ? "border-accent-purple bg-accent-purple/10"
+                      : "border-border-subtle hover:border-border-hover"
+                  }`}
+                >
+                  <span className="text-sm font-semibold text-text-primary">
+                    {mode.label}
+                  </span>
+                  <p className="mt-1 text-xs text-text-muted">
+                    {mode.description}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <div className="space-y-1.5">
-        <Label>Daily Apply Limit</Label>
-        <Input
-          type="number"
-          min={1}
-          max={100}
-          value={dailyLimit}
-          onChange={(e) => setDailyLimit(e.target.value)}
-          className="max-w-[200px]"
-        />
-      </div>
+          {applyMode === "hybrid" && (
+            <div className="space-y-1.5">
+              <Label>
+                Auto-Apply Threshold:{" "}
+                <span className="font-mono text-accent-purple">
+                  {autoApplyThreshold}%
+                </span>
+              </Label>
+              <p className="text-xs text-text-muted">
+                Jobs scoring above this threshold will be automatically queued.
+              </p>
+              <input
+                type="range"
+                min={15}
+                max={100}
+                step={5}
+                value={autoApplyThreshold}
+                onChange={(e) => setAutoApplyThreshold(e.target.value)}
+                className="w-full max-w-[400px]"
+              />
+            </div>
+          )}
 
-      {/* Apply Mode Selector */}
-      <div className="space-y-2">
-        <Label>Apply Mode</Label>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {applyModes.map((mode) => (
-            <button
-              key={mode.value}
-              type="button"
-              onClick={() => setApplyMode(mode.value)}
-              className={`rounded-lg border p-3 text-left transition-colors ${
-                applyMode === mode.value
-                  ? "border-accent-purple bg-accent-purple/10"
-                  : "border-border-subtle hover:border-border-hover"
-              }`}
-            >
-              <span className="text-sm font-semibold text-text-primary">
-                {mode.label}
-              </span>
-              <p className="mt-1 text-xs text-text-muted">{mode.description}</p>
-            </button>
-          ))}
+          <div className="space-y-1.5">
+            <Label>Daily Apply Limit</Label>
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={dailyLimit}
+              onChange={(e) => setDailyLimit(e.target.value)}
+              className="max-w-[200px]"
+            />
+          </div>
         </div>
-      </div>
+      </SectionCard>
 
-      {/* Threshold slider for hybrid mode */}
-      {applyMode === "hybrid" && (
-        <div className="space-y-1.5">
-          <Label>
-            Auto-Apply Threshold:{" "}
-            <span className="font-mono text-accent-purple">
-              {autoApplyThreshold}%
-            </span>
-          </Label>
-          <p className="text-xs text-text-muted">
-            Jobs scoring above this threshold will be automatically queued.
-          </p>
-          <input
-            type="range"
-            min={15}
-            max={100}
-            step={5}
-            value={autoApplyThreshold}
-            onChange={(e) => setAutoApplyThreshold(e.target.value)}
-            className="w-full max-w-[400px]"
-          />
+      {/* Section 3: Exclusions */}
+      <SectionCard
+        title="Exclusions"
+        description="Optionally filter out specific companies or focus on preferred industries."
+      >
+        <div className="space-y-5">
+          <div className="space-y-1.5">
+            <Label>Excluded Companies</Label>
+            <TagInput
+              value={excludedCompanies}
+              onChange={setExcludedCompanies}
+              placeholder="Companies to skip"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Preferred Industries</Label>
+            <TagInput
+              value={preferredIndustries}
+              onChange={setPreferredIndustries}
+              placeholder="e.g. Technology, Finance"
+            />
+          </div>
         </div>
-      )}
+      </SectionCard>
 
-      <Button onClick={save} disabled={mutation.isPending}>
-        {mutation.isPending ? (
-          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-        ) : (
-          <Save className="mr-1.5 h-4 w-4" />
+      {/* Save */}
+      <div className="flex items-center gap-3">
+        <Button onClick={save} disabled={mutation.isPending}>
+          {mutation.isPending ? (
+            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-1.5 h-4 w-4" />
+          )}
+          Save Configuration
+        </Button>
+        {mutation.isSuccess && (
+          <p className="text-sm text-accent-green">Configuration saved.</p>
         )}
-        Save Configuration
-      </Button>
-
-      {mutation.isSuccess && (
-        <p className="text-sm text-accent-green">Configuration saved.</p>
-      )}
-      {mutation.isError && (
-        <p className="text-sm text-red-400">Failed to save. Please try again.</p>
-      )}
+        {mutation.isError && (
+          <p className="text-sm text-red-400">
+            Failed to save. Please try again.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

@@ -12,6 +12,13 @@ interface SkillsEditorProps {
 }
 
 const categories = ["technical", "soft", "language", "tool", "other"];
+const categoryLabels: Record<string, string> = {
+  technical: "Technical",
+  soft: "Soft Skills",
+  language: "Languages",
+  tool: "Tools",
+  other: "Other",
+};
 const proficiencies = ["beginner", "intermediate", "advanced", "expert"];
 
 export function SkillsEditor({ skills }: SkillsEditorProps) {
@@ -46,31 +53,50 @@ export function SkillsEditor({ skills }: SkillsEditorProps) {
     mutation.mutate(items);
   };
 
+  // Group skills by category
+  const grouped = categories
+    .map((cat) => ({
+      category: cat,
+      label: categoryLabels[cat],
+      skills: items
+        .map((s, i) => ({ ...s, _index: i }))
+        .filter((s) => s.category === cat),
+    }))
+    .filter((g) => g.skills.length > 0);
+
   return (
     <div className="space-y-4">
-      {/* Current skills */}
+      {/* Current skills grouped by category */}
       {items.length === 0 ? (
         <p className="py-6 text-center text-sm text-text-muted">
           No skills added yet.
         </p>
       ) : (
-        <div className="flex flex-wrap gap-2">
-          {items.map((skill, index) => (
-            <Badge
-              key={index}
-              variant="secondary"
-              className="gap-1.5 py-1.5 pl-3 pr-1.5"
-            >
-              <span>{skill.name}</span>
-              <span className="text-text-muted">({skill.category})</span>
-              <button
-                type="button"
-                onClick={() => removeSkill(index)}
-                className="ml-0.5 rounded-full p-0.5 hover:bg-border-hover transition-colors"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
+        <div className="space-y-4">
+          {grouped.map((group) => (
+            <div key={group.category}>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-text-muted">
+                {group.label}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {group.skills.map((skill) => (
+                  <Badge
+                    key={skill._index}
+                    variant="secondary"
+                    className="gap-1.5 py-1.5 pl-3 pr-1.5"
+                  >
+                    <span>{skill.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeSkill(skill._index)}
+                      className="ml-0.5 rounded-full p-0.5 hover:bg-border-hover transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -102,7 +128,7 @@ export function SkillsEditor({ skills }: SkillsEditorProps) {
             >
               {categories.map((c) => (
                 <option key={c} value={c}>
-                  {c}
+                  {categoryLabels[c]}
                 </option>
               ))}
             </select>

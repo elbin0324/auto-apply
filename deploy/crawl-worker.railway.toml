@@ -8,6 +8,6 @@
 dockerfilePath = "backend/Dockerfile"
 
 [deploy]
-startCommand = "python crawl_worker.py"
+startCommand = "python -m workers.crawl"
 restartPolicyType = "ALWAYS"
 restartPolicyMaxRetries = 5

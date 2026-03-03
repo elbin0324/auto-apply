@@ -8,6 +8,6 @@
 dockerfilePath = "backend/Dockerfile"
 
 [deploy]
-startCommand = "python score_worker.py"
+startCommand = "python -m workers.score"
 restartPolicyType = "ALWAYS"
 restartPolicyMaxRetries = 5

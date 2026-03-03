@@ -96,3 +96,31 @@ class TriggerResult(BaseModel):
 class QueuePurgeResult(BaseModel):
     purged: int
     queue: str
+
+
+class DLQItem(BaseModel):
+    """A single dead-letter queue entry."""
+
+    envelope: dict
+    error: str
+    failed_at: str
+
+
+class DLQStatus(BaseModel):
+    """Status of a single DLQ."""
+
+    queue_name: str
+    depth: int
+    items: list[DLQItem] = []
+
+
+class DLQOverview(BaseModel):
+    """Depths of all DLQs."""
+
+    queues: dict[str, int]
+    total: int
+
+
+class DLQReplayResult(BaseModel):
+    replayed: bool
+    queue_name: str

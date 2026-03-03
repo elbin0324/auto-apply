@@ -8,6 +8,6 @@
 dockerfilePath = "backend/Dockerfile"
 
 [deploy]
-startCommand = "python enrich_worker.py"
+startCommand = "python -m workers.enrich"
 restartPolicyType = "ALWAYS"
 restartPolicyMaxRetries = 5

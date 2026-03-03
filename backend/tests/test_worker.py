@@ -203,12 +203,10 @@ def test_worker_settings_has_cron_jobs() -> None:
 
 
 def test_scheduler_health_returns_ok() -> None:
-    with patch("routers.health.aioredis") as mock_redis_mod:
-        mock_redis = AsyncMock()
-        mock_redis.keys = AsyncMock(return_value=[b"arq:worker:abc123"])
-        mock_redis.aclose = AsyncMock()
-        mock_redis_mod.from_url.return_value = mock_redis
+    mock_redis = AsyncMock()
+    mock_redis.keys = AsyncMock(return_value=[b"arq:worker:abc123"])
 
+    with patch("routers.health.get_redis", return_value=mock_redis):
         resp = client.get("/api/health/scheduler")
 
     assert resp.status_code == 200
@@ -218,12 +216,10 @@ def test_scheduler_health_returns_ok() -> None:
 
 
 def test_scheduler_health_warning_no_workers() -> None:
-    with patch("routers.health.aioredis") as mock_redis_mod:
-        mock_redis = AsyncMock()
-        mock_redis.keys = AsyncMock(return_value=[])
-        mock_redis.aclose = AsyncMock()
-        mock_redis_mod.from_url.return_value = mock_redis
+    mock_redis = AsyncMock()
+    mock_redis.keys = AsyncMock(return_value=[])
 
+    with patch("routers.health.get_redis", return_value=mock_redis):
         resp = client.get("/api/health/scheduler")
 
     assert resp.status_code == 200

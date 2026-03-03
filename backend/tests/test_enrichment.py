@@ -84,7 +84,6 @@ async def test_push_enrich_task() -> None:
 
     with patch(
         "services.enrich_queue_service.get_redis",
-        new_callable=AsyncMock,
         return_value=mock_redis,
     ):
         await push_enrich_task(task)
@@ -101,7 +100,6 @@ async def test_pop_enrich_task_empty() -> None:
 
     with patch(
         "services.enrich_queue_service.get_redis",
-        new_callable=AsyncMock,
         return_value=mock_redis,
     ):
         result = await pop_enrich_task()
@@ -120,14 +118,14 @@ async def test_pop_enrich_task_returns_task() -> None:
 
     with patch(
         "services.enrich_queue_service.get_redis",
-        new_callable=AsyncMock,
         return_value=mock_redis,
     ):
         result = await pop_enrich_task()
 
     assert result is not None
-    assert result.company_id == _COMPANY_ID
-    assert result.job_ids == [_JOB_ID_1]
+    envelope, popped_task = result
+    assert popped_task.company_id == _COMPANY_ID
+    assert popped_task.job_ids == [_JOB_ID_1]
 
 
 # ── Enrichment service tests ─────────────────────────────────────────────────

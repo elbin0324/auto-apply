@@ -36,21 +36,22 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 
 
 async def task_fetch_jobs_for_users(ctx: dict[str, Any]) -> dict[str, Any]:
-    """Periodic: query JSearch API for each active user's criteria, upsert jobs, push to score queue.
+    """Daily cron: query Active Jobs DB (24h endpoint) for each active user, upsert, push to score queue.
 
-    Skips if JSEARCH_API_KEY is not configured.
+    Skips if RAPIDAPI_KEY is not configured. Uses recent_only=True so the daily
+    cron only fetches jobs posted in the last 24 hours.
     """
     from services.job_fetch_service import fetch_jobs_for_all_active_users
 
     settings = get_settings()
-    if not settings.jsearch_api_key:
-        logger.debug("JSearch API key not configured, skipping fetch")
-        return {"skipped": True, "reason": "jsearch_not_configured"}
+    if not settings.rapidapi_key:
+        logger.debug("RapidAPI key not configured, skipping fetch")
+        return {"skipped": True, "reason": "fantastic_not_configured"}
 
     db_factory = ctx["db_factory"]
     async with db_factory() as db:
         try:
-            stats = await fetch_jobs_for_all_active_users(db)
+            stats = await fetch_jobs_for_all_active_users(db, recent_only=True)
             logger.info("Scheduled job fetch complete: %s", stats)
             return stats
         except Exception:
@@ -103,11 +104,18 @@ async def task_rematch_active_users(ctx: dict[str, Any]) -> dict[str, Any]:
             raise
 
 
-async def task_fetch_jobs_for_single_user(ctx: dict[str, Any], user_id_str: str) -> dict[str, Any]:
+async def task_fetch_jobs_for_single_user(
+    ctx: dict[str, Any], user_id_str: str, recent_only_str: str = "false"
+) -> dict[str, Any]:
     """On-demand: fetch + score jobs for a single user.
 
-    Enqueued by the API when a user activates auto-apply for the first time
-    or changes their target titles.
+    Enqueued by the API when a user completes onboarding (7d catch-up),
+    activates auto-apply for the first time, or changes their target titles.
+
+    Args:
+        ctx: arq context with db_factory.
+        user_id_str: User UUID as string.
+        recent_only_str: "true" for 24h endpoint, "false" for 7d (default).
     """
     from uuid import UUID
 
@@ -117,9 +125,10 @@ async def task_fetch_jobs_for_single_user(ctx: dict[str, Any], user_id_str: str)
     from services.job_fetch_service import fetch_jobs_for_user
 
     user_id = UUID(user_id_str)
+    recent_only = recent_only_str.lower() == "true"
     settings = get_settings()
-    if not settings.jsearch_api_key:
-        return {"skipped": True, "reason": "jsearch_not_configured"}
+    if not settings.rapidapi_key:
+        return {"skipped": True, "reason": "fantastic_not_configured"}
 
     db_factory = ctx["db_factory"]
     async with db_factory() as db:
@@ -131,8 +140,9 @@ async def task_fetch_jobs_for_single_user(ctx: dict[str, Any], user_id_str: str)
             if not config:
                 return {"skipped": True, "reason": "no_config"}
 
-            # Fetch jobs from JSearch, upsert, push to score queue
-            fetch_stats = await fetch_jobs_for_user(db, user_id, config)
+            fetch_stats = await fetch_jobs_for_user(
+                db, user_id, config, recent_only=recent_only
+            )
             await db.commit()
 
             logger.info("On-demand job fetch for user %s: %s", user_id, fetch_stats)
@@ -159,9 +169,10 @@ class WorkerSettings:
     ]
 
     cron_jobs = [
-        # Fetch jobs from JSearch API for all active users — every hour
+        # Fetch jobs from Active Jobs DB (24h endpoint) for all active users — daily at 6 AM UTC
         cron(
             task_fetch_jobs_for_users,
+            hour={6},
             minute={0},
             run_at_startup=True,
             unique=True,

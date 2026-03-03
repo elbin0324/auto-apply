@@ -150,7 +150,11 @@ async def me(request: Request, db: DbSession) -> UserResponse:
 
 @router.post("/complete-onboarding", response_model=UserResponse)
 async def complete_onboarding(user: CurrentUser, db: DbSession) -> UserResponse:
-    """Mark onboarding as complete. Validates required profile + config data exists."""
+    """Mark onboarding as complete and trigger initial 7-day job fetch.
+
+    Validates required profile + config data exists, then enqueues a background
+    fetch so the user has jobs ready when they start auto-apply.
+    """
     # Check profile has required fields
     result = await db.execute(select(Profile).where(Profile.user_id == user.id))
     profile = result.scalar_one_or_none()
@@ -171,4 +175,10 @@ async def complete_onboarding(user: CurrentUser, db: DbSession) -> UserResponse:
 
     user.onboarding_completed = True
     await db.flush()
+
+    # Trigger 7-day job fetch so user has jobs ready
+    from services.auto_apply_service import enqueue_immediate_fetch
+
+    await enqueue_immediate_fetch(user.id)
+
     return UserResponse.model_validate(user)

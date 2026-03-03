@@ -1,8 +1,8 @@
 """LLM-based job scoring — batched scoring of jobs against user profiles.
 
 Replaces the heuristic scorer for the primary scoring pipeline. All fetched
-jobs are sent to the LLM (no heuristic pre-filter) because JSearch already
-pre-filters by the user's target titles/locations at the API level.
+jobs are sent to the LLM (no heuristic pre-filter) because the Fantastic Jobs API
+already pre-filters by the user's target titles/locations at the API level.
 """
 
 from __future__ import annotations
@@ -357,7 +357,7 @@ async def score_new_jobs_llm(
                     JobMatchScore.job_id.in_(job_ids),
                 )
                 .order_by(JobMatchScore.score.desc())
-                .limit(settings.jsearch_top_n_to_enrich)
+                .limit(settings.fantastic_top_n_to_enrich)
             )
             for jid, _ in scored.all():
                 jobs_to_enrich.add(jid)

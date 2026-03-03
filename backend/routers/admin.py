@@ -276,14 +276,14 @@ async def get_workers(admin: AdminUser) -> WorkersOverview:
 
 @router.post("/triggers/fetch", response_model=TriggerResult)
 async def trigger_fetch(admin: AdminUser, db: DbSession) -> TriggerResult:
-    """Immediately fetch jobs from JSearch API for all active users."""
+    """Immediately fetch jobs from Fantastic Jobs API for all active users."""
     from services.job_fetch_service import fetch_jobs_for_all_active_users
 
     settings = get_settings()
-    if not settings.jsearch_api_key:
+    if not settings.rapidapi_key:
         return TriggerResult(
             triggered="job_fetch",
-            detail="JSearch API key not configured",
+            detail="RapidAPI key not configured",
         )
 
     stats = await fetch_jobs_for_all_active_users(db)
@@ -301,10 +301,10 @@ async def trigger_fetch_for_user(
     from services.auto_apply_service import enqueue_immediate_fetch
 
     settings = get_settings()
-    if not settings.jsearch_api_key:
+    if not settings.rapidapi_key:
         return TriggerResult(
             triggered="job_fetch_user",
-            detail="JSearch API key not configured",
+            detail="RapidAPI key not configured",
         )
 
     # Verify user exists and has an active config
@@ -361,7 +361,7 @@ async def trigger_enrich(admin: AdminUser, db: DbSession) -> TriggerResult:
 async def trigger_rescore(admin: AdminUser, db: DbSession) -> TriggerResult:
     """Push all active jobs to the score queue for LLM rescoring.
 
-    Unlike /triggers/fetch, this does NOT re-fetch from JSearch — it rescores
+    Unlike /triggers/fetch, this does NOT re-fetch from Fantastic Jobs — it rescores
     existing jobs in the DB. Useful after deploying a new scoring model or
     switching from heuristic to LLM scoring.
     """

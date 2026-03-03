@@ -168,7 +168,7 @@ export default function AdminWorkersPage() {
   const triggers = [
     {
       label: "Fetch Jobs",
-      description: "Fetch jobs from JSearch API for all active users",
+      description: "Fetch jobs from Fantastic Jobs API for all active users",
       icon: Download,
       mutation: triggerFetch,
     },

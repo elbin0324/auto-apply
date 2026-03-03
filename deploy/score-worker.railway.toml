@@ -1,0 +1,13 @@
+# Railway config: score worker
+# Config path in Railway dashboard: deploy/score-worker.railway.toml
+#
+# Polls score:jobs and score:users queues, embeds via Voyage AI,
+# computes match scores between jobs and user profiles.
+
+[build]
+dockerfilePath = "backend/Dockerfile"
+
+[deploy]
+startCommand = "python score_worker.py"
+restartPolicyType = "ALWAYS"
+restartPolicyMaxRetries = 5

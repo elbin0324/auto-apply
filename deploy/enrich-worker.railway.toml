@@ -1,0 +1,13 @@
+# Railway config: enrich worker
+# Config path in Railway dashboard: deploy/enrich-worker.railway.toml
+#
+# Polls enrich:jobs queue, enriches job descriptions via Claude LLM,
+# extracts structured data (skills, salary, requirements).
+
+[build]
+dockerfilePath = "backend/Dockerfile"
+
+[deploy]
+startCommand = "python enrich_worker.py"
+restartPolicyType = "ALWAYS"
+restartPolicyMaxRetries = 5

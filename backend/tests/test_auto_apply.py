@@ -421,9 +421,9 @@ class TestAutoApplyReview:
 
 
 class TestQueueServiceUnit:
-    @patch("services.queue_service.get_redis", new_callable=AsyncMock)
+    @patch("services.queue_service.get_redis")
     async def test_push_apply_task_calls_redis(
-        self, mock_get_redis: AsyncMock
+        self, mock_get_redis: MagicMock
     ) -> None:
         from schemas.auto_apply import ApplyTask
         from services.queue_service import push_apply_task
@@ -439,10 +439,9 @@ class TestQueueServiceUnit:
         )
         await push_apply_task(task)
         mock_redis.rpush.assert_called_once()
-        mock_redis.aclose.assert_called_once()
 
-    @patch("services.queue_service.get_redis", new_callable=AsyncMock)
-    async def test_get_queue_depth(self, mock_get_redis: AsyncMock) -> None:
+    @patch("services.queue_service.get_redis")
+    async def test_get_queue_depth(self, mock_get_redis: MagicMock) -> None:
         from services.queue_service import get_queue_depth
 
         mock_redis = AsyncMock()
@@ -451,7 +450,6 @@ class TestQueueServiceUnit:
 
         depth = await get_queue_depth()
         assert depth == 7
-        mock_redis.aclose.assert_called_once()
 
     def test_apply_task_serialization(self) -> None:
         from schemas.auto_apply import ApplyTask

@@ -7,14 +7,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
 from routers import admin, applications, auth, auto_apply, companies, health, jobs, profile
+from services.logging_config import setup_logging
 
 settings = get_settings()
 
-# Apply LOG_LEVEL from settings at module load time
-logging.basicConfig(
-    level=getattr(logging, settings.log_level.upper(), logging.INFO),
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
+setup_logging("api")
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
@@ -33,6 +30,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
     yield
     # Shutdown
+    from services.redis_pool import close_pool
+
+    await close_pool()
 
 
 def create_app() -> FastAPI:

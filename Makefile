@@ -26,22 +26,22 @@ worker-dev:
 
 # ── Crawl & Score Workers ──────────────────────────────────────────────────
 crawl-worker:
-	cd backend && poetry run python crawl_worker.py
+	cd backend && poetry run python -m workers.crawl
 
 crawl-worker-dev:
-	cd backend && poetry run watchfiles "python crawl_worker.py" --filter python
+	cd backend && poetry run watchfiles "python -m workers.crawl" --filter python
 
 score-worker:
-	cd backend && poetry run python score_worker.py
+	cd backend && poetry run python -m workers.score
 
 score-worker-dev:
-	cd backend && poetry run watchfiles "python score_worker.py" --filter python
+	cd backend && poetry run watchfiles "python -m workers.score" --filter python
 
 enrich-worker:
-	cd backend && poetry run python enrich_worker.py
+	cd backend && poetry run python -m workers.enrich
 
 enrich-worker-dev:
-	cd backend && poetry run watchfiles "python enrich_worker.py" --filter python
+	cd backend && poetry run watchfiles "python -m workers.enrich" --filter python
 
 # ── Database ──────────────────────────────────────────────────────────────────
 migrate:

@@ -97,7 +97,7 @@ async def test_push_crawl_task_with_dedup() -> None:
     mock_redis.set = AsyncMock(return_value=True)  # NX returns True = key was set
     mock_redis.rpush = AsyncMock()
 
-    with patch("services.crawl_queue_service.get_redis", new_callable=AsyncMock, return_value=mock_redis):
+    with patch("services.crawl_queue_service.get_redis", return_value=mock_redis):
         result = await push_crawl_task(task)
 
     assert result is True
@@ -119,7 +119,7 @@ async def test_push_crawl_task_dedup_blocks() -> None:
     mock_redis = AsyncMock()
     mock_redis.set = AsyncMock(return_value=None)  # NX returns None = key existed
 
-    with patch("services.crawl_queue_service.get_redis", new_callable=AsyncMock, return_value=mock_redis):
+    with patch("services.crawl_queue_service.get_redis", return_value=mock_redis):
         result = await push_crawl_task(task)
 
     assert result is False
@@ -140,7 +140,7 @@ async def test_push_score_user_task_with_dedup() -> None:
     mock_redis.set = AsyncMock(return_value=True)
     mock_redis.rpush = AsyncMock()
 
-    with patch("services.score_queue_service.get_redis", new_callable=AsyncMock, return_value=mock_redis):
+    with patch("services.score_queue_service.get_redis", return_value=mock_redis):
         await push_score_user_task(task)
 
     mock_redis.rpush.assert_called_once()
@@ -156,7 +156,7 @@ async def test_push_score_jobs_task() -> None:
     mock_redis = AsyncMock()
     mock_redis.rpush = AsyncMock()
 
-    with patch("services.score_queue_service.get_redis", new_callable=AsyncMock, return_value=mock_redis):
+    with patch("services.score_queue_service.get_redis", return_value=mock_redis):
         await push_score_jobs_task(task)
 
     mock_redis.rpush.assert_called_once()

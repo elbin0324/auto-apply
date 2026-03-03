@@ -13,14 +13,16 @@ from models.company import Company
 from models.job import Job
 from models.profile import Profile
 from models.user import User
-from redis.asyncio import Redis
-
 from config import get_settings
 from schemas.admin import (
     AdminOverview,
     AdminQueueStatus,
     AdminUserListResponse,
     AdminUserSummary,
+    DLQItem,
+    DLQOverview,
+    DLQReplayResult,
+    DLQStatus,
     QueueDepths,
     QueuePurgeResult,
     TriggerResult,
@@ -487,13 +489,58 @@ async def purge_queue(queue_name: str, admin: AdminUser) -> QueuePurgeResult:
             status_code=400,
             detail=f"Unknown queue: {queue_name}. Purgeable: {list(PURGEABLE_QUEUES)}",
         )
+    from services.redis_pool import get_redis
+
     redis_key = PURGEABLE_QUEUES[queue_name]
-    settings = get_settings()
-    redis = Redis.from_url(settings.redis_url, decode_responses=True)
-    try:
-        length = await redis.llen(redis_key)
-        if length > 0:
-            await redis.delete(redis_key)
-        return QueuePurgeResult(purged=length, queue=queue_name)
-    finally:
-        await redis.aclose()
+    redis = get_redis()
+    length = await redis.llen(redis_key)
+    if length > 0:
+        await redis.delete(redis_key)
+    return QueuePurgeResult(purged=length, queue=queue_name)
+
+
+# ── Dead-Letter Queues ──────────────────────────────────────────────────────
+
+
+@router.get("/dlq", response_model=DLQOverview)
+async def get_dlq_overview(admin: AdminUser) -> DLQOverview:
+    """Overview of all dead-letter queues."""
+    from services.dlq_service import get_dlq_depths
+
+    depths = await get_dlq_depths()
+    return DLQOverview(queues=depths, total=sum(depths.values()))
+
+
+@router.get("/dlq/{queue_name}", response_model=DLQStatus)
+async def get_dlq_detail(
+    queue_name: str,
+    admin: AdminUser,
+    count: int = Query(default=10, ge=1, le=100),
+) -> DLQStatus:
+    """Peek at items in a specific dead-letter queue."""
+    from services.dlq_service import peek_dlq
+
+    items = await peek_dlq(queue_name, count=count)
+    return DLQStatus(
+        queue_name=queue_name,
+        depth=len(items),
+        items=[DLQItem(**item) for item in items],
+    )
+
+
+@router.post("/dlq/{queue_name}/replay", response_model=DLQReplayResult)
+async def replay_dlq(queue_name: str, admin: AdminUser) -> DLQReplayResult:
+    """Replay one item from a DLQ back to its original queue."""
+    from services.dlq_service import replay_dlq_item
+
+    replayed = await replay_dlq_item(queue_name)
+    return DLQReplayResult(replayed=replayed, queue_name=queue_name)
+
+
+@router.delete("/dlq/{queue_name}", response_model=QueuePurgeResult)
+async def purge_dlq_queue(queue_name: str, admin: AdminUser) -> QueuePurgeResult:
+    """Purge all items from a dead-letter queue."""
+    from services.dlq_service import purge_dlq
+
+    purged = await purge_dlq(queue_name)
+    return QueuePurgeResult(purged=purged, queue=f"dlq:{queue_name}")

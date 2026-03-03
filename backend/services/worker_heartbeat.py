@@ -9,9 +9,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from redis.asyncio import Redis
-
-from config import get_settings
+from services.redis_pool import get_redis
 
 logger = logging.getLogger(__name__)
 
@@ -33,21 +31,16 @@ class WorkerHeartbeat:
         self.tasks_processed = 0
         self.tasks_failed = 0
         self._current_task: str = ""
-        self._redis: Redis | None = None
 
     async def start(self) -> None:
-        settings = get_settings()
-        self._redis = Redis.from_url(settings.redis_url, decode_responses=True)
         await self._write()
 
     async def stop(self) -> None:
-        if self._redis:
-            await self._redis.delete(self.key)
-            await self._redis.aclose()
+        redis = get_redis()
+        await redis.delete(self.key)
 
     async def _write(self) -> None:
-        if not self._redis:
-            return
+        redis = get_redis()
         data = {
             "worker_id": self.worker_id,
             "started_at": self.started_at,
@@ -57,7 +50,7 @@ class WorkerHeartbeat:
             "current_task": self._current_task,
             "status": "processing" if self._current_task else "idle",
         }
-        pipe = self._redis.pipeline()
+        pipe = redis.pipeline()
         pipe.hset(self.key, mapping=data)
         pipe.expire(self.key, HEARTBEAT_TTL)
         await pipe.execute()
@@ -93,59 +86,28 @@ async def get_all_worker_statuses() -> list[dict]:
 
     Returns a list of dicts suitable for constructing WorkerStatus schemas.
     """
-    settings = get_settings()
-    redis = Redis.from_url(settings.redis_url, decode_responses=True)
-    try:
-        statuses = []
+    redis = get_redis()
+    statuses = []
 
-        # Standalone workers (crawl, score, enrich)
-        for name in WORKER_NAMES:
-            key = f"worker:heartbeat:{name}"
-            data = await redis.hgetall(key)
-            if data:
-                statuses.append({
-                    "name": name,
-                    "worker_id": data.get("worker_id"),
-                    "started_at": data.get("started_at"),
-                    "last_beat_at": data.get("last_beat_at"),
-                    "tasks_processed": int(data.get("tasks_processed", 0)),
-                    "tasks_failed": int(data.get("tasks_failed", 0)),
-                    "current_task": data.get("current_task", ""),
-                    "status": data.get("status", "idle"),
-                    "is_alive": True,
-                })
-            else:
-                statuses.append({
-                    "name": name,
-                    "worker_id": None,
-                    "started_at": None,
-                    "last_beat_at": None,
-                    "tasks_processed": 0,
-                    "tasks_failed": 0,
-                    "current_task": "",
-                    "status": "offline",
-                    "is_alive": False,
-                })
-
-        # arq scheduler — check for arq:worker:* keys
-        arq_keys = []
-        async for key in redis.scan_iter("arq:worker:*"):
-            arq_keys.append(key)
-        if arq_keys:
+    # Standalone workers (crawl, score, enrich)
+    for name in WORKER_NAMES:
+        key = f"worker:heartbeat:{name}"
+        data = await redis.hgetall(key)
+        if data:
             statuses.append({
-                "name": "scheduler",
-                "worker_id": arq_keys[0].split(":")[-1] if arq_keys else None,
-                "started_at": None,
-                "last_beat_at": None,
-                "tasks_processed": 0,
-                "tasks_failed": 0,
-                "current_task": "",
-                "status": "idle",
+                "name": name,
+                "worker_id": data.get("worker_id"),
+                "started_at": data.get("started_at"),
+                "last_beat_at": data.get("last_beat_at"),
+                "tasks_processed": int(data.get("tasks_processed", 0)),
+                "tasks_failed": int(data.get("tasks_failed", 0)),
+                "current_task": data.get("current_task", ""),
+                "status": data.get("status", "idle"),
                 "is_alive": True,
             })
         else:
             statuses.append({
-                "name": "scheduler",
+                "name": name,
                 "worker_id": None,
                 "started_at": None,
                 "last_beat_at": None,
@@ -156,6 +118,33 @@ async def get_all_worker_statuses() -> list[dict]:
                 "is_alive": False,
             })
 
-        return statuses
-    finally:
-        await redis.aclose()
+    # arq scheduler — check for arq:worker:* keys
+    arq_keys = []
+    async for key in redis.scan_iter("arq:worker:*"):
+        arq_keys.append(key)
+    if arq_keys:
+        statuses.append({
+            "name": "scheduler",
+            "worker_id": arq_keys[0].split(":")[-1] if arq_keys else None,
+            "started_at": None,
+            "last_beat_at": None,
+            "tasks_processed": 0,
+            "tasks_failed": 0,
+            "current_task": "",
+            "status": "idle",
+            "is_alive": True,
+        })
+    else:
+        statuses.append({
+            "name": "scheduler",
+            "worker_id": None,
+            "started_at": None,
+            "last_beat_at": None,
+            "tasks_processed": 0,
+            "tasks_failed": 0,
+            "current_task": "",
+            "status": "offline",
+            "is_alive": False,
+        })
+
+    return statuses

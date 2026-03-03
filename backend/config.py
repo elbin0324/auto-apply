@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     env: str = "development"
     version: str = "0.1.0"
     log_level: str = "INFO"
+    log_format: str = "json"  # "json" for Railway/production, "text" for local dev
     allowed_origins: str = "http://localhost:3000"
 
     # Database

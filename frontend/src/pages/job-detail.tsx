@@ -15,12 +15,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CompanyLogo } from "@/components/ui/company-logo";
 import { JobStatusBadge } from "@/components/ui/job-status-badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { usePageEnter } from "@/hooks/use-page-enter";
 import { useJobDetail, useJobMatch } from "@/hooks/use-job-detail";
 import { useQueueJob, useSkipJob, useUnskipJob } from "@/hooks/use-job-actions";
 import { useReviewApplication } from "@/hooks/use-auto-apply-status";
 import { formatSalaryRange, formatDate } from "@/lib/utils";
 
 export default function JobDetailPage() {
+  const pageRef = usePageEnter();
   const { jobId } = useParams({ strict: false }) as { jobId: string };
   const { data: job, isLoading } = useJobDetail(jobId);
   const { data: match } = useJobMatch(jobId);
@@ -31,8 +34,33 @@ export default function JobDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
+      <div className="mx-auto max-w-3xl space-y-6 page-enter">
+        <Skeleton className="h-4 w-24" />
+        <div className="rounded-xl border border-border-subtle bg-bg-card p-6">
+          <div className="flex items-start gap-4">
+            <Skeleton className="h-12 w-12 rounded-lg" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-6 w-3/5" />
+              <Skeleton className="h-4 w-2/5" />
+            </div>
+          </div>
+          <div className="mt-4 flex gap-3">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-8 w-24" />
+          </div>
+        </div>
+        <div className="rounded-xl border border-border-subtle bg-bg-card p-5 space-y-3">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-2 w-full rounded-full" />
+        </div>
+        <div className="rounded-xl border border-border-subtle bg-bg-card p-6 space-y-3">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-4/5" />
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-3/5" />
+        </div>
       </div>
     );
   }
@@ -60,7 +88,7 @@ export default function JobDetailPage() {
         : "bg-text-muted";
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div ref={pageRef} className="mx-auto max-w-3xl space-y-6">
       {/* Back */}
       <Link
         to="/jobs"

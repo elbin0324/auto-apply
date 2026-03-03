@@ -1,3 +1,4 @@
+import { usePageEnter } from "@/hooks/use-page-enter";
 import { useApplicationStats } from "@/hooks/use-application-stats";
 import { useApplications } from "@/hooks/use-applications";
 import { StatsCards } from "@/components/dashboard/stats-cards";
@@ -6,11 +7,12 @@ import { QuickActions } from "@/components/dashboard/quick-actions";
 import { AutoApplyWidget } from "@/components/dashboard/auto-apply-widget";
 
 export default function DashboardPage() {
+  const pageRef = usePageEnter();
   const stats = useApplicationStats();
   const applications = useApplications({ per_page: 5 });
 
   return (
-    <div className="space-y-6">
+    <div ref={pageRef} className="space-y-6">
       {/* Stats row */}
       <StatsCards stats={stats.data} isLoading={stats.isLoading} />
 

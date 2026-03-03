@@ -53,7 +53,7 @@ export function JobList({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-3">
+      <div className="space-y-3 stagger-in">
         {jobs.map((job) => (
           <JobCard key={job.id} job={job} />
         ))}

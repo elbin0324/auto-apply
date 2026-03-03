@@ -40,7 +40,7 @@ const cards = [
 
 export function StatsCards({ stats, isLoading }: StatsCardsProps) {
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className={`grid grid-cols-2 gap-4 lg:grid-cols-4${!isLoading ? " stagger-in" : ""}`}>
       {cards.map(({ label, key, icon: Icon, color, bg }) => (
         <div
           key={key}

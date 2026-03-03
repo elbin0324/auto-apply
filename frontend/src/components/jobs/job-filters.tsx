@@ -2,6 +2,7 @@ import { Search, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { JobSearchParams } from "@/types/job";
 
 const locationTypes = ["remote", "hybrid", "onsite"] as const;
@@ -55,12 +56,11 @@ export function JobFilters({ filters, onChange, onClear }: JobFiltersProps) {
               key={type}
               className="flex items-center gap-1 text-xs text-text-secondary capitalize"
             >
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={!!checked}
-                onChange={(e) => {
+                onCheckedChange={(val) => {
                   const current = filters.location_type ?? [];
-                  const next = e.target.checked
+                  const next = val
                     ? [...current, type]
                     : current.filter((t) => t !== type);
                   onChange({
@@ -68,7 +68,6 @@ export function JobFilters({ filters, onChange, onClear }: JobFiltersProps) {
                     page: 1,
                   });
                 }}
-                className="rounded border-border-card"
               />
               {type}
             </label>

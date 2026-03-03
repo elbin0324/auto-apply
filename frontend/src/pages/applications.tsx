@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { usePageEnter } from "@/hooks/use-page-enter";
 import { useApplications } from "@/hooks/use-applications";
 import { useApplicationStats } from "@/hooks/use-application-stats";
 import { StatsOverview } from "@/components/applications/stats-overview";
@@ -15,6 +16,7 @@ const defaultFilters: ApplicationFilters = {
 };
 
 export default function ApplicationsPage() {
+  const pageRef = usePageEnter();
   const [filters, setFilters] = useState<ApplicationFilters>(defaultFilters);
   const [page, setPage] = useState(1);
 
@@ -41,7 +43,7 @@ export default function ApplicationsPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div ref={pageRef} className="mx-auto max-w-5xl space-y-6">
       <StatsOverview stats={stats} isLoading={statsLoading} />
 
       <ApplicationFiltersBar

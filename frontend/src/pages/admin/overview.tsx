@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { usePageEnter } from "@/hooks/use-page-enter";
 import { useAdminOverview } from "@/hooks/use-admin";
 
 const statCards = [
@@ -20,10 +21,11 @@ function queueBadgeVariant(depth: number) {
 }
 
 export default function AdminOverviewPage() {
+  const pageRef = usePageEnter();
   const { data, isLoading } = useAdminOverview();
 
   return (
-    <div className="space-y-6">
+    <div ref={pageRef} className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">Admin Overview</h1>
         <p className="mt-1 text-sm text-text-secondary">

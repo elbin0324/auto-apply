@@ -35,7 +35,7 @@ export function JobCard({ job }: JobCardProps) {
     <Link
       to="/jobs/$jobId"
       params={{ jobId: job.id }}
-      className="flex items-center gap-4 rounded-xl border border-border-subtle bg-bg-card px-5 py-4 hover:border-border-hover hover:bg-bg-card-hover transition-colors duration-200"
+      className="flex items-center gap-4 rounded-xl border border-border-subtle bg-bg-card px-5 py-4 hover:border-border-hover hover:bg-bg-card-hover card-hover"
     >
       {/* Company logo */}
       <CompanyLogo

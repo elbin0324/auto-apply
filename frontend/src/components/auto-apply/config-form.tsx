@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SectionCard } from "@/components/ui/section-card";
@@ -125,17 +126,15 @@ export function ConfigForm({ config }: ConfigFormProps) {
                   key={type}
                   className="flex items-center gap-1.5 text-sm text-text-secondary capitalize"
                 >
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={locationTypePref.includes(type)}
-                    onChange={(e) => {
+                    onCheckedChange={(val) => {
                       setLocationTypePref((prev) =>
-                        e.target.checked
+                        val
                           ? [...prev, type]
                           : prev.filter((t) => t !== type),
                       );
                     }}
-                    className="rounded border-border-card"
                   />
                   {type}
                 </label>

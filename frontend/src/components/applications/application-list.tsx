@@ -62,7 +62,7 @@ export function ApplicationList({
         </div>
 
         {/* Rows */}
-        <div className="divide-y divide-border-subtle">
+        <div className="divide-y divide-border-subtle stagger-in">
           {applications.map((app) => (
             <Link
               key={app.id}

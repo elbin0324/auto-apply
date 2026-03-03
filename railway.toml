@@ -1,0 +1,25 @@
+# Railway config for the API server (default service).
+#
+# Workers must be set up as separate Railway services pointing to the same repo.
+# Each worker service should set a custom config path in Railway's dashboard:
+#
+#   Service             Config Path                  Start Command
+#   ─────────────────   ──────────────────────────   ──────────────────────────────
+#   api (this file)     railway.toml                 (see below)
+#   scheduler           (dashboard override)         arq worker.WorkerSettings
+#   crawl-worker        (dashboard override)         python crawl_worker.py
+#   score-worker        (dashboard override)         python score_worker.py
+#   enrich-worker       (dashboard override)         python enrich_worker.py
+#
+# All services share the same Dockerfile (backend/Dockerfile).
+# Set the start command override in each worker service's settings.
+
+[build]
+dockerfilePath = "backend/Dockerfile"
+
+[deploy]
+startCommand = "uvicorn main:app --host 0.0.0.0 --port 8000"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "ALWAYS"
+restartPolicyMaxRetries = 5

@@ -13,15 +13,23 @@ from models.company import Company
 from models.job import Job
 from models.profile import Profile
 from models.user import User
+from redis.asyncio import Redis
+
+from config import get_settings
 from schemas.admin import (
     AdminOverview,
     AdminQueueStatus,
     AdminUserListResponse,
     AdminUserSummary,
     QueueDepths,
+    QueuePurgeResult,
+    TriggerResult,
     WipeResult,
+    WorkerStatus,
+    WorkersOverview,
 )
 from services.crawl_queue_service import count_crawl_dedup_keys, get_crawl_queue_depth
+from services.enrich_queue_service import get_enrich_queue_depth
 from services.queue_service import get_queue_depth
 from services.score_queue_service import get_score_queue_depths
 
@@ -63,6 +71,7 @@ async def get_overview(admin: AdminUser, db: DbSession) -> AdminOverview:
     apply_depth = await get_queue_depth()
     crawl_depth = await get_crawl_queue_depth()
     score_depths = await get_score_queue_depths()
+    enrich_depth = await get_enrich_queue_depth()
 
     return AdminOverview(
         user_count=user_count,
@@ -77,6 +86,7 @@ async def get_overview(admin: AdminUser, db: DbSession) -> AdminOverview:
             score_jobs=score_depths["score_jobs"],
             score_users=score_depths["score_users"],
             apply=apply_depth,
+            enrich=enrich_depth,
         ),
     )
 
@@ -224,6 +234,7 @@ async def get_queues(admin: AdminUser) -> AdminQueueStatus:
     apply_depth = await get_queue_depth()
     crawl_depth = await get_crawl_queue_depth()
     score_depths = await get_score_queue_depths()
+    enrich_depth = await get_enrich_queue_depth()
     dedup_keys = await count_crawl_dedup_keys()
 
     return AdminQueueStatus(
@@ -231,6 +242,7 @@ async def get_queues(admin: AdminUser) -> AdminQueueStatus:
         score_jobs_queue_depth=score_depths["score_jobs"],
         score_users_queue_depth=score_depths["score_users"],
         apply_queue_depth=apply_depth,
+        enrich_queue_depth=enrich_depth,
         crawl_dedup_keys=dedup_keys,
     )
 
@@ -323,3 +335,165 @@ async def delete_jobs_by_company(
         )
         await db.commit()
         return WipeResult(affected=result.rowcount, action="soft_delete")
+
+
+# ── Workers ──────────────────────────────────────────────────────────────────
+
+
+@router.get("/workers", response_model=WorkersOverview)
+async def get_workers(admin: AdminUser) -> WorkersOverview:
+    """Live worker status from Redis heartbeats."""
+    from services.worker_heartbeat import get_all_worker_statuses
+
+    statuses = await get_all_worker_statuses()
+    return WorkersOverview(
+        workers=[WorkerStatus(**s) for s in statuses]
+    )
+
+
+# ── Manual Triggers ──────────────────────────────────────────────────────────
+
+
+@router.post("/triggers/crawl", response_model=TriggerResult)
+async def trigger_crawl(admin: AdminUser, db: DbSession) -> TriggerResult:
+    """Immediately enqueue all stale companies for crawling."""
+    from services.crawl_scheduler import enqueue_stale_companies
+
+    stats = await enqueue_stale_companies(db)
+    await db.commit()
+    return TriggerResult(
+        triggered="crawl_schedule",
+        detail=f"Enqueued {stats['enqueued']} companies ({stats['skipped_already_enqueued']} already pending)",
+    )
+
+
+@router.post("/triggers/rescore", response_model=TriggerResult)
+async def trigger_rescore(admin: AdminUser, db: DbSession) -> TriggerResult:
+    """Immediately enqueue all active users for re-scoring."""
+    from schemas.crawl import ScoreUserTask
+    from services.score_queue_service import push_score_user_task
+
+    result = await db.execute(
+        select(AutoApplyConfig.user_id).where(AutoApplyConfig.is_active.is_(True))
+    )
+    user_ids = result.scalars().all()
+
+    enqueued = 0
+    for user_id in user_ids:
+        await push_score_user_task(
+            ScoreUserTask(user_id=user_id, reason="admin_trigger")
+        )
+        enqueued += 1
+
+    return TriggerResult(
+        triggered="user_rescore",
+        detail=f"Enqueued {enqueued} active users for re-scoring",
+    )
+
+
+@router.post("/triggers/enrich", response_model=TriggerResult)
+async def trigger_enrich(admin: AdminUser, db: DbSession) -> TriggerResult:
+    """Immediately enqueue un-enriched jobs for LLM enrichment."""
+    import uuid as _uuid
+
+    from schemas.enrichment import EnrichJobsTask
+    from services.enrich_queue_service import push_enrich_task
+
+    settings = get_settings()
+    result = await db.execute(
+        select(Job.id, Job.company_id)
+        .where(
+            Job.is_active.is_(True),
+            Job.description.isnot(None),
+            Job.enriched_at.is_(None),
+        )
+        .limit(settings.enrichment_batch_size)
+    )
+    rows = result.fetchall()
+
+    if not rows:
+        return TriggerResult(triggered="job_enrich", detail="No un-enriched jobs found")
+
+    by_company: dict[str, list] = {}
+    for job_id, company_id in rows:
+        key = str(company_id) if company_id else "no_company"
+        by_company.setdefault(key, []).append(job_id)
+
+    tasks_pushed = 0
+    for company_key, job_ids in by_company.items():
+        company_id_val = (
+            _uuid.UUID(company_key)
+            if company_key != "no_company"
+            else _uuid.UUID(int=0)
+        )
+        task = EnrichJobsTask(company_id=company_id_val, job_ids=job_ids)
+        await push_enrich_task(task)
+        tasks_pushed += 1
+
+    return TriggerResult(
+        triggered="job_enrich",
+        detail=f"Pushed {tasks_pushed} batches for {len(rows)} un-enriched jobs",
+    )
+
+
+@router.post("/triggers/rematch", response_model=TriggerResult)
+async def trigger_rematch(admin: AdminUser, db: DbSession) -> TriggerResult:
+    """Immediately re-run matching for all active auto-apply users."""
+    from services.auto_apply_service import run_matching_for_user
+
+    result = await db.execute(
+        select(AutoApplyConfig).where(AutoApplyConfig.is_active.is_(True))
+    )
+    active_configs = result.scalars().all()
+
+    if not active_configs:
+        return TriggerResult(
+            triggered="rematch", detail="No active auto-apply users found"
+        )
+
+    users_processed = 0
+    total_queued = 0
+
+    for config in active_configs:
+        try:
+            stats = await run_matching_for_user(db, config.user_id, config)
+            users_processed += 1
+            total_queued += stats.get("queued", 0)
+        except Exception:
+            logger.exception("Rematch failed for user %s", config.user_id)
+
+    await db.commit()
+    return TriggerResult(
+        triggered="rematch",
+        detail=f"Queued {total_queued} apply tasks for {users_processed} users",
+    )
+
+
+# ── Queue Purge ──────────────────────────────────────────────────────────────
+
+PURGEABLE_QUEUES = {
+    "crawl": "crawl:companies",
+    "score_jobs": "score:jobs",
+    "score_users": "score:users",
+    "enrich": "enrich:jobs",
+}
+
+
+@router.delete("/queues/{queue_name}", response_model=QueuePurgeResult)
+async def purge_queue(queue_name: str, admin: AdminUser) -> QueuePurgeResult:
+    """Purge all items from a named queue."""
+    if queue_name not in PURGEABLE_QUEUES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown queue: {queue_name}. Purgeable: {list(PURGEABLE_QUEUES)}",
+        )
+    redis_key = PURGEABLE_QUEUES[queue_name]
+    settings = get_settings()
+    redis = Redis.from_url(settings.redis_url, decode_responses=True)
+    try:
+        length = await redis.llen(redis_key)
+        if length > 0:
+            await redis.delete(redis_key)
+        return QueuePurgeResult(purged=length, queue=queue_name)
+    finally:
+        await redis.aclose()

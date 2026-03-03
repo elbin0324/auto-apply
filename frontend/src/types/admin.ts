@@ -22,6 +22,7 @@ export interface QueueDepths {
   score_jobs: number;
   score_users: number;
   apply: number;
+  enrich: number;
 }
 
 export interface AdminOverview {
@@ -40,10 +41,37 @@ export interface AdminQueueStatus {
   score_jobs_queue_depth: number;
   score_users_queue_depth: number;
   apply_queue_depth: number;
+  enrich_queue_depth: number;
   crawl_dedup_keys: number;
 }
 
 export interface WipeResult {
   affected: number;
   action: string;
+}
+
+export interface WorkerStatus {
+  name: string;
+  worker_id: string | null;
+  started_at: string | null;
+  last_beat_at: string | null;
+  tasks_processed: number;
+  tasks_failed: number;
+  current_task: string;
+  status: "idle" | "processing" | "offline";
+  is_alive: boolean;
+}
+
+export interface WorkersOverview {
+  workers: WorkerStatus[];
+}
+
+export interface TriggerResult {
+  triggered: string;
+  detail: string;
+}
+
+export interface QueuePurgeResult {
+  purged: number;
+  queue: string;
 }

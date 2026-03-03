@@ -24,11 +24,17 @@ from services.score_service import (  # noqa: E402
     score_new_jobs_for_users,
     score_user_against_all_jobs,
 )
+from services.worker_heartbeat import WorkerHeartbeat  # noqa: E402
 
+_settings = get_settings()
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, _settings.log_level.upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+if _settings.sentry_dsn:
+    import sentry_sdk
+
+    sentry_sdk.init(dsn=_settings.sentry_dsn, environment=_settings.env)
 logger = logging.getLogger("score_worker")
 
 _shutdown = asyncio.Event()
@@ -106,22 +112,45 @@ async def worker_loop() -> None:
         logger.error("VOYAGE_API_KEY not configured, score worker cannot start")
         return
 
+    heartbeat = WorkerHeartbeat("score")
+    await heartbeat.start()
+    beat_task = asyncio.create_task(heartbeat.beat_loop(_shutdown))
+
     logger.info("Score worker starting, polling score:jobs and score:users")
 
     while not _shutdown.is_set():
         # Check score:jobs first (higher priority — new content to index)
         task = await pop_score_jobs_task()
         if task:
-            await process_score_jobs(task)
+            heartbeat.set_processing(f"jobs:company:{task.company_id}")
+            try:
+                await process_score_jobs(task)
+                heartbeat.record_success()
+            except Exception:
+                heartbeat.record_failure()
+                logger.exception("Unhandled error scoring jobs for %s", task.company_id)
+            finally:
+                heartbeat.set_idle()
             continue
 
         # Then check score:users
         task = await pop_score_user_task()
         if task:
-            await process_score_user(task)
+            heartbeat.set_processing(f"user:{task.user_id}")
+            try:
+                await process_score_user(task)
+                heartbeat.record_success()
+            except Exception:
+                heartbeat.record_failure()
+                logger.exception("Unhandled error scoring user %s", task.user_id)
+            finally:
+                heartbeat.set_idle()
             continue
 
         # Both queues empty — blpop in pop functions already waited 5s
+        heartbeat.set_idle()
+
+    await beat_task
 
 
 def main() -> None:

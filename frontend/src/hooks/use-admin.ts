@@ -6,6 +6,9 @@ import type {
   AdminUserSummary,
   AdminQueueStatus,
   WipeResult,
+  WorkersOverview,
+  TriggerResult,
+  QueuePurgeResult,
 } from "@/types/admin";
 
 export function useAdminOverview() {
@@ -72,6 +75,65 @@ export function useWipeJobs() {
       if (source) sp.set("source", source);
       return api.delete<WipeResult>(`/api/admin/jobs?${sp.toString()}`);
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+  });
+}
+
+export function useWorkers() {
+  return useQuery({
+    queryKey: ["admin", "workers"],
+    queryFn: () => api.get<WorkersOverview>("/api/admin/workers"),
+    refetchInterval: 10_000,
+  });
+}
+
+export function useTriggerCrawl() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<TriggerResult>("/api/admin/triggers/crawl"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+  });
+}
+
+export function useTriggerRescore() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<TriggerResult>("/api/admin/triggers/rescore"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+  });
+}
+
+export function useTriggerEnrich() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<TriggerResult>("/api/admin/triggers/enrich"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+  });
+}
+
+export function useTriggerRematch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<TriggerResult>("/api/admin/triggers/rematch"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+  });
+}
+
+export function usePurgeQueue() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (queueName: string) =>
+      api.delete<QueuePurgeResult>(`/api/admin/queues/${queueName}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
     },

@@ -25,11 +25,17 @@ from services.crawl_queue_service import clear_crawl_dedup, pop_crawl_task  # no
 from services.enrich_queue_service import push_enrich_task  # noqa: E402
 from services.job_discovery import crawl_company  # noqa: E402
 from services.score_queue_service import push_score_jobs_task  # noqa: E402
+from services.worker_heartbeat import WorkerHeartbeat  # noqa: E402
 
+_settings = get_settings()
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, _settings.log_level.upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+if _settings.sentry_dsn:
+    import sentry_sdk
+
+    sentry_sdk.init(dsn=_settings.sentry_dsn, environment=_settings.env)
 logger = logging.getLogger("crawl_worker")
 
 _shutdown = asyncio.Event()
@@ -100,15 +106,28 @@ async def process_crawl_task(task: object) -> None:
 
 async def worker_loop() -> None:
     """Main worker loop: poll queue, process tasks, repeat."""
-    settings = get_settings()
+    heartbeat = WorkerHeartbeat("crawl")
+    await heartbeat.start()
+    beat_task = asyncio.create_task(heartbeat.beat_loop(_shutdown))
+
     logger.info("Crawl worker starting, polling crawl:companies")
 
     while not _shutdown.is_set():
         task = await pop_crawl_task()
         if task is None:
+            heartbeat.set_idle()
             continue
-        await process_crawl_task(task)
+        heartbeat.set_processing(f"company:{task.company_slug}")
+        try:
+            await process_crawl_task(task)
+            heartbeat.record_success()
+        except Exception:
+            heartbeat.record_failure()
+            logger.exception("Unhandled error for %s", task.company_slug)
+        finally:
+            heartbeat.set_idle()
 
+    await beat_task
     logger.info("Crawl worker shut down cleanly")
 
 

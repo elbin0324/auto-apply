@@ -12,6 +12,7 @@ import {
   Users,
   Activity,
   Database,
+  Cpu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
@@ -35,6 +36,7 @@ const navItems = [
 const adminNavItems = [
   { to: "/admin", label: "Admin", icon: Shield },
   { to: "/admin/users", label: "Users", icon: Users },
+  { to: "/admin/workers", label: "Workers", icon: Cpu },
   { to: "/admin/queues", label: "Queues", icon: Activity },
   { to: "/admin/data", label: "Data", icon: Database },
 ] as const;

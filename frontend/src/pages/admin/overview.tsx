@@ -1,7 +1,6 @@
 import {
   Users,
   Briefcase,
-  Building2,
   FileText,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,7 +10,6 @@ import { useAdminOverview } from "@/hooks/use-admin";
 const statCards = [
   { label: "Users", key: "user_count" as const, icon: Users, color: "text-accent-purple", bg: "bg-accent-purple/10" },
   { label: "Active Jobs", key: "active_job_count" as const, icon: Briefcase, color: "text-accent-blue", bg: "bg-accent-blue/10" },
-  { label: "Active Companies", key: "active_company_count" as const, icon: Building2, color: "text-emerald-400", bg: "bg-emerald-400/10" },
   { label: "Applications", key: "total_applications" as const, icon: FileText, color: "text-amber-400", bg: "bg-amber-400/10" },
 ] as const;
 
@@ -34,7 +32,7 @@ export default function AdminOverviewPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         {statCards.map(({ label, key, icon: Icon, color, bg }) => (
           <div
             key={key}
@@ -67,7 +65,7 @@ export default function AdminOverviewPage() {
           </h2>
           {isLoading ? (
             <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
+              {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-6 w-full" />
               ))}
             </div>
@@ -75,9 +73,7 @@ export default function AdminOverviewPage() {
             <div className="space-y-3">
               {[
                 { label: "Apply Tasks", value: data?.queue_depths.apply ?? 0 },
-                { label: "Crawl Queue", value: data?.queue_depths.crawl ?? 0 },
                 { label: "Score Jobs", value: data?.queue_depths.score_jobs ?? 0 },
-                { label: "Score Users", value: data?.queue_depths.score_users ?? 0 },
                 { label: "Enrich Jobs", value: data?.queue_depths.enrich ?? 0 },
               ].map(({ label, value }) => (
                 <div
@@ -137,17 +133,11 @@ export default function AdminOverviewPage() {
         {isLoading ? (
           <Skeleton className="h-12 w-full" />
         ) : (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4">
             <div className="text-center">
               <p className="text-sm text-text-secondary">Jobs</p>
               <p className="text-lg font-mono font-medium text-text-primary">
                 {data?.active_job_count ?? 0} / {data?.job_count ?? 0}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-text-secondary">Companies</p>
-              <p className="text-lg font-mono font-medium text-text-primary">
-                {data?.active_company_count ?? 0} / {data?.company_count ?? 0}
               </p>
             </div>
             <div className="text-center">

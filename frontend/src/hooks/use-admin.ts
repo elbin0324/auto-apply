@@ -9,6 +9,9 @@ import type {
   WorkersOverview,
   TriggerResult,
   QueuePurgeResult,
+  DLQOverview,
+  DLQStatus,
+  DLQReplayResult,
 } from "@/types/admin";
 
 export function useAdminOverview() {
@@ -52,17 +55,6 @@ export function useAdminQueues() {
   });
 }
 
-export function useWipeCompanies() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (hard: boolean = false) =>
-      api.delete<WipeResult>(`/api/admin/companies?hard=${hard}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin"] });
-    },
-  });
-}
-
 export function useWipeJobs() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -89,10 +81,10 @@ export function useWorkers() {
   });
 }
 
-export function useTriggerCrawl() {
+export function useTriggerFetch() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => api.post<TriggerResult>("/api/admin/triggers/crawl"),
+    mutationFn: () => api.post<TriggerResult>("/api/admin/triggers/fetch"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
     },
@@ -136,6 +128,45 @@ export function usePurgeQueue() {
       api.delete<QueuePurgeResult>(`/api/admin/queues/${queueName}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+  });
+}
+
+export function useDLQOverview() {
+  return useQuery({
+    queryKey: ["admin", "dlq"],
+    queryFn: () => api.get<DLQOverview>("/api/admin/dlq"),
+    refetchInterval: 10_000,
+  });
+}
+
+export function useDLQDetail(queueName: string) {
+  return useQuery({
+    queryKey: ["admin", "dlq", queueName],
+    queryFn: () => api.get<DLQStatus>(`/api/admin/dlq/${queueName}`),
+    enabled: !!queueName,
+  });
+}
+
+export function useReplayDLQ() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (queueName: string) =>
+      api.post<DLQReplayResult>(`/api/admin/dlq/${queueName}/replay`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "dlq"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "queues"] });
+    },
+  });
+}
+
+export function usePurgeDLQ() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (queueName: string) =>
+      api.delete<QueuePurgeResult>(`/api/admin/dlq/${queueName}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "dlq"] });
     },
   });
 }

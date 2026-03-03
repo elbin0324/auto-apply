@@ -188,6 +188,42 @@ async def get_job_match(
     }
 
 
+# ── Rescore ──────────────────────────────────────────────────────────────────
+
+
+@router.post("/rescore")
+async def rescore_jobs(user: CurrentUser, db: DbSession) -> dict:
+    """Rescore all active jobs for the current user via the score queue.
+
+    Useful after updating profile, skills, or preferences. Pushes existing
+    job IDs to the score worker — does not re-fetch from JSearch.
+    """
+    from schemas.crawl import ScoreJobsTask
+    from services.score_queue_service import push_score_jobs_task
+
+    result = await db.execute(
+        select(Job.id).where(Job.is_active.is_(True))
+    )
+    job_ids = list(result.scalars().all())
+
+    if not job_ids:
+        return {"detail": "No active jobs to rescore", "jobs_queued": 0}
+
+    batch_size = 50
+    tasks_pushed = 0
+    for i in range(0, len(job_ids), batch_size):
+        batch = job_ids[i : i + batch_size]
+        task = ScoreJobsTask(job_ids=batch)
+        await push_score_jobs_task(task, source="user_rescore")
+        tasks_pushed += 1
+
+    return {
+        "detail": f"Queued {len(job_ids)} jobs for rescoring",
+        "jobs_queued": len(job_ids),
+        "batches": tasks_pushed,
+    }
+
+
 # ── Job actions (queue management) ───────────────────────────────────────────
 
 

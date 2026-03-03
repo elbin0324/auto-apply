@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Building2, Briefcase, AlertTriangle, Loader2 } from "lucide-react";
+import { Briefcase, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAdminOverview, useWipeCompanies, useWipeJobs } from "@/hooks/use-admin";
+import { useAdminOverview, useWipeJobs } from "@/hooks/use-admin";
 import type { WipeResult } from "@/types/admin";
 
 function ResultBanner({ result, label }: { result: WipeResult; label: string }) {
@@ -17,31 +17,14 @@ function ResultBanner({ result, label }: { result: WipeResult; label: string }) 
 
 export default function AdminDataManagementPage() {
   const { data: overview } = useAdminOverview();
-  const wipeCompanies = useWipeCompanies();
   const wipeJobs = useWipeJobs();
 
-  const [companiesResult, setCompaniesResult] = useState<WipeResult | null>(null);
   const [jobsResult, setJobsResult] = useState<WipeResult | null>(null);
-
-  async function handleWipeCompanies(hard: boolean) {
-    const action = hard ? "HARD DELETE" : "soft delete";
-    const confirmed = window.confirm(
-      `Are you sure you want to ${action} ALL companies?\n\n` +
-        (hard
-          ? "This will permanently remove all company records. Jobs will have their company_id set to NULL."
-          : "This will set is_active=false on all companies."),
-    );
-    if (!confirmed) return;
-
-    const result = await wipeCompanies.mutateAsync(hard);
-    setCompaniesResult(result);
-    setJobsResult(null);
-  }
 
   async function handleWipeJobs(hard: boolean) {
     const action = hard ? "HARD DELETE" : "soft delete";
     const confirmed = window.confirm(
-      `Are you sure you want to ${action} ALL scraped jobs?\n\n` +
+      `Are you sure you want to ${action} ALL jobs?\n\n` +
         (hard
           ? "This will permanently remove all job records. Match scores will cascade-delete. Applications will have job_id set to NULL."
           : "This will set is_active=false on all jobs."),
@@ -50,10 +33,7 @@ export default function AdminDataManagementPage() {
 
     const result = await wipeJobs.mutateAsync({ hard });
     setJobsResult(result);
-    setCompaniesResult(null);
   }
-
-  const isWiping = wipeCompanies.isPending || wipeJobs.isPending;
 
   return (
     <div className="space-y-6">
@@ -62,7 +42,7 @@ export default function AdminDataManagementPage() {
           Data Management
         </h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Wipe companies and scraped jobs from the database
+          Wipe jobs from the database
         </p>
       </div>
 
@@ -81,52 +61,6 @@ export default function AdminDataManagementPage() {
         </div>
       </div>
 
-      {/* Companies section */}
-      <div className="rounded-xl border border-border-subtle bg-bg-card p-5 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-emerald-400/10 p-2">
-            <Building2 className="h-5 w-5 text-emerald-400" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-text-primary">
-              Companies
-            </h2>
-            <p className="text-sm text-text-muted">
-              {overview
-                ? `${overview.active_company_count} active / ${overview.company_count} total`
-                : "Loading..."}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <Button
-            variant="outline"
-            onClick={() => handleWipeCompanies(false)}
-            disabled={isWiping}
-          >
-            {wipeCompanies.isPending && !wipeCompanies.variables ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : null}
-            Soft Delete All
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => handleWipeCompanies(true)}
-            disabled={isWiping}
-          >
-            {wipeCompanies.isPending && wipeCompanies.variables ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : null}
-            Hard Delete All
-          </Button>
-        </div>
-
-        {companiesResult && (
-          <ResultBanner result={companiesResult} label="companies" />
-        )}
-      </div>
-
       {/* Jobs section */}
       <div className="rounded-xl border border-border-subtle bg-bg-card p-5 space-y-4">
         <div className="flex items-center gap-3">
@@ -135,7 +69,7 @@ export default function AdminDataManagementPage() {
           </div>
           <div>
             <h2 className="text-lg font-semibold text-text-primary">
-              Scraped Jobs
+              Jobs
             </h2>
             <p className="text-sm text-text-muted">
               {overview
@@ -149,7 +83,7 @@ export default function AdminDataManagementPage() {
           <Button
             variant="outline"
             onClick={() => handleWipeJobs(false)}
-            disabled={isWiping}
+            disabled={wipeJobs.isPending}
           >
             {wipeJobs.isPending && !wipeJobs.variables?.hard ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -159,7 +93,7 @@ export default function AdminDataManagementPage() {
           <Button
             variant="destructive"
             onClick={() => handleWipeJobs(true)}
-            disabled={isWiping}
+            disabled={wipeJobs.isPending}
           >
             {wipeJobs.isPending && wipeJobs.variables?.hard ? (
               <Loader2 className="h-4 w-4 animate-spin" />

@@ -54,6 +54,23 @@ export interface JobListResponse {
 export interface MatchFactors {
   job_id: string;
   score: number;
-  factors: Record<string, unknown>;
+  factors: MatchFactorsDetail;
   computed_at: string;
+}
+
+export interface MatchFactorsDetail {
+  combined_method: string;
+  // LLM scoring fields
+  model?: string;
+  matched_skills?: string[];
+  missing_skills?: string[];
+  preferred_skills?: string[];
+  reasoning?: string;
+  batch_id?: string;
+  latency_ms?: number;
+  // Legacy heuristic fields
+  skill_score?: number;
+  title_score?: number;
+  location_score?: number;
+  [key: string]: unknown;
 }

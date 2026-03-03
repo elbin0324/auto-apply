@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   Clock,
   Loader2,
-  Search,
+  Download,
   BarChart3,
   Zap,
   Sparkles,
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useWorkers,
-  useTriggerCrawl,
+  useTriggerFetch,
   useTriggerRescore,
   useTriggerEnrich,
   useTriggerRematch,
@@ -133,7 +133,7 @@ function WorkerCard({ worker }: { worker: WorkerStatus }) {
 export default function AdminWorkersPage() {
   const { data, isLoading, dataUpdatedAt } = useWorkers();
 
-  const triggerCrawl = useTriggerCrawl();
+  const triggerFetch = useTriggerFetch();
   const triggerRescore = useTriggerRescore();
   const triggerEnrich = useTriggerEnrich();
   const triggerRematch = useTriggerRematch();
@@ -160,21 +160,21 @@ export default function AdminWorkersPage() {
   }
 
   const anyTriggerPending =
-    triggerCrawl.isPending ||
+    triggerFetch.isPending ||
     triggerRescore.isPending ||
     triggerEnrich.isPending ||
     triggerRematch.isPending;
 
   const triggers = [
     {
-      label: "Crawl",
-      description: "Enqueue stale companies for ATS crawling",
-      icon: Search,
-      mutation: triggerCrawl,
+      label: "Fetch Jobs",
+      description: "Fetch jobs from JSearch API for all active users",
+      icon: Download,
+      mutation: triggerFetch,
     },
     {
       label: "Rescore",
-      description: "Re-score all active user profiles",
+      description: "Re-score all active jobs via LLM",
       icon: BarChart3,
       mutation: triggerRescore,
     },

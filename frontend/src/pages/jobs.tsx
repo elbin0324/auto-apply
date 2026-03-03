@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { Link } from "@tanstack/react-router";
+import { usePageEnter } from "@/hooks/use-page-enter";
 import { Briefcase, Settings, Clock, Eye, Loader2 as LoaderIcon } from "lucide-react";
 import { useJobs } from "@/hooks/use-jobs";
 import {
@@ -33,6 +34,7 @@ const defaultFilters: JobSearchParams = {
 };
 
 export default function JobsPage() {
+  const pageRef = usePageEnter();
   const [filters, setFilters] = useState<JobSearchParams>(defaultFilters);
   const { data, isLoading } = useJobs(filters);
   const { data: config } = useAutoApplyConfig();
@@ -57,7 +59,7 @@ export default function JobsPage() {
     !isLoading && data?.total === 0 && noFiltersActive && !filters.status;
 
   return (
-    <div className="space-y-4">
+    <div ref={pageRef} className="space-y-4">
       {/* Queue stats bar */}
       {queue && (
         <div className="flex items-center gap-6 rounded-xl border border-border-subtle bg-bg-card px-5 py-3">

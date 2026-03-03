@@ -44,12 +44,12 @@ export function QuickActions() {
           Quick Actions
         </h2>
       </div>
-      <div className="grid grid-cols-2 gap-3 p-4">
+      <div className="grid grid-cols-2 gap-3 p-4 stagger-in">
         {actions.map(({ to, label, description, icon: Icon, color, bg }) => (
           <Link
             key={to}
             to={to}
-            className="flex items-center gap-3 rounded-lg border border-border-subtle p-3 hover:border-border-hover hover:bg-bg-card-hover transition-colors duration-200"
+            className="flex items-center gap-3 rounded-lg border border-border-subtle p-3 hover:border-border-hover hover:bg-bg-card-hover card-hover"
           >
             <div className={`rounded-lg p-2 ${bg}`}>
               <Icon className={`h-4 w-4 ${color}`} />

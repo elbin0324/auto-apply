@@ -4,17 +4,19 @@ import {
   Building2,
   MapPin,
   ExternalLink,
-  Loader2,
   AlertTriangle,
   Image,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { usePageEnter } from "@/hooks/use-page-enter";
 import { StatusBadge } from "@/components/applications/status-badge";
 import { useApplicationDetail } from "@/hooks/use-applications";
 import { formatDate } from "@/lib/utils";
 
 export default function ApplicationDetailPage() {
+  const pageRef = usePageEnter();
   const { applicationId } = useParams({ strict: false }) as {
     applicationId: string;
   };
@@ -22,8 +24,30 @@ export default function ApplicationDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
+      <div className="mx-auto max-w-3xl space-y-6 page-enter">
+        <Skeleton className="h-4 w-32" />
+        <div className="rounded-xl border border-border-subtle bg-bg-card p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-6 w-3/5" />
+              <Skeleton className="h-4 w-2/5" />
+            </div>
+            <Skeleton className="h-6 w-20 rounded-full" />
+          </div>
+          <Skeleton className="mt-4 h-8 w-36" />
+        </div>
+        <div className="rounded-xl border border-border-subtle bg-bg-card p-5 space-y-4">
+          <Skeleton className="h-4 w-20" />
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-2.5 w-2.5 rounded-full" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -44,7 +68,7 @@ export default function ApplicationDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div ref={pageRef} className="mx-auto max-w-3xl space-y-6">
       {/* Back */}
       <Link
         to="/applications"

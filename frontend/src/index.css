@@ -176,3 +176,81 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+
+/* ─── App-wide polish animations ─── */
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes staggerIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes tabIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+@keyframes checkIn {
+  from { transform: scale(0); }
+  to   { transform: scale(1); }
+}
+
+/* Page entrance */
+.page-enter {
+  animation: pageIn 0.5s var(--ease) both;
+}
+
+/* Stagger children — each child animates in with increasing delay */
+.stagger-in > * {
+  opacity: 0;
+  animation: staggerIn 0.4s var(--ease) both;
+}
+.stagger-in > *:nth-child(1)  { animation-delay: 0.03s; }
+.stagger-in > *:nth-child(2)  { animation-delay: 0.06s; }
+.stagger-in > *:nth-child(3)  { animation-delay: 0.09s; }
+.stagger-in > *:nth-child(4)  { animation-delay: 0.12s; }
+.stagger-in > *:nth-child(5)  { animation-delay: 0.15s; }
+.stagger-in > *:nth-child(6)  { animation-delay: 0.18s; }
+.stagger-in > *:nth-child(7)  { animation-delay: 0.21s; }
+.stagger-in > *:nth-child(8)  { animation-delay: 0.24s; }
+.stagger-in > *:nth-child(9)  { animation-delay: 0.27s; }
+.stagger-in > *:nth-child(10) { animation-delay: 0.30s; }
+
+/* Tab content entrance (Radix Tabs) */
+[data-slot="tabs-content"][data-state="active"] > * {
+  animation: tabIn 0.3s var(--ease) both;
+}
+
+/* Button press micro-interaction */
+[data-slot="button"]:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 0.1s var(--ease);
+}
+
+/* Card hover lift */
+.card-hover {
+  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease), border-color 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* Accessibility: disable all polish animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter,
+  .stagger-in > *,
+  [data-slot="tabs-content"][data-state="active"] > * {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .card-hover:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}

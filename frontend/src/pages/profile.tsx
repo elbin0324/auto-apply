@@ -1,5 +1,6 @@
-import { Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { usePageEnter } from "@/hooks/use-page-enter";
 import { useProfile } from "@/hooks/use-profile";
 import {
   ProfileHeader,
@@ -22,12 +23,31 @@ const tabs = [
 ] as const;
 
 export default function ProfilePage() {
+  const pageRef = usePageEnter();
   const { data: profile, isLoading } = useProfile();
 
   if (isLoading || !profile) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
+      <div className="mx-auto max-w-3xl space-y-6 page-enter">
+        <div className="rounded-xl border border-border-subtle bg-bg-card p-5">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-14 w-14 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+            <Skeleton className="h-6 w-32" />
+          </div>
+        </div>
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <div className="rounded-xl border border-border-subtle bg-bg-card p-5 space-y-4">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-9 w-full" />
+        </div>
       </div>
     );
   }
@@ -35,7 +55,7 @@ export default function ProfilePage() {
   const completion = getTabCompletion(profile);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div ref={pageRef} className="mx-auto max-w-3xl space-y-6">
       <ProfileHeader profile={profile} />
 
       <Tabs defaultValue="profile">

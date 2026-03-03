@@ -231,7 +231,7 @@ async def score_new_jobs_for_users(
     for user in users:
         profile = user.profile
         config = user.auto_apply_config
-        if not profile or not profile.embedding:
+        if not profile or profile.embedding is None:
             continue
 
         skill_names = [s.name for s in (profile.skills or [])]
@@ -320,7 +320,7 @@ async def score_user_against_all_jobs(
     result = await db.execute(stmt)
     profile = result.scalar_one_or_none()
 
-    if not profile or not profile.embedding:
+    if not profile or profile.embedding is None:
         logger.warning("No embedding for user %s", user_id)
         return {"error": "no_embedding"}
 

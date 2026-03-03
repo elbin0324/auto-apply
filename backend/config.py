@@ -31,6 +31,17 @@ class Settings(BaseSettings):
     # Redis / Queue
     redis_url: str = "redis://localhost:6379"
 
+    @field_validator("redis_url")
+    @classmethod
+    def ensure_redis_scheme(cls, v: str) -> str:
+        """Normalize Redis URLs from various providers (Railway, Upstash, etc.)."""
+        if v.startswith(("redis://", "rediss://", "unix://")):
+            return v
+        # Some providers omit the scheme entirely (e.g. "host:port")
+        if "://" not in v:
+            return f"redis://{v}"
+        return v
+
     # Supabase
     supabase_url: str
     supabase_anon_key: str

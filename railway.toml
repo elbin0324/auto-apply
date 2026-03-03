@@ -6,7 +6,6 @@
 #   ──────────────   ──────────────────────────────────────
 #   api              deploy/api.railway.toml
 #   scheduler        deploy/scheduler.railway.toml
-#   crawl-worker     deploy/crawl-worker.railway.toml
 #   score-worker     deploy/score-worker.railway.toml
 #   enrich-worker    deploy/enrich-worker.railway.toml
 #

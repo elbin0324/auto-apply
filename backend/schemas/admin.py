@@ -30,9 +30,7 @@ class AdminUserListResponse(BaseModel):
 
 
 class QueueDepths(BaseModel):
-    crawl: int
     score_jobs: int
-    score_users: int
     apply: int
     enrich: int
 
@@ -43,22 +41,17 @@ class AdminOverview(BaseModel):
     user_count: int
     job_count: int
     active_job_count: int
-    company_count: int
-    active_company_count: int
     application_counts: dict[str, int]
     total_applications: int
     queue_depths: QueueDepths
 
 
 class AdminQueueStatus(BaseModel):
-    """Extended queue status with dedup key counts."""
+    """Queue status for monitoring."""
 
-    crawl_queue_depth: int
     score_jobs_queue_depth: int
-    score_users_queue_depth: int
     apply_queue_depth: int
     enrich_queue_depth: int
-    crawl_dedup_keys: int
 
 
 class WipeResult(BaseModel):

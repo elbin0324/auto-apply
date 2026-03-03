@@ -6,15 +6,15 @@ dead-letter queue, and graceful shutdown are all handled here.
 
 Usage::
 
-    class MyCrawlWorker(BaseWorker[CrawlTask]):
-        async def pop_task(self) -> tuple[TaskEnvelope, CrawlTask] | None:
-            return await pop_crawl_task()
+    class MyScoreWorker(BaseWorker[ScoreJobsTask]):
+        async def pop_task(self) -> tuple[TaskEnvelope, ScoreJobsTask] | None:
+            return await pop_score_jobs_task()
 
-        async def process_task(self, task: CrawlTask) -> None:
-            await do_crawl(task)
+        async def process_task(self, task: ScoreJobsTask) -> None:
+            await score_new_jobs_for_users(task)
 
     if __name__ == "__main__":
-        MyCrawlWorker(name="crawl").run()
+        MyScoreWorker(name="score").run()
 """
 
 import asyncio

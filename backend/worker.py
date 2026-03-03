@@ -1,4 +1,4 @@
-"""arq background worker — periodic job sync and continuous auto-apply re-matching.
+"""arq background worker — periodic job fetch and continuous auto-apply re-matching.
 
 Run with:  poetry run arq worker.WorkerSettings
 """
@@ -35,126 +35,34 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 # ── Background Tasks ─────────────────────────────────────────────────────────
 
 
-async def task_sync_jobs(ctx: dict[str, Any]) -> dict[str, Any]:
-    """Periodic: fetch new jobs from Adzuna and compute match scores.
+async def task_fetch_jobs_for_users(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Periodic: query JSearch API for each active user's criteria, upsert jobs, push to score queue.
 
-    Skips if Adzuna credentials are not configured.
+    Skips if JSEARCH_API_KEY is not configured.
     """
-    from services.job_matcher import compute_scores_for_sync
-    from services.job_sync import run_sync
+    from services.job_fetch_service import fetch_jobs_for_all_active_users
 
     settings = get_settings()
-    if not settings.adzuna_app_id or not settings.adzuna_api_key:
-        logger.debug("Adzuna not configured, skipping sync")
-        return {"skipped": True, "reason": "adzuna_not_configured"}
+    if not settings.jsearch_api_key:
+        logger.debug("JSearch API key not configured, skipping fetch")
+        return {"skipped": True, "reason": "jsearch_not_configured"}
 
     db_factory = ctx["db_factory"]
     async with db_factory() as db:
         try:
-            sync_stats = await run_sync(db)
-            synced_ids = sync_stats.pop("synced_external_ids", [])
-
-            score_stats = await compute_scores_for_sync(db, synced_ids)
-            await db.commit()
-
-            logger.info(
-                "Scheduled sync complete: %s, scores: %s", sync_stats, score_stats
-            )
-            return {"sync": sync_stats, "scoring": score_stats}
-        except Exception:
-            await db.rollback()
-            logger.exception("Scheduled job sync failed")
-            raise
-
-
-async def task_discover_jobs(ctx: dict[str, Any]) -> dict[str, Any]:
-    """Periodic: crawl all active companies in the registry for new jobs."""
-    from services.job_discovery import run_discovery
-    from services.job_matcher import compute_scores_for_sync
-
-    db_factory = ctx["db_factory"]
-    async with db_factory() as db:
-        try:
-            discovery_stats = await run_discovery(db)
-            score_stats = await compute_scores_for_sync(db, synced_external_ids=[])
-            await db.commit()
-
-            logger.info(
-                "Scheduled discovery complete: %d companies, %d jobs found, scores: %s",
-                discovery_stats.get("companies_crawled", 0),
-                discovery_stats.get("total_jobs_found", 0),
-                score_stats,
-            )
-            return {
-                "discovery": {
-                    k: v
-                    for k, v in discovery_stats.items()
-                    if k != "results"
-                },
-                "scoring": score_stats,
-            }
-        except Exception:
-            await db.rollback()
-            logger.exception("Scheduled job discovery failed")
-            raise
-
-
-async def task_schedule_crawls(ctx: dict[str, Any]) -> dict[str, Any]:
-    """Periodic: enqueue stale companies to crawl:companies queue.
-
-    Replaces task_discover_jobs as the primary crawl trigger. Instead of
-    crawling inline, pushes tasks for crawl workers to process independently.
-    """
-    from services.crawl_scheduler import enqueue_stale_companies
-
-    db_factory = ctx["db_factory"]
-    async with db_factory() as db:
-        try:
-            stats = await enqueue_stale_companies(db)
-            await db.commit()
-            logger.info("Scheduled crawl enqueue complete: %s", stats)
+            stats = await fetch_jobs_for_all_active_users(db)
+            logger.info("Scheduled job fetch complete: %s", stats)
             return stats
         except Exception:
             await db.rollback()
-            logger.exception("Scheduled crawl enqueue failed")
-            raise
-
-
-async def task_schedule_user_rescoring(ctx: dict[str, Any]) -> dict[str, Any]:
-    """Periodic: enqueue all active users for re-scoring via score:users queue."""
-    from sqlalchemy import select
-
-    from models.auto_apply_config import AutoApplyConfig
-    from schemas.crawl import ScoreUserTask
-    from services.score_queue_service import push_score_user_task
-
-    db_factory = ctx["db_factory"]
-    async with db_factory() as db:
-        try:
-            result = await db.execute(
-                select(AutoApplyConfig.user_id).where(AutoApplyConfig.is_active.is_(True))
-            )
-            user_ids = result.scalars().all()
-
-            enqueued = 0
-            for user_id in user_ids:
-                await push_score_user_task(
-                    ScoreUserTask(user_id=user_id, reason="scheduled_rescore")
-                )
-                enqueued += 1
-
-            logger.info("Enqueued %d users for re-scoring", enqueued)
-            return {"users_enqueued": enqueued}
-        except Exception:
-            await db.rollback()
-            logger.exception("Failed to schedule user re-scoring")
+            logger.exception("Scheduled job fetch failed")
             raise
 
 
 async def task_rematch_active_users(ctx: dict[str, Any]) -> dict[str, Any]:
     """Periodic: re-run matching for all users with active auto-apply.
 
-    This is what makes auto-apply truly continuous — new jobs synced since
+    This is what makes auto-apply truly continuous — new jobs fetched since
     the user started auto-apply will be matched and queued automatically.
     """
     from sqlalchemy import select
@@ -195,62 +103,6 @@ async def task_rematch_active_users(ctx: dict[str, Any]) -> dict[str, Any]:
             raise
 
 
-async def task_enrich_unenriched_jobs(ctx: dict[str, Any]) -> dict[str, Any]:
-    """Periodic: find jobs with description but no enriched_at, push to enrich queue."""
-    import uuid as _uuid
-
-    from sqlalchemy import select
-
-    from models.job import Job
-    from schemas.enrichment import EnrichJobsTask
-    from services.enrich_queue_service import push_enrich_task
-
-    settings = get_settings()
-    db_factory = ctx["db_factory"]
-    async with db_factory() as db:
-        try:
-            result = await db.execute(
-                select(Job.id, Job.company_id)
-                .where(
-                    Job.is_active.is_(True),
-                    Job.description.isnot(None),
-                    Job.enriched_at.is_(None),
-                )
-                .limit(settings.enrichment_batch_size)
-            )
-            rows = result.fetchall()
-
-            if not rows:
-                return {"jobs_found": 0, "tasks_pushed": 0}
-
-            # Group by company_id for batching
-            by_company: dict[str, list] = {}
-            for job_id, company_id in rows:
-                key = str(company_id) if company_id else "no_company"
-                by_company.setdefault(key, []).append(job_id)
-
-            tasks_pushed = 0
-            for company_key, job_ids in by_company.items():
-                company_id_val = (
-                    _uuid.UUID(company_key)
-                    if company_key != "no_company"
-                    else _uuid.UUID(int=0)
-                )
-                task = EnrichJobsTask(company_id=company_id_val, job_ids=job_ids)
-                await push_enrich_task(task)
-                tasks_pushed += 1
-
-            logger.info(
-                "Enrich scheduler: %d un-enriched jobs found, %d tasks pushed",
-                len(rows),
-                tasks_pushed,
-            )
-            return {"jobs_found": len(rows), "tasks_pushed": tasks_pushed}
-        except Exception:
-            logger.exception("Failed to schedule enrichment")
-            raise
-
-
 # ── Worker Configuration ──────────────────────────────────────────────────────
 
 
@@ -258,44 +110,21 @@ settings = get_settings()
 
 
 class WorkerSettings:
-    """arq worker configuration with cron jobs for sync and rematch."""
+    """arq worker configuration with cron jobs for job fetch and rematch."""
 
     functions = [
-        task_sync_jobs,
-        task_discover_jobs,
-        task_schedule_crawls,
-        task_schedule_user_rescoring,
+        task_fetch_jobs_for_users,
         task_rematch_active_users,
-        task_enrich_unenriched_jobs,
     ]
 
     cron_jobs = [
-        # Legacy Adzuna sync — runs if ADZUNA_APP_ID is configured
+        # Fetch jobs from JSearch API for all active users — every hour
         cron(
-            task_sync_jobs,
-            hour={0, 6, 12, 18},
-            minute=0,
-            run_at_startup=False,
-            unique=True,
-            timeout=300,
-        ),
-        # Enqueue stale companies for crawl workers — every 6 hours
-        cron(
-            task_schedule_crawls,
-            hour={0, 6, 12, 18},
-            minute=0,
+            task_fetch_jobs_for_users,
+            minute={0},
             run_at_startup=True,
             unique=True,
-            timeout=60,
-        ),
-        # Enqueue active users for periodic re-scoring — every 6 hours
-        cron(
-            task_schedule_user_rescoring,
-            hour={1, 7, 13, 19},
-            minute=0,
-            run_at_startup=False,
-            unique=True,
-            timeout=60,
+            timeout=300,
         ),
         # Re-match active users using pre-computed scores, queue apply tasks
         cron(
@@ -304,15 +133,6 @@ class WorkerSettings:
             run_at_startup=False,
             unique=True,
             timeout=120,
-        ),
-        # Enrich un-enriched jobs via LLM — every 2 hours
-        cron(
-            task_enrich_unenriched_jobs,
-            hour={0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22},
-            minute=30,
-            run_at_startup=True,
-            unique=True,
-            timeout=60,
         ),
     ]
 

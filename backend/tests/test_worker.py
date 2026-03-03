@@ -1,6 +1,6 @@
 """Background worker tests.
 
-Tests cover the arq task functions (task_sync_jobs, task_rematch_active_users),
+Tests cover the arq task functions (task_fetch_jobs_for_users, task_rematch_active_users),
 the scheduler health endpoint, and the manual rematch endpoint.
 """
 
@@ -51,61 +51,46 @@ def _mock_db_factory() -> AsyncMock:
     return factory, session
 
 
-# ── task_sync_jobs tests ─────────────────────────────────────────────────────
+# ── task_fetch_jobs_for_users tests ──────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_task_sync_jobs_calls_sync_and_scoring() -> None:
-    from worker import task_sync_jobs
+async def test_task_fetch_skips_when_no_api_key() -> None:
+    from worker import task_fetch_jobs_for_users
 
     factory, session = _mock_db_factory()
     ctx: dict = {"db_factory": factory}
 
-    sync_result = {
-        "jobs_fetched": 50,
-        "jobs_upserted": 45,
-        "jobs_deactivated": 3,
-        "synced_external_ids": ["ext-1", "ext-2"],
-    }
-    score_result = {"scores_computed": 10}
+    with patch("worker.get_settings") as mock_settings:
+        mock_settings.return_value.jsearch_api_key = ""
+        result = await task_fetch_jobs_for_users(ctx)
 
-    with (
-        patch(
-            "services.job_sync.run_sync",
-            new_callable=AsyncMock,
-            return_value=sync_result,
-        ),
-        patch(
-            "services.job_matcher.compute_scores_for_sync",
-            new_callable=AsyncMock,
-            return_value=score_result,
-        ),
-    ):
-        result = await task_sync_jobs(ctx)
-
-    assert result["sync"]["jobs_fetched"] == 50
-    assert result["scoring"]["scores_computed"] == 10
-    session.commit.assert_awaited_once()
+    assert result["skipped"] is True
+    assert "jsearch_not_configured" in result["reason"]
 
 
 @pytest.mark.asyncio
-async def test_task_sync_jobs_rollback_on_error() -> None:
-    from worker import task_sync_jobs
+async def test_task_fetch_calls_service() -> None:
+    from worker import task_fetch_jobs_for_users
 
     factory, session = _mock_db_factory()
     ctx: dict = {"db_factory": factory}
 
-    with (
-        patch(
-            "services.job_sync.run_sync",
-            new_callable=AsyncMock,
-            side_effect=RuntimeError("adzuna down"),
-        ),
-        pytest.raises(RuntimeError, match="adzuna down"),
-    ):
-        await task_sync_jobs(ctx)
+    fetch_result = {"users_processed": 2, "total_jobs_fetched": 50}
 
-    session.rollback.assert_awaited_once()
+    with (
+        patch("worker.get_settings") as mock_settings,
+        patch(
+            "services.job_fetch_service.fetch_jobs_for_all_active_users",
+            new_callable=AsyncMock,
+            return_value=fetch_result,
+        ),
+    ):
+        mock_settings.return_value.jsearch_api_key = "test-key"
+        result = await task_fetch_jobs_for_users(ctx)
+
+    assert result["users_processed"] == 2
+    assert result["total_jobs_fetched"] == 50
 
 
 # ── task_rematch_active_users tests ──────────────────────────────────────────
@@ -194,8 +179,8 @@ async def test_task_rematch_continues_on_individual_user_error() -> None:
 def test_worker_settings_has_cron_jobs() -> None:
     from worker import WorkerSettings
 
-    assert len(WorkerSettings.cron_jobs) == 5
-    assert len(WorkerSettings.functions) == 6
+    assert len(WorkerSettings.cron_jobs) == 2
+    assert len(WorkerSettings.functions) == 2
     assert WorkerSettings.queue_name == "arq:scheduler"
 
 
@@ -279,14 +264,14 @@ def test_rematch_endpoint_runs_matching() -> None:
     assert data["total_queued"] == 2
 
 
-# ── Job sync config tests ───────────────────────────────────────────────────
+# ── Config tests ─────────────────────────────────────────────────────────────
 
 
-def test_settings_has_adzuna_sync_fields() -> None:
-    """Verify the new configurable sync settings exist with defaults."""
+def test_settings_has_jsearch_fields() -> None:
+    """Verify the JSearch API settings exist with defaults."""
     from config import Settings
 
     fields = Settings.model_fields
-    assert "adzuna_sync_country" in fields
-    assert "adzuna_sync_categories" in fields
-    assert "adzuna_sync_pages" in fields
+    assert "jsearch_api_key" in fields
+    assert "jsearch_results_per_query" in fields
+    assert "jsearch_top_n_to_enrich" in fields

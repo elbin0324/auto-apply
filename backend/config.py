@@ -58,26 +58,17 @@ class Settings(BaseSettings):
     adzuna_sync_categories: str = "it-jobs"  # comma-separated for multiple
     adzuna_sync_pages: int = 5
 
-    # Job discovery — ATS crawlers
-    discovery_concurrency: int = 5  # Max companies to crawl in parallel
-    workday_request_delay: float = 1.0  # Seconds between Workday API requests
+    # Job data — JSearch API (primary source via RapidAPI)
+    jsearch_api_key: str = ""  # RapidAPI key
+    jsearch_results_per_query: int = 20  # results per API call (max varies by plan)
+    jsearch_top_n_to_enrich: int = 20  # top-scoring jobs per user to enrich
 
     # Job enrichment (LLM-based description processing)
     enrichment_model: str = "claude-haiku-4-5-20251001"
     enrichment_max_tokens: int = 2048
     enrichment_batch_size: int = 50  # max jobs to enrich per periodic run
 
-    # Voyage AI embeddings
-    voyage_api_key: str = ""
-    voyage_model: str = "voyage-4-large"
-    voyage_batch_size: int = 128  # texts per API call (max 1000)
-
-    # Crawl queue settings
-    crawl_stale_hours: int = 6  # hours before a company is re-crawled
-    crawl_concurrency: int = 3  # parallel crawls within one worker process
-
     # Score settings
-    vector_search_limit: int = 200  # top-K from vector search before re-ranking
     score_min_threshold: float = 15.0  # minimum combined score to store
 
     # Stripe (optional until billing is implemented)

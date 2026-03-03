@@ -14,7 +14,6 @@ from schemas.enrichment import (
 )
 
 
-_COMPANY_ID = uuid.UUID("cccc1111-1111-1111-1111-111111111111")
 _JOB_ID_1 = uuid.UUID("aaaa1111-1111-1111-1111-111111111111")
 _JOB_ID_2 = uuid.UUID("aaaa2222-2222-2222-2222-222222222222")
 
@@ -23,10 +22,9 @@ _JOB_ID_2 = uuid.UUID("aaaa2222-2222-2222-2222-222222222222")
 
 
 def test_enrich_jobs_task_roundtrip() -> None:
-    task = EnrichJobsTask(company_id=_COMPANY_ID, job_ids=[_JOB_ID_1, _JOB_ID_2])
+    task = EnrichJobsTask(job_ids=[_JOB_ID_1, _JOB_ID_2])
     data = task.model_dump_json()
     restored = EnrichJobsTask.model_validate_json(data)
-    assert restored.company_id == _COMPANY_ID
     assert len(restored.job_ids) == 2
 
 
@@ -77,7 +75,7 @@ def test_enrichment_stats_defaults() -> None:
 async def test_push_enrich_task() -> None:
     from services.enrich_queue_service import push_enrich_task
 
-    task = EnrichJobsTask(company_id=_COMPANY_ID, job_ids=[_JOB_ID_1])
+    task = EnrichJobsTask(job_ids=[_JOB_ID_1])
 
     mock_redis = AsyncMock()
     mock_redis.rpush = AsyncMock()
@@ -111,7 +109,7 @@ async def test_pop_enrich_task_empty() -> None:
 async def test_pop_enrich_task_returns_task() -> None:
     from services.enrich_queue_service import pop_enrich_task
 
-    task = EnrichJobsTask(company_id=_COMPANY_ID, job_ids=[_JOB_ID_1])
+    task = EnrichJobsTask(job_ids=[_JOB_ID_1])
 
     mock_redis = AsyncMock()
     mock_redis.blpop = AsyncMock(return_value=("enrich:jobs", task.model_dump_json()))
@@ -124,7 +122,6 @@ async def test_pop_enrich_task_returns_task() -> None:
 
     assert result is not None
     envelope, popped_task = result
-    assert popped_task.company_id == _COMPANY_ID
     assert popped_task.job_ids == [_JOB_ID_1]
 
 

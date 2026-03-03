@@ -22,8 +22,7 @@ async def push_enrich_task(task: EnrichJobsTask, source: str = "scheduler") -> N
     )
     await redis.rpush(ENRICH_QUEUE_KEY, envelope.model_dump_json())
     logger.info(
-        "Pushed enrich:jobs task for company %s (%d jobs, task_id=%s)",
-        task.company_id,
+        "Pushed enrich:jobs task (%d jobs, task_id=%s)",
         len(task.job_ids),
         envelope.task_id,
     )

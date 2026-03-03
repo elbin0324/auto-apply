@@ -103,6 +103,46 @@ async def task_rematch_active_users(ctx: dict[str, Any]) -> dict[str, Any]:
             raise
 
 
+async def task_fetch_jobs_for_single_user(ctx: dict[str, Any], user_id_str: str) -> dict[str, Any]:
+    """On-demand: fetch + score jobs for a single user.
+
+    Enqueued by the API when a user activates auto-apply for the first time
+    or changes their target titles.
+    """
+    from uuid import UUID
+
+    from sqlalchemy import select
+
+    from models.auto_apply_config import AutoApplyConfig
+    from services.job_fetch_service import fetch_jobs_for_user
+
+    user_id = UUID(user_id_str)
+    settings = get_settings()
+    if not settings.jsearch_api_key:
+        return {"skipped": True, "reason": "jsearch_not_configured"}
+
+    db_factory = ctx["db_factory"]
+    async with db_factory() as db:
+        try:
+            result = await db.execute(
+                select(AutoApplyConfig).where(AutoApplyConfig.user_id == user_id)
+            )
+            config = result.scalar_one_or_none()
+            if not config:
+                return {"skipped": True, "reason": "no_config"}
+
+            # Fetch jobs from JSearch, upsert, push to score queue
+            fetch_stats = await fetch_jobs_for_user(db, user_id, config)
+            await db.commit()
+
+            logger.info("On-demand job fetch for user %s: %s", user_id, fetch_stats)
+            return {"user_id": user_id_str, **fetch_stats}
+        except Exception:
+            await db.rollback()
+            logger.exception("On-demand job fetch failed for user %s", user_id)
+            raise
+
+
 # ── Worker Configuration ──────────────────────────────────────────────────────
 
 
@@ -115,6 +155,7 @@ class WorkerSettings:
     functions = [
         task_fetch_jobs_for_users,
         task_rematch_active_users,
+        task_fetch_jobs_for_single_user,
     ]
 
     cron_jobs = [

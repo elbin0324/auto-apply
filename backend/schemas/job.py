@@ -14,7 +14,8 @@ class JobSearchParams(BaseModel):
     employment_type: list[str] | None = None  # full_time, part_time, contract, internship
     page: int = 1
     per_page: int = 20
-    sort_by: str = "posted_at"  # posted_at, salary
+    status: str | None = None  # new, pending_review, queued, applied, skipped
+    sort_by: str = "posted_at"  # posted_at, salary, match_score
 
 
 class JobResponse(BaseModel):
@@ -46,6 +47,9 @@ class JobResponse(BaseModel):
     posted_at: datetime | None = None
     is_active: bool = True
     match_score: float | None = None  # computed per-user, not stored
+    match_factors: dict | None = None  # scoring breakdown
+    application_status: str | None = None  # null = "new", else Application.status
+    application_id: str | None = None  # UUID of Application row if exists
 
 
 class JobListResponse(BaseModel):

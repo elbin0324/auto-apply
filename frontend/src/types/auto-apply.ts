@@ -8,7 +8,8 @@ export interface AutoApplyConfigUpdate {
   location_type_pref?: string[] | null;
   experience_level?: string | null;
   daily_apply_limit?: number | null;
-  require_review?: boolean | null;
+  apply_mode?: "safe" | "hybrid" | "auto" | null;
+  auto_apply_threshold?: number | null;
 }
 
 export interface AutoApplyConfigResponse {
@@ -24,7 +25,8 @@ export interface AutoApplyConfigResponse {
   location_type_pref?: string[] | null;
   experience_level?: string | null;
   daily_apply_limit: number;
-  require_review: boolean;
+  apply_mode: "safe" | "hybrid" | "auto";
+  auto_apply_threshold: number;
 }
 
 export interface QueueStatus {

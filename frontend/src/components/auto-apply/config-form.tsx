@@ -3,7 +3,6 @@ import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { TagInput } from "./tag-input";
 import { useUpdateAutoApplyConfig } from "@/hooks/use-auto-apply-status";
 import type { AutoApplyConfigResponse } from "@/types/auto-apply";
@@ -16,6 +15,25 @@ const experienceLevels = [
   { value: "senior", label: "Senior" },
   { value: "lead", label: "Lead" },
   { value: "executive", label: "Executive" },
+];
+
+const applyModes = [
+  {
+    value: "safe" as const,
+    label: "Safe",
+    description: "We find and score jobs. You manually queue individual jobs to apply.",
+  },
+  {
+    value: "hybrid" as const,
+    label: "Hybrid",
+    description:
+      "Jobs scoring above your threshold are auto-queued. Lower-scoring jobs await your review.",
+  },
+  {
+    value: "auto" as const,
+    label: "Auto",
+    description: "All matched jobs are automatically queued for apply.",
+  },
 ];
 
 interface ConfigFormProps {
@@ -34,7 +52,8 @@ export function ConfigForm({ config }: ConfigFormProps) {
   const [minSalary, setMinSalary] = useState<string>("");
   const [maxSalary, setMaxSalary] = useState<string>("");
   const [dailyLimit, setDailyLimit] = useState<string>("20");
-  const [requireReview, setRequireReview] = useState(true);
+  const [applyMode, setApplyMode] = useState<"safe" | "hybrid" | "auto">("safe");
+  const [autoApplyThreshold, setAutoApplyThreshold] = useState<string>("70");
 
   useEffect(() => {
     setTargetTitles(config.target_titles ?? []);
@@ -46,7 +65,8 @@ export function ConfigForm({ config }: ConfigFormProps) {
     setMinSalary(config.min_salary?.toString() ?? "");
     setMaxSalary(config.max_salary?.toString() ?? "");
     setDailyLimit(config.daily_apply_limit.toString());
-    setRequireReview(config.require_review);
+    setApplyMode(config.apply_mode);
+    setAutoApplyThreshold(config.auto_apply_threshold.toString());
   }, [config]);
 
   const save = () => {
@@ -62,7 +82,8 @@ export function ConfigForm({ config }: ConfigFormProps) {
       min_salary: minSalary ? Number(minSalary) : null,
       max_salary: maxSalary ? Number(maxSalary) : null,
       daily_apply_limit: Number(dailyLimit) || 20,
-      require_review: requireReview,
+      apply_mode: applyMode,
+      auto_apply_threshold: Number(autoApplyThreshold) || 70,
     });
   };
 
@@ -165,25 +186,65 @@ export function ConfigForm({ config }: ConfigFormProps) {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label>Daily Apply Limit</Label>
-          <Input
-            type="number"
-            min={1}
-            max={100}
-            value={dailyLimit}
-            onChange={(e) => setDailyLimit(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center justify-between rounded-lg border border-border-subtle p-3">
-          <Label>Require Review Before Applying</Label>
-          <Switch
-            checked={requireReview}
-            onCheckedChange={setRequireReview}
-          />
+      <div className="space-y-1.5">
+        <Label>Daily Apply Limit</Label>
+        <Input
+          type="number"
+          min={1}
+          max={100}
+          value={dailyLimit}
+          onChange={(e) => setDailyLimit(e.target.value)}
+          className="max-w-[200px]"
+        />
+      </div>
+
+      {/* Apply Mode Selector */}
+      <div className="space-y-2">
+        <Label>Apply Mode</Label>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {applyModes.map((mode) => (
+            <button
+              key={mode.value}
+              type="button"
+              onClick={() => setApplyMode(mode.value)}
+              className={`rounded-lg border p-3 text-left transition-colors ${
+                applyMode === mode.value
+                  ? "border-accent-purple bg-accent-purple/10"
+                  : "border-border-subtle hover:border-border-hover"
+              }`}
+            >
+              <span className="text-sm font-semibold text-text-primary">
+                {mode.label}
+              </span>
+              <p className="mt-1 text-xs text-text-muted">{mode.description}</p>
+            </button>
+          ))}
         </div>
       </div>
+
+      {/* Threshold slider for hybrid mode */}
+      {applyMode === "hybrid" && (
+        <div className="space-y-1.5">
+          <Label>
+            Auto-Apply Threshold:{" "}
+            <span className="font-mono text-accent-purple">
+              {autoApplyThreshold}%
+            </span>
+          </Label>
+          <p className="text-xs text-text-muted">
+            Jobs scoring above this threshold will be automatically queued.
+          </p>
+          <input
+            type="range"
+            min={15}
+            max={100}
+            step={5}
+            value={autoApplyThreshold}
+            onChange={(e) => setAutoApplyThreshold(e.target.value)}
+            className="w-full max-w-[400px]"
+          />
+        </div>
+      )}
 
       <Button onClick={save} disabled={mutation.isPending}>
         {mutation.isPending ? (

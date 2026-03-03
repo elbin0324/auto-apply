@@ -106,7 +106,6 @@ async def score_new_jobs_for_users(
                     "user_id": user.id,
                     "job_id": job.id,
                     "score": heuristic_score,
-                    "vector_score": None,
                     "factors": {
                         **factors,
                         "combined_method": "heuristic",
@@ -121,7 +120,6 @@ async def score_new_jobs_for_users(
                 constraint="uq_job_match_scores_user_job",
                 set_={
                     "score": stmt.excluded.score,
-                    "vector_score": stmt.excluded.vector_score,
                     "factors": stmt.excluded.factors,
                     "computed_at": stmt.excluded.computed_at,
                 },

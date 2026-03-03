@@ -171,6 +171,7 @@ def upgrade() -> None:
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("requirements", postgresql.JSONB(), nullable=True),
         sa.Column("url", sa.Text(), nullable=False),
+        sa.Column("apply_url", sa.Text(), nullable=True),
         sa.Column("source", sa.String(), nullable=False, server_default="adzuna"),
         sa.Column("category", sa.String(), nullable=True),
         sa.Column("tags", postgresql.JSONB(), nullable=True),

@@ -30,7 +30,8 @@ def _mock_active_config(user_id: uuid.UUID, **overrides: object) -> SimpleNamesp
         "target_titles": ["Software Engineer"],
         "target_locations": ["Remote"],
         "daily_apply_limit": 25,
-        "require_review": False,
+        "apply_mode": "auto",
+        "auto_apply_threshold": 70,
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -180,7 +181,7 @@ def test_worker_settings_has_cron_jobs() -> None:
     from worker import WorkerSettings
 
     assert len(WorkerSettings.cron_jobs) == 2
-    assert len(WorkerSettings.functions) == 2
+    assert len(WorkerSettings.functions) == 3
     assert WorkerSettings.queue_name == "arq:scheduler"
 
 

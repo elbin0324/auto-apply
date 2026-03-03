@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { MapPin, Clock } from "lucide-react";
+import { MapPin, Clock, Send, X, Undo2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatSalaryRange, formatRelativeDate } from "@/lib/utils";
+import { useQueueJob, useSkipJob, useUnskipJob } from "@/hooks/use-job-actions";
 import type { JobResponse } from "@/types/job";
 
 interface JobCardProps {
@@ -15,7 +17,41 @@ function matchColor(score: number | null | undefined) {
   return "text-text-muted bg-text-muted/10";
 }
 
+const statusConfig: Record<string, { label: string; className: string }> = {
+  pending_review: {
+    label: "Pending Review",
+    className: "text-amber-400 bg-amber-400/15",
+  },
+  queued: {
+    label: "Queued",
+    className: "text-accent-blue bg-accent-blue/15",
+  },
+  in_progress: {
+    label: "Applying...",
+    className: "text-purple-400 bg-purple-400/15",
+  },
+  applied: {
+    label: "Applied",
+    className: "text-accent-green bg-accent-green/15",
+  },
+  skipped: {
+    label: "Skipped",
+    className: "text-text-muted bg-text-muted/10 line-through",
+  },
+  failed: {
+    label: "Failed",
+    className: "text-red-400 bg-red-400/15",
+  },
+};
+
 export function JobCard({ job }: JobCardProps) {
+  const queueMutation = useQueueJob();
+  const skipMutation = useSkipJob();
+  const unskipMutation = useUnskipJob();
+
+  const appStatus = job.application_status;
+  const cfg = appStatus ? statusConfig[appStatus] : null;
+
   return (
     <Link
       to="/jobs/$jobId"
@@ -31,14 +67,21 @@ export function JobCard({ job }: JobCardProps) {
             {job.company ?? "Unknown Company"}
           </p>
         </div>
-        {job.match_score != null && (
-          <Badge
-            variant="secondary"
-            className={`shrink-0 font-mono ${matchColor(job.match_score)}`}
-          >
-            {job.match_score}%
-          </Badge>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {cfg && (
+            <Badge variant="secondary" className={`text-xs ${cfg.className}`}>
+              {cfg.label}
+            </Badge>
+          )}
+          {job.match_score != null && (
+            <Badge
+              variant="secondary"
+              className={`font-mono ${matchColor(job.match_score)}`}
+            >
+              {job.match_score}%
+            </Badge>
+          )}
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-text-muted">
@@ -63,6 +106,59 @@ export function JobCard({ job }: JobCardProps) {
             <Clock className="h-3.5 w-3.5" />
             {formatRelativeDate(job.posted_at)}
           </span>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div
+        className="mt-3 flex gap-2"
+        onClick={(e) => e.preventDefault()}
+      >
+        {appStatus == null && (
+          <>
+            <Button
+              size="sm"
+              variant="default"
+              disabled={queueMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                queueMutation.mutate(job.id);
+              }}
+            >
+              {queueMutation.isPending ? (
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Send className="mr-1 h-3.5 w-3.5" />
+              )}
+              Queue
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={skipMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                skipMutation.mutate(job.id);
+              }}
+            >
+              <X className="mr-1 h-3.5 w-3.5" />
+              Skip
+            </Button>
+          </>
+        )}
+        {appStatus === "skipped" && (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={unskipMutation.isPending}
+            onClick={(e) => {
+              e.preventDefault();
+              unskipMutation.mutate(job.id);
+            }}
+          >
+            <Undo2 className="mr-1 h-3.5 w-3.5" />
+            Undo Skip
+          </Button>
         )}
       </div>
     </Link>

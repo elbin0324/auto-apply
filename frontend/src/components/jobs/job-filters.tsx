@@ -6,9 +6,17 @@ import type { JobSearchParams } from "@/types/job";
 
 const locationTypes = ["remote", "hybrid", "onsite"] as const;
 const sortOptions = [
+  { value: "match_score", label: "Match Score" },
   { value: "posted_at", label: "Newest" },
   { value: "salary", label: "Salary" },
-  { value: "match_score", label: "Match Score" },
+];
+const statusOptions = [
+  { value: "", label: "All" },
+  { value: "new", label: "New" },
+  { value: "pending_review", label: "Pending Review" },
+  { value: "queued", label: "Queued" },
+  { value: "applied", label: "Applied" },
+  { value: "skipped", label: "Skipped" },
 ];
 
 interface JobFiltersProps {
@@ -22,11 +30,12 @@ export function JobFilters({ filters, onChange, onClear }: JobFiltersProps) {
     filters.location ||
     filters.location_type?.length ||
     filters.salary_min != null ||
-    filters.category;
+    filters.category ||
+    filters.status;
 
   return (
     <div className="rounded-xl border border-border-subtle bg-bg-card p-4 space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="space-y-1">
           <Label>Location</Label>
           <Input
@@ -86,9 +95,26 @@ export function JobFilters({ filters, onChange, onClear }: JobFiltersProps) {
         </div>
 
         <div className="space-y-1">
+          <Label>Status</Label>
+          <select
+            value={filters.status ?? ""}
+            onChange={(e) =>
+              onChange({ status: e.target.value || null, page: 1 })
+            }
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            {statusOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1">
           <Label>Sort By</Label>
           <select
-            value={filters.sort_by ?? "posted_at"}
+            value={filters.sort_by ?? "match_score"}
             onChange={(e) => onChange({ sort_by: e.target.value, page: 1 })}
             className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
           >

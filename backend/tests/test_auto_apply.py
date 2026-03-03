@@ -45,7 +45,8 @@ def _mock_config(**overrides: object) -> SimpleNamespace:
         "location_type_pref": None,
         "experience_level": None,
         "daily_apply_limit": 25,
-        "require_review": False,
+        "apply_mode": "auto",
+        "auto_apply_threshold": 70,
         "created_at": datetime(2026, 2, 1, tzinfo=timezone.utc),
         "updated_at": datetime(2026, 2, 1, tzinfo=timezone.utc),
     }
@@ -226,18 +227,20 @@ class TestAutoApplyStartStop:
         assert resp.status_code == 400
 
     @patch("routers.auto_apply.run_matching_for_user", new_callable=AsyncMock)
+    @patch("services.auto_apply_service.enqueue_immediate_fetch", new_callable=AsyncMock)
+    @patch("services.auto_apply_service.count_user_scores", new_callable=AsyncMock)
     @patch("routers.auto_apply.get_or_create_config", new_callable=AsyncMock)
     def test_start_success(
-        self, mock_get: AsyncMock, mock_match: AsyncMock
+        self, mock_get: AsyncMock, mock_scores: AsyncMock, mock_enqueue: AsyncMock, mock_match: AsyncMock
     ) -> None:
         config = _mock_config(target_titles=["Python Developer"])
         mock_get.return_value = config
+        mock_scores.return_value = 10  # has existing scores
         mock_match.return_value = {
             "matched": 5,
             "queued": 3,
             "skipped_already_applied": 1,
             "skipped_daily_limit": 1,
-            "initial_status": "queued",
         }
 
         resp = client.post("/api/auto-apply/start")

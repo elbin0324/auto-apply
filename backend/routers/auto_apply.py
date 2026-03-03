@@ -41,10 +41,19 @@ async def update_config(
     body: AutoApplyConfigUpdate, user: CurrentUser, db: DbSession
 ) -> AutoApplyConfigResponse:
     config = await get_or_create_config(db, user.id)
+
+    had_titles = bool(config.target_titles)
     update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(config, field, value)
     await db.flush()
+
+    # First-time trigger: if config now has titles and titles just changed, fetch immediately
+    now_has_titles = bool(config.target_titles)
+    if config.is_active and now_has_titles and (not had_titles or "target_titles" in update_data):
+        from services.auto_apply_service import enqueue_immediate_fetch
+        await enqueue_immediate_fetch(user.id)
+
     return AutoApplyConfigResponse.model_validate(config)
 
 
@@ -53,6 +62,8 @@ async def update_config(
 
 @router.post("/start")
 async def start_auto_apply(user: CurrentUser, db: DbSession) -> dict:
+    from services.auto_apply_service import count_user_scores, enqueue_immediate_fetch
+
     config = await get_or_create_config(db, user.id)
 
     if not config.target_titles:
@@ -64,8 +75,17 @@ async def start_auto_apply(user: CurrentUser, db: DbSession) -> dict:
     config.is_active = True
     await db.flush()
 
+    # Check if user already has scored jobs
+    score_count = await count_user_scores(db, user.id)
+
+    if score_count == 0:
+        # First time: trigger immediate fetch + score pipeline
+        await enqueue_immediate_fetch(user.id)
+        return {"status": "started", "is_active": True, "finding_jobs": True}
+
+    # Already has scores: run matching based on apply_mode
     match_stats = await run_matching_for_user(db, user.id, config)
-    return {"status": "started", "is_active": True, **match_stats}
+    return {"status": "started", "is_active": True, "finding_jobs": False, **match_stats}
 
 
 @router.post("/stop")

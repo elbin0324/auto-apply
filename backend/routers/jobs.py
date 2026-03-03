@@ -196,7 +196,7 @@ async def rescore_jobs(user: CurrentUser, db: DbSession) -> dict:
     """Rescore all active jobs for the current user via the score queue.
 
     Useful after updating profile, skills, or preferences. Pushes existing
-    job IDs to the score worker — does not re-fetch from JSearch.
+    job IDs to the score worker — does not re-fetch from Fantastic Jobs.
     """
     from schemas.crawl import ScoreJobsTask
     from services.score_queue_service import push_score_jobs_task

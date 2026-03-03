@@ -129,7 +129,7 @@ async def score_new_jobs_for_users(
 
         # Select top N scoring jobs for this user to enrich
         scored_jobs.sort(reverse=True)
-        top_n = settings.jsearch_top_n_to_enrich
+        top_n = settings.fantastic_top_n_to_enrich
         for _score, job_id in scored_jobs[:top_n]:
             jobs_to_enrich.add(job_id)
 

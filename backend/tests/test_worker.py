@@ -63,15 +63,15 @@ async def test_task_fetch_skips_when_no_api_key() -> None:
     ctx: dict = {"db_factory": factory}
 
     with patch("worker.get_settings") as mock_settings:
-        mock_settings.return_value.jsearch_api_key = ""
+        mock_settings.return_value.rapidapi_key = ""
         result = await task_fetch_jobs_for_users(ctx)
 
     assert result["skipped"] is True
-    assert "jsearch_not_configured" in result["reason"]
+    assert "fantastic_not_configured" in result["reason"]
 
 
 @pytest.mark.asyncio
-async def test_task_fetch_calls_service() -> None:
+async def test_task_fetch_calls_service_with_recent_only() -> None:
     from worker import task_fetch_jobs_for_users
 
     factory, session = _mock_db_factory()
@@ -85,10 +85,15 @@ async def test_task_fetch_calls_service() -> None:
             "services.job_fetch_service.fetch_jobs_for_all_active_users",
             new_callable=AsyncMock,
             return_value=fetch_result,
-        ),
+        ) as mock_fetch,
     ):
-        mock_settings.return_value.jsearch_api_key = "test-key"
+        mock_settings.return_value.rapidapi_key = "test-key"
         result = await task_fetch_jobs_for_users(ctx)
+
+    # Daily cron should pass recent_only=True (24h endpoint)
+    mock_fetch.assert_awaited_once()
+    call_kwargs = mock_fetch.call_args
+    assert call_kwargs.kwargs.get("recent_only") is True
 
     assert result["users_processed"] == 2
     assert result["total_jobs_fetched"] == 50
@@ -268,11 +273,11 @@ def test_rematch_endpoint_runs_matching() -> None:
 # ── Config tests ─────────────────────────────────────────────────────────────
 
 
-def test_settings_has_jsearch_fields() -> None:
-    """Verify the JSearch API settings exist with defaults."""
+def test_settings_has_fantastic_fields() -> None:
+    """Verify the Fantastic Jobs API settings exist with defaults."""
     from config import Settings
 
     fields = Settings.model_fields
-    assert "jsearch_api_key" in fields
-    assert "jsearch_results_per_query" in fields
-    assert "jsearch_top_n_to_enrich" in fields
+    assert "rapidapi_key" in fields
+    assert "fantastic_results_per_query" in fields
+    assert "fantastic_top_n_to_enrich" in fields

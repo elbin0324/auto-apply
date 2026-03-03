@@ -58,10 +58,10 @@ class Settings(BaseSettings):
     adzuna_sync_categories: str = "it-jobs"  # comma-separated for multiple
     adzuna_sync_pages: int = 5
 
-    # Job data — JSearch API (primary source via RapidAPI)
-    jsearch_api_key: str = ""  # RapidAPI key
-    jsearch_results_per_query: int = 20  # results per API call (max varies by plan)
-    jsearch_top_n_to_enrich: int = 20  # top-scoring jobs per user to enrich
+    # Job data — Fantastic Jobs API (primary source via RapidAPI)
+    rapidapi_key: str = ""  # RapidAPI key (Fantastic Jobs Job Search API)
+    fantastic_results_per_query: int = 100  # results per API call (max allowed)
+    fantastic_top_n_to_enrich: int = 20  # top-scoring jobs per user to enrich
 
     # Job enrichment (LLM-based description processing)
     enrichment_model: str = "claude-haiku-4-5-20251001"

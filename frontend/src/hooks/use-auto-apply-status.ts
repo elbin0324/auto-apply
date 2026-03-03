@@ -48,6 +48,7 @@ export function useReviewApplication() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["auto-apply-queue"] });
       queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
     },
   });
 }

@@ -23,6 +23,7 @@ import AdminOverviewPage from "@/pages/admin/overview";
 import AdminUsersPage from "@/pages/admin/users";
 import AdminQueuesPage from "@/pages/admin/queues";
 import AdminDataPage from "@/pages/admin/data-management";
+import AdminWorkersPage from "@/pages/admin/workers";
 
 const rootRoute = createRootRoute({
   component: Outlet,
@@ -192,6 +193,18 @@ const adminDataRoute = createRoute({
   ),
 });
 
+const adminWorkersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/workers",
+  component: () => (
+    <AdminRoute>
+      <DashboardLayout>
+        <AdminWorkersPage />
+      </DashboardLayout>
+    </AdminRoute>
+  ),
+});
+
 const routeTree = rootRoute.addChildren([
   landingRoute,
   loginRoute,
@@ -208,6 +221,7 @@ const routeTree = rootRoute.addChildren([
   adminUsersRoute,
   adminQueuesRoute,
   adminDataRoute,
+  adminWorkersRoute,
 ]);
 
 export const router = createRouter({ routeTree });

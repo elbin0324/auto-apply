@@ -1,4 +1,4 @@
-.PHONY: dev test migrate lint services clean help worker seed-companies crawl-worker score-worker backfill-embeddings import-companies
+.PHONY: dev test migrate lint services clean help worker seed-companies crawl-worker score-worker enrich-worker backfill-embeddings import-companies
 
 # ── Local Services ────────────────────────────────────────────────────────────
 services:
@@ -36,6 +36,12 @@ score-worker:
 
 score-worker-dev:
 	cd backend && poetry run watchfiles "python score_worker.py" --filter python
+
+enrich-worker:
+	cd backend && poetry run python enrich_worker.py
+
+enrich-worker-dev:
+	cd backend && poetry run watchfiles "python enrich_worker.py" --filter python
 
 # ── Database ──────────────────────────────────────────────────────────────────
 migrate:
@@ -101,6 +107,7 @@ help:
 	@echo "  worker-dev    - Start arq worker with auto-reload"
 	@echo "  crawl-worker  - Start crawl worker (consumes crawl:companies queue)"
 	@echo "  score-worker  - Start score worker (consumes score:jobs + score:users queues)"
+	@echo "  enrich-worker - Start enrich worker (consumes enrich:jobs queue)"
 	@echo "  seed-companies - Seed company registry with known tech companies"
 	@echo "  import-companies - Bulk import companies from JSON file"
 	@echo "  backfill-embeddings - Backfill embeddings for all jobs and profiles"

@@ -34,6 +34,7 @@ class QueueDepths(BaseModel):
     score_jobs: int
     score_users: int
     apply: int
+    enrich: int
 
 
 class AdminOverview(BaseModel):
@@ -56,6 +57,7 @@ class AdminQueueStatus(BaseModel):
     score_jobs_queue_depth: int
     score_users_queue_depth: int
     apply_queue_depth: int
+    enrich_queue_depth: int
     crawl_dedup_keys: int
 
 
@@ -64,3 +66,33 @@ class WipeResult(BaseModel):
 
     affected: int
     action: str  # "soft_delete" or "hard_delete"
+
+
+class WorkerStatus(BaseModel):
+    """Heartbeat data for a single worker instance."""
+
+    name: str
+    worker_id: str | None = None
+    started_at: str | None = None
+    last_beat_at: str | None = None
+    tasks_processed: int = 0
+    tasks_failed: int = 0
+    current_task: str = ""
+    status: str = "offline"  # "idle", "processing", "offline"
+    is_alive: bool = False
+
+
+class WorkersOverview(BaseModel):
+    workers: list[WorkerStatus]
+
+
+class TriggerResult(BaseModel):
+    """Response from a manual trigger action."""
+
+    triggered: str
+    detail: str
+
+
+class QueuePurgeResult(BaseModel):
+    purged: int
+    queue: str

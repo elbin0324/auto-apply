@@ -67,7 +67,7 @@ export default function AdminOverviewPage() {
           </h2>
           {isLoading ? (
             <div className="space-y-3">
-              {[1, 2, 3, 4].map((i) => (
+              {[1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-6 w-full" />
               ))}
             </div>
@@ -78,6 +78,7 @@ export default function AdminOverviewPage() {
                 { label: "Crawl Queue", value: data?.queue_depths.crawl ?? 0 },
                 { label: "Score Jobs", value: data?.queue_depths.score_jobs ?? 0 },
                 { label: "Score Users", value: data?.queue_depths.score_users ?? 0 },
+                { label: "Enrich Jobs", value: data?.queue_depths.enrich ?? 0 },
               ].map(({ label, value }) => (
                 <div
                   key={label}

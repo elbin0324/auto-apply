@@ -1,7 +1,8 @@
-import { Activity, Clock } from "lucide-react";
+import { Activity, Clock, Loader2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAdminQueues } from "@/hooks/use-admin";
+import { useAdminQueues, usePurgeQueue } from "@/hooks/use-admin";
 
 function depthColor(depth: number) {
   if (depth === 0) return "text-emerald-400";
@@ -17,6 +18,7 @@ function depthBg(depth: number) {
 
 export default function AdminQueuesPage() {
   const { data, isLoading, dataUpdatedAt } = useAdminQueues();
+  const purgeQueue = usePurgeQueue();
 
   const queues = data
     ? [
@@ -24,24 +26,42 @@ export default function AdminQueuesPage() {
           label: "Apply Tasks",
           description: "Jobs queued for agent workers to process",
           depth: data.apply_queue_depth,
+          purgeKey: null, // Not purgeable — owned by apply-agents contract
         },
         {
           label: "Crawl Queue",
           description: "Companies pending career page crawl",
           depth: data.crawl_queue_depth,
+          purgeKey: "crawl",
         },
         {
           label: "Score Jobs",
           description: "Job batches pending scoring after crawl",
           depth: data.score_jobs_queue_depth,
+          purgeKey: "score_jobs",
         },
         {
           label: "Score Users",
           description: "Users pending profile re-scoring",
           depth: data.score_users_queue_depth,
+          purgeKey: "score_users",
+        },
+        {
+          label: "Enrich Jobs",
+          description: "Job batches pending LLM enrichment",
+          depth: data.enrich_queue_depth,
+          purgeKey: "enrich",
         },
       ]
     : [];
+
+  async function handlePurge(label: string, purgeKey: string) {
+    const confirmed = window.confirm(
+      `Are you sure you want to purge all items from "${label}"?\n\nThis will discard all pending tasks in this queue.`,
+    );
+    if (!confirmed) return;
+    await purgeQueue.mutateAsync(purgeKey);
+  }
 
   return (
     <div className="space-y-6">
@@ -65,7 +85,7 @@ export default function AdminQueuesPage() {
       {/* Queue cards */}
       <div className="grid gap-4 sm:grid-cols-2">
         {isLoading
-          ? Array.from({ length: 4 }).map((_, i) => (
+          ? Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
                 className="rounded-xl border border-border-subtle bg-bg-card p-5"
@@ -74,7 +94,7 @@ export default function AdminQueuesPage() {
                 <Skeleton className="h-10 w-16" />
               </div>
             ))
-          : queues.map(({ label, description, depth }) => (
+          : queues.map(({ label, description, depth, purgeKey }) => (
               <div
                 key={label}
                 className="rounded-xl border border-border-subtle bg-bg-card p-5"
@@ -88,11 +108,30 @@ export default function AdminQueuesPage() {
                   </div>
                 </div>
                 <p className="text-xs text-text-muted mb-3">{description}</p>
-                <span
-                  className={`text-3xl font-bold font-mono ${depthColor(depth)}`}
-                >
-                  {depth}
-                </span>
+                <div className="flex items-center justify-between">
+                  <span
+                    className={`text-3xl font-bold font-mono ${depthColor(depth)}`}
+                  >
+                    {depth}
+                  </span>
+                  {purgeKey && depth > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-text-muted hover:text-red-400"
+                      disabled={purgeQueue.isPending}
+                      onClick={() => handlePurge(label, purgeKey)}
+                    >
+                      {purgeQueue.isPending &&
+                      purgeQueue.variables === purgeKey ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        <Trash2 className="h-3 w-3 mr-1" />
+                      )}
+                      Purge
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
       </div>
@@ -109,7 +148,8 @@ export default function AdminQueuesPage() {
                 Crawl Dedup Keys
               </p>
               <p className="text-xs text-text-muted">
-                Active dedup keys prevent re-crawling recently processed companies
+                Active dedup keys prevent re-crawling recently processed
+                companies
               </p>
             </div>
             <Badge variant="secondary" className="font-mono">

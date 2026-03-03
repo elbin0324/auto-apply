@@ -18,6 +18,12 @@ async def startup(ctx: dict[str, Any]) -> None:
     """Initialise database session factory for background tasks."""
     from db.session import AsyncSessionLocal
 
+    settings = get_settings()
+    if settings.sentry_dsn:
+        import sentry_sdk
+
+        sentry_sdk.init(dsn=settings.sentry_dsn, environment=settings.env)
+
     ctx["db_factory"] = AsyncSessionLocal
     logger.info("arq scheduler worker started")
 

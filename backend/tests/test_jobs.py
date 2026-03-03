@@ -131,22 +131,23 @@ class TestJobList:
         _clear_overrides()
 
     def test_list_jobs_returns_paginated_shape(self) -> None:
-        jobs = [_mock_job(), _mock_job(id=_JOB_ID_2, external_id="adzuna-456")]
+        job1 = _mock_job()
+        job2 = _mock_job(id=_JOB_ID_2, external_id="adzuna-456")
 
-        # First execute returns count
+        # First execute: count query
         count_result = MagicMock()
         count_result.scalar_one.return_value = 2
 
-        # Second execute returns jobs
-        jobs_result = MagicMock()
-        jobs_result.scalars.return_value.all.return_value = jobs
-
-        # Third execute returns match scores (empty)
-        scores_result = MagicMock()
-        scores_result.scalars.return_value.all.return_value = []
+        # Second execute: joined query returns row tuples
+        # Each row is (Job, score, factors, application_id, application_status)
+        rows_result = MagicMock()
+        rows_result.all.return_value = [
+            (job1, 72.5, {"skill_score": 35.0}, None, None),
+            (job2, 60.0, {"skill_score": 25.0}, None, None),
+        ]
 
         self.session.execute = AsyncMock(
-            side_effect=[count_result, jobs_result, scores_result]
+            side_effect=[count_result, rows_result]
         )
 
         resp = client.get("/api/jobs")
@@ -157,28 +158,31 @@ class TestJobList:
         assert data["per_page"] == 20
         assert len(data["jobs"]) == 2
         assert data["jobs"][0]["title"] == "Senior Python Developer"
+        assert data["jobs"][0]["match_score"] == 72.5
+        assert data["jobs"][0]["application_status"] is None
 
-    def test_list_jobs_with_match_scores(self) -> None:
+    def test_list_jobs_with_application_status(self) -> None:
         job = _mock_job()
-        score = _mock_score()
+        app_id = uuid.uuid4()
 
         count_result = MagicMock()
         count_result.scalar_one.return_value = 1
 
-        jobs_result = MagicMock()
-        jobs_result.scalars.return_value.all.return_value = [job]
-
-        scores_result = MagicMock()
-        scores_result.scalars.return_value.all.return_value = [score]
+        rows_result = MagicMock()
+        rows_result.all.return_value = [
+            (job, 72.5, {"skill_score": 35.0}, app_id, "queued"),
+        ]
 
         self.session.execute = AsyncMock(
-            side_effect=[count_result, jobs_result, scores_result]
+            side_effect=[count_result, rows_result]
         )
 
         resp = client.get("/api/jobs")
         assert resp.status_code == 200
         data = resp.json()
         assert data["jobs"][0]["match_score"] == 72.5
+        assert data["jobs"][0]["application_status"] == "queued"
+        assert data["jobs"][0]["application_id"] == str(app_id)
 
 
 # ── Job detail ───────────────────────────────────────────────────────────────
@@ -195,13 +199,11 @@ class TestJobDetail:
 
     def test_get_job_found(self) -> None:
         job = _mock_job()
-        job_result = MagicMock()
-        job_result.scalar_one_or_none.return_value = job
 
-        score_result = MagicMock()
-        score_result.scalar_one_or_none.return_value = None
-
-        self.session.execute = AsyncMock(side_effect=[job_result, score_result])
+        # Single execute returns row tuple (Job, score, factors, app_id, app_status)
+        result = MagicMock()
+        result.one_or_none.return_value = (job, None, None, None, None)
+        self.session.execute = AsyncMock(return_value=result)
 
         resp = client.get(f"/api/jobs/{_JOB_ID}")
         assert resp.status_code == 200
@@ -209,10 +211,11 @@ class TestJobDetail:
         assert data["title"] == "Senior Python Developer"
         assert data["company"] == "Acme Corp"
         assert data["match_score"] is None
+        assert data["application_status"] is None
 
     def test_get_job_not_found(self) -> None:
         result = MagicMock()
-        result.scalar_one_or_none.return_value = None
+        result.one_or_none.return_value = None
         self.session.execute = AsyncMock(return_value=result)
 
         resp = client.get(f"/api/jobs/{_JOB_ID}")
@@ -220,19 +223,31 @@ class TestJobDetail:
 
     def test_get_job_with_score(self) -> None:
         job = _mock_job()
-        score = _mock_score(score=85.0)
+        factors = {"skill_score": 35.0, "title_score": 22.5, "location_score": 15.0}
 
-        job_result = MagicMock()
-        job_result.scalar_one_or_none.return_value = job
-
-        score_result = MagicMock()
-        score_result.scalar_one_or_none.return_value = score
-
-        self.session.execute = AsyncMock(side_effect=[job_result, score_result])
+        result = MagicMock()
+        result.one_or_none.return_value = (job, 85.0, factors, None, None)
+        self.session.execute = AsyncMock(return_value=result)
 
         resp = client.get(f"/api/jobs/{_JOB_ID}")
         assert resp.status_code == 200
-        assert resp.json()["match_score"] == 85.0
+        data = resp.json()
+        assert data["match_score"] == 85.0
+        assert data["match_factors"]["skill_score"] == 35.0
+
+    def test_get_job_with_application(self) -> None:
+        job = _mock_job()
+        app_id = uuid.uuid4()
+
+        result = MagicMock()
+        result.one_or_none.return_value = (job, 72.5, {}, app_id, "applied")
+        self.session.execute = AsyncMock(return_value=result)
+
+        resp = client.get(f"/api/jobs/{_JOB_ID}")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["application_status"] == "applied"
+        assert data["application_id"] == str(app_id)
 
 
 # ── Match endpoint ───────────────────────────────────────────────────────────

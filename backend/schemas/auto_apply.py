@@ -50,7 +50,8 @@ class AutoApplyConfigUpdate(BaseModel):
     location_type_pref: list[str] | None = None  # remote, hybrid, onsite
     experience_level: str | None = None  # entry, mid, senior, lead
     daily_apply_limit: int | None = Field(default=None, ge=1, le=100)
-    require_review: bool | None = None
+    apply_mode: str | None = Field(default=None, pattern="^(safe|hybrid|auto)$")
+    auto_apply_threshold: int | None = Field(default=None, ge=15, le=100)
 
 
 class AutoApplyConfigResponse(BaseModel):
@@ -68,7 +69,8 @@ class AutoApplyConfigResponse(BaseModel):
     location_type_pref: list[str] | None = None
     experience_level: str | None = None
     daily_apply_limit: int = 25
-    require_review: bool = False
+    apply_mode: str = "safe"
+    auto_apply_threshold: int = 70
 
 
 class AutoApplyStatus(BaseModel):

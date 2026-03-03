@@ -5,16 +5,32 @@ import {
   ExternalLink,
   Loader2,
   Building2,
+  Send,
+  X,
+  Undo2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useJobDetail, useJobMatch } from "@/hooks/use-job-detail";
+import { useQueueJob, useSkipJob, useUnskipJob } from "@/hooks/use-job-actions";
 import { formatSalaryRange, formatDate } from "@/lib/utils";
 
 export default function JobDetailPage() {
   const { jobId } = useParams({ strict: false }) as { jobId: string };
   const { data: job, isLoading } = useJobDetail(jobId);
   const { data: match } = useJobMatch(jobId);
+  const queueMutation = useQueueJob();
+  const skipMutation = useSkipJob();
+  const unskipMutation = useUnskipJob();
+
+  const statusConfig: Record<string, { label: string; className: string }> = {
+    pending_review: { label: "Pending Review", className: "text-amber-400 bg-amber-400/15" },
+    queued: { label: "Queued", className: "text-accent-blue bg-accent-blue/15" },
+    in_progress: { label: "Applying...", className: "text-purple-400 bg-purple-400/15" },
+    applied: { label: "Applied", className: "text-accent-green bg-accent-green/15" },
+    skipped: { label: "Skipped", className: "text-text-muted bg-text-muted/10" },
+    failed: { label: "Failed", className: "text-red-400 bg-red-400/15" },
+  };
 
   if (isLoading) {
     return (
@@ -82,14 +98,60 @@ export default function JobDetailPage() {
           )}
         </div>
 
-        {job.url && (
-          <Button className="mt-4" asChild>
-            <a href={job.url} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-1.5 h-4 w-4" />
-              Apply on {job.source}
-            </a>
-          </Button>
-        )}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {job.application_status && statusConfig[job.application_status] && (
+            <Badge
+              variant="secondary"
+              className={`text-sm ${statusConfig[job.application_status].className}`}
+            >
+              {statusConfig[job.application_status].label}
+            </Badge>
+          )}
+
+          {job.application_status == null && (
+            <>
+              <Button
+                disabled={queueMutation.isPending}
+                onClick={() => queueMutation.mutate(job.id)}
+              >
+                {queueMutation.isPending ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-1.5 h-4 w-4" />
+                )}
+                Queue for Apply
+              </Button>
+              <Button
+                variant="outline"
+                disabled={skipMutation.isPending}
+                onClick={() => skipMutation.mutate(job.id)}
+              >
+                <X className="mr-1.5 h-4 w-4" />
+                Skip
+              </Button>
+            </>
+          )}
+
+          {job.application_status === "skipped" && (
+            <Button
+              variant="outline"
+              disabled={unskipMutation.isPending}
+              onClick={() => unskipMutation.mutate(job.id)}
+            >
+              <Undo2 className="mr-1.5 h-4 w-4" />
+              Undo Skip
+            </Button>
+          )}
+
+          {job.url && (
+            <Button variant="ghost" asChild>
+              <a href={job.url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="mr-1.5 h-4 w-4" />
+                View on {job.source}
+              </a>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Match score */}

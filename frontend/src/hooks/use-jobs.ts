@@ -9,9 +9,10 @@ export function useJobs(params: JobSearchParams = {}) {
     location_type,
     salary_min,
     category,
+    status,
     page = 1,
     per_page = 20,
-    sort_by = "posted_at",
+    sort_by = "match_score",
   } = params;
 
   return useQuery({
@@ -25,6 +26,7 @@ export function useJobs(params: JobSearchParams = {}) {
       }
       if (salary_min != null) sp.set("salary_min", String(salary_min));
       if (category) sp.set("category", category);
+      if (status) sp.set("status", status);
       sp.set("page", String(page));
       sp.set("per_page", String(per_page));
       if (sort_by) sp.set("sort_by", sort_by);

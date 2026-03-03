@@ -32,6 +32,7 @@ class AutoApplyConfig(Base, TimestampMixin):
     location_type_pref: Mapped[list | None] = mapped_column(JSONB)
     experience_level: Mapped[str | None] = mapped_column(String)  # entry, mid, senior, lead
     daily_apply_limit: Mapped[int] = mapped_column(Integer, default=25)
-    require_review: Mapped[bool] = mapped_column(Boolean, default=False)
+    apply_mode: Mapped[str] = mapped_column(String, default="safe")  # safe, hybrid, auto
+    auto_apply_threshold: Mapped[int] = mapped_column(Integer, default=70)  # score threshold for hybrid mode
 
     user: Mapped["User"] = relationship(back_populates="auto_apply_config")  # type: ignore[name-defined]  # noqa: F821

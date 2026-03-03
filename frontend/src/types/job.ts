@@ -8,6 +8,7 @@ export interface JobSearchParams {
   employment_type?: string[] | null;
   page?: number;
   per_page?: number;
+  status?: string | null;
   sort_by?: string;
 }
 
@@ -37,6 +38,9 @@ export interface JobResponse {
   posted_at?: string | null;
   is_active: boolean;
   match_score?: number | null;
+  match_factors?: Record<string, unknown> | null;
+  application_status?: string | null;
+  application_id?: string | null;
 }
 
 export interface JobListResponse {

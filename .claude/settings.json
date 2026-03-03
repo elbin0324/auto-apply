@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep \"^down_revision\" db/migrations/versions/*.py)",
+      "Bash(python -m pytest tests/ -x -v)",
+      "Bash(pnpm typecheck)"
+    ]
+  }
+}

@@ -27,7 +27,6 @@ class JobMatchScore(Base):
         nullable=False,
     )
     score: Mapped[float] = mapped_column(Float, nullable=False)
-    vector_score: Mapped[float | None] = mapped_column(Float)
     factors: Mapped[dict | None] = mapped_column(JSONB)
     computed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

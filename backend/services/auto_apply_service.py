@@ -150,18 +150,53 @@ async def build_user_profile_for_agent(
     return user_profile, resume_text, profile.raw_resume_url
 
 
+async def count_user_scores(db: AsyncSession, user_id: uuid.UUID) -> int:
+    """Count how many scored jobs exist for this user."""
+    result = await db.execute(
+        select(func.count(JobMatchScore.id)).where(JobMatchScore.user_id == user_id)
+    )
+    return result.scalar_one()
+
+
+async def enqueue_immediate_fetch(user_id: uuid.UUID) -> None:
+    """Enqueue an arq task to immediately fetch + score jobs for a single user."""
+    from arq.connections import RedisSettings, create_pool
+
+    from config import get_settings
+
+    settings = get_settings()
+    redis = await create_pool(RedisSettings.from_dsn(settings.redis_url))
+    try:
+        await redis.enqueue_job(
+            "task_fetch_jobs_for_single_user",
+            str(user_id),
+            _queue_name="arq:scheduler",
+        )
+    finally:
+        await redis.aclose()
+
+
 async def run_matching_for_user(
     db: AsyncSession,
     user_id: uuid.UUID,
     config: AutoApplyConfig,
 ) -> dict:
-    """Match jobs to user config, create Applications, push to queue.
+    """Match jobs to user config, create Applications based on apply_mode, push to queue.
 
-    Returns stats: {matched, queued, skipped_already_applied, skipped_daily_limit, initial_status}
+    apply_mode behaviour:
+      - safe:   No auto-creation. Jobs sit as "new" for manual action.
+      - hybrid: Auto-queue jobs scoring >= auto_apply_threshold. Rest stay "new".
+      - auto:   Auto-queue all matched jobs.
+
+    Returns stats: {matched, queued, skipped_already_applied, skipped_daily_limit}
     """
-    # 1. Active jobs with pre-computed score above threshold
+    # Safe mode: nothing to auto-queue
+    if config.apply_mode == "safe":
+        return {"matched": 0, "queued": 0, "skipped_already_applied": 0, "skipped_daily_limit": 0}
+
+    # 1. Active jobs with pre-computed score above threshold, including score value
     stmt = (
-        select(Job)
+        select(Job, JobMatchScore.score)
         .join(JobMatchScore, JobMatchScore.job_id == Job.id)
         .where(
             Job.is_active.is_(True),
@@ -195,12 +230,13 @@ async def run_matching_for_user(
     stmt = stmt.order_by(JobMatchScore.score.desc())
 
     result = await db.execute(stmt)
-    candidate_jobs = result.scalars().all()
+    rows = result.all()
+    candidate_jobs = [(row[0], row[1]) for row in rows]  # (Job, score)
 
     # 3. Filter out already-applied jobs
     already_applied_ids: set[uuid.UUID] = set()
     if candidate_jobs:
-        job_ids = [j.id for j in candidate_jobs]
+        job_ids = [job.id for job, _score in candidate_jobs]
         existing_result = await db.execute(
             select(Application.job_id).where(
                 Application.user_id == user_id,
@@ -218,16 +254,20 @@ async def run_matching_for_user(
         db, user_id
     )
 
-    # 6. Create Applications and push tasks
-    initial_status = "pending_review" if config.require_review else "queued"
+    # 6. Create Applications and push tasks based on apply_mode
     queued_count = 0
     skipped_already = 0
     skipped_limit = 0
 
-    for job in candidate_jobs:
+    for job, score in candidate_jobs:
         if job.id in already_applied_ids:
             skipped_already += 1
             continue
+
+        # Hybrid mode: only auto-queue jobs above the threshold
+        if config.apply_mode == "hybrid" and score < config.auto_apply_threshold:
+            continue
+
         if queued_count >= remaining_today:
             skipped_limit += 1
             continue
@@ -235,29 +275,29 @@ async def run_matching_for_user(
         application = Application(
             user_id=user_id,
             job_id=job.id,
-            status=initial_status,
+            status="queued",
             resume_used_url=resume_url,
         )
         db.add(application)
         await db.flush()
 
-        if not config.require_review:
-            task = ApplyTask(
-                application_id=application.id,
-                user_id=user_id,
-                job_id=job.id,
-                job_url=job.apply_url or job.url,
-                resume_url=resume_url,
-                resume_text=resume_text,
-                user_profile=user_profile,
-            )
-            await push_apply_task(task)
+        task = ApplyTask(
+            application_id=application.id,
+            user_id=user_id,
+            job_id=job.id,
+            job_url=job.apply_url or job.url,
+            resume_url=resume_url,
+            resume_text=resume_text,
+            user_profile=user_profile,
+        )
+        await push_apply_task(task)
 
         queued_count += 1
 
     logger.info(
-        "Matching for user %s: matched=%d queued=%d skipped_applied=%d skipped_limit=%d",
+        "Matching for user %s (mode=%s): matched=%d queued=%d skipped_applied=%d skipped_limit=%d",
         user_id,
+        config.apply_mode,
         len(candidate_jobs),
         queued_count,
         skipped_already,
@@ -269,7 +309,6 @@ async def run_matching_for_user(
         "queued": queued_count,
         "skipped_already_applied": skipped_already,
         "skipped_daily_limit": skipped_limit,
-        "initial_status": initial_status,
     }
 
 

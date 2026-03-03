@@ -1,12 +1,10 @@
 import { useState } from "react";
 import {
-  Cpu,
   Clock,
   Loader2,
   Search,
   BarChart3,
   Zap,
-  RefreshCw,
   Sparkles,
   Users,
 } from "lucide-react";

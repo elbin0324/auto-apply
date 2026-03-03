@@ -1,18 +1,19 @@
-# Railway config for the API server (default service).
+# Railway deployment configs live in deploy/*.railway.toml
 #
-# Workers must be set up as separate Railway services pointing to the same repo.
-# Each worker service should set a custom config path in Railway's dashboard:
+# Each Railway service should point to its own config file:
 #
-#   Service             Config Path                  Start Command
-#   ─────────────────   ──────────────────────────   ──────────────────────────────
-#   api (this file)     railway.toml                 (see below)
-#   scheduler           (dashboard override)         arq worker.WorkerSettings
-#   crawl-worker        (dashboard override)         python crawl_worker.py
-#   score-worker        (dashboard override)         python score_worker.py
-#   enrich-worker       (dashboard override)         python enrich_worker.py
+#   Service          Config Path (set in Railway dashboard)
+#   ──────────────   ──────────────────────────────────────
+#   api              deploy/api.railway.toml
+#   scheduler        deploy/scheduler.railway.toml
+#   crawl-worker     deploy/crawl-worker.railway.toml
+#   score-worker     deploy/score-worker.railway.toml
+#   enrich-worker    deploy/enrich-worker.railway.toml
 #
 # All services share the same Dockerfile (backend/Dockerfile).
-# Set the start command override in each worker service's settings.
+# Shared env vars should be promoted to Railway shared variables.
+#
+# This root file is kept as the default for the API service.
 
 [build]
 dockerfilePath = "backend/Dockerfile"

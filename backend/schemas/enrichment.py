@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class EnrichJobsTask(BaseModel):
@@ -19,6 +19,16 @@ class SalaryExtracted(BaseModel):
     max: float | None = None
     currency: str = "USD"
     type: str = "annual"  # annual, hourly, monthly
+
+    @field_validator("currency", mode="before")
+    @classmethod
+    def currency_not_none(cls, v: object) -> object:
+        return v if v is not None else "USD"
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def type_not_none(cls, v: object) -> object:
+        return v if v is not None else "annual"
 
 
 class EnrichedJobData(BaseModel):

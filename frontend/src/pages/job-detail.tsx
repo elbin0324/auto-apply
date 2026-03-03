@@ -177,7 +177,61 @@ export default function JobDetailPage() {
               {match.score}%
             </span>
           </div>
-          {match.factors &&
+          {match.factors && match.factors.combined_method === "llm" ? (
+            <div className="mt-3 space-y-2">
+              {match.factors.reasoning && (
+                <p className="text-sm text-text-secondary">
+                  {String(match.factors.reasoning)}
+                </p>
+              )}
+              {Array.isArray(match.factors.matched_skills) &&
+                match.factors.matched_skills.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs text-text-muted">Matched:</span>
+                    {(match.factors.matched_skills as string[]).map((s) => (
+                      <Badge
+                        key={s}
+                        variant="secondary"
+                        className="text-xs text-accent-green bg-accent-green/15"
+                      >
+                        {s}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              {Array.isArray(match.factors.missing_skills) &&
+                match.factors.missing_skills.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs text-text-muted">Missing:</span>
+                    {(match.factors.missing_skills as string[]).map((s) => (
+                      <Badge
+                        key={s}
+                        variant="secondary"
+                        className="text-xs text-red-400 bg-red-400/15"
+                      >
+                        {s}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              {Array.isArray(match.factors.preferred_skills) &&
+                match.factors.preferred_skills.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs text-text-muted">Preferred:</span>
+                    {(match.factors.preferred_skills as string[]).map((s) => (
+                      <Badge
+                        key={s}
+                        variant="secondary"
+                        className="text-xs text-amber-400 bg-amber-400/15"
+                      >
+                        {s}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+            </div>
+          ) : (
+            match.factors &&
             Object.keys(match.factors).length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {Object.entries(match.factors).map(([key, value]) => (
@@ -186,7 +240,8 @@ export default function JobDetailPage() {
                   </Badge>
                 ))}
               </div>
-            )}
+            )
+          )}
         </div>
       )}
 

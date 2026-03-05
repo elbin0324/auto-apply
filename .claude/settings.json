@@ -22,8 +22,12 @@
     "PreToolUse": [
       {
         "matcher": "Bash",
-        "type": "command",
-        "command": "bash .claude/hooks/branch-guard.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/branch-guard.sh"
+          }
+        ]
       }
     ]
   }

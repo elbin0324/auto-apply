@@ -224,9 +224,6 @@ class BaseWorker(ABC, Generic[T]):
         self._shutdown.set()
 
     async def _loop(self) -> None:
-        # Raw print before any config/logging — diagnostic for Railway log capture
-        print(f"[{self.name}] Worker process starting (PID {os.getpid()})", flush=True)
-
         settings = get_settings()
         setup_logging(self.name)
 

@@ -84,8 +84,12 @@ def setup_logging(worker_name: str = "", level: str | None = None) -> None:
     # Remove any existing handlers (e.g. from basicConfig)
     root.handlers.clear()
 
+    # Use print()'s stream — it flushes reliably in containerized environments.
+    # Python's logging.StreamHandler does not flush after every emit by default,
+    # causing logs to vanish in Railway/Docker even with PYTHONUNBUFFERED=1.
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(log_level)
+    handler.flush = sys.stdout.flush  # force flush after every log line
 
     if settings.log_format == "json":
         handler.setFormatter(JSONFormatter(worker_name=worker_name))

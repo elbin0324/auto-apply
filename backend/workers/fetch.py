@@ -60,25 +60,29 @@ class FetchWorker(BaseWorker[FetchJobsTask]):
                     )
                     return
 
-                # Build search params from user preferences
-                params = _build_search_params(config)
-                if not params:
+                # Build search params from user preferences (one per title)
+                params_list = _build_search_params(config)
+                if not params_list:
                     logger.debug(
                         "No search params for user %s (no target titles)",
                         task.user_id,
                     )
                     return
 
-                # Query Active Jobs DB API
-                results = await search_jobs_advanced(
-                    params, recent_only=task.recent_only
-                )
-                if not results:
+                # Query Active Jobs DB API once per title
+                all_results: list[dict] = []
+                for params in params_list:
+                    results = await search_jobs_advanced(
+                        params, recent_only=task.recent_only
+                    )
+                    all_results.extend(results)
+
+                if not all_results:
                     logger.info("No jobs found for user %s", task.user_id)
                     return
 
                 # Upsert to DB
-                job_ids = await _upsert_jobs(db, results)
+                job_ids = await _upsert_jobs(db, all_results)
                 await db.flush()
 
                 # Push downstream to score queue (per-user)
@@ -99,9 +103,10 @@ class FetchWorker(BaseWorker[FetchJobsTask]):
 
                 await db.commit()
                 logger.info(
-                    "Fetched jobs for user %s: api_results=%d, upserted=%d, recent_only=%s",
+                    "Fetched jobs for user %s: titles=%d, api_results=%d, upserted=%d, recent_only=%s",
                     task.user_id,
-                    len(results),
+                    len(params_list),
+                    len(all_results),
                     len(job_ids),
                     task.recent_only,
                 )

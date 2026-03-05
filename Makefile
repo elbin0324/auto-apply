@@ -1,4 +1,4 @@
-.PHONY: dev test migrate lint services clean help worker score-worker enrich-worker
+.PHONY: dev test migrate lint services clean help cron-fetch score-worker enrich-worker fetch-worker
 
 # ── Local Services ────────────────────────────────────────────────────────────
 services:
@@ -17,12 +17,9 @@ test:
 test-cov:
 	cd backend && poetry run pytest tests/ -v --cov=. --cov-report=html
 
-# ── Background Worker ────────────────────────────────────────────────────────
-worker:
-	cd backend && poetry run arq worker.WorkerSettings
-
-worker-dev:
-	cd backend && poetry run watchfiles "arq worker.WorkerSettings" --filter python
+# ── Cron Jobs ────────────────────────────────────────────────────────────────
+cron-fetch:
+	cd backend && poetry run python -m cron.enqueue_fetch
 
 # ── Queue Workers ─────────────────────────────────────────────────────────
 score-worker:
@@ -36,6 +33,12 @@ enrich-worker:
 
 enrich-worker-dev:
 	cd backend && poetry run watchfiles "python -m workers.enrich" --filter python
+
+fetch-worker:
+	cd backend && poetry run python -m workers.fetch
+
+fetch-worker-dev:
+	cd backend && poetry run watchfiles "python -m workers.fetch" --filter python
 
 # ── Database ──────────────────────────────────────────────────────────────────
 migrate:
@@ -61,9 +64,6 @@ clean:
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
 
-stripe-listen:
-	stripe listen --forward-to localhost:8000/api/billing/webhooks/stripe
-
 docs:
 	open http://localhost:8000/docs
 
@@ -80,9 +80,8 @@ help:
 	@echo "  lint          - Run ruff + mypy"
 	@echo "  format        - Format code with ruff"
 	@echo "  clean         - Remove cache files"
-	@echo "  stripe-listen - Start Stripe webhook listener (local dev)"
-	@echo "  worker        - Start arq background worker (fetch + rematch)"
-	@echo "  worker-dev    - Start arq worker with auto-reload"
+	@echo "  cron-fetch    - Run fetch cron job (enqueue fetch tasks for active users)"
 	@echo "  score-worker  - Start score worker (consumes score:jobs queue)"
 	@echo "  enrich-worker - Start enrich worker (consumes enrich:jobs queue)"
+	@echo "  fetch-worker  - Start fetch worker (consumes fetch:jobs queue)"
 	@echo "  docs          - Open API docs in browser"

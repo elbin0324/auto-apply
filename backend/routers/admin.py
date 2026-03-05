@@ -29,9 +29,10 @@ from schemas.admin import (
     WorkerStatus,
     WorkersOverview,
 )
-from services.enrich_queue_service import get_enrich_queue_depth
 from services.queue_service import get_queue_depth
-from services.score_queue_service import get_score_queue_depth
+from workers.queues.enrich import get_enrich_queue_depth
+from workers.queues.score import get_score_queue_depth
+from infra.task_queue import FETCH_JOBS_QUEUE
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +62,12 @@ async def get_overview(admin: AdminUser, db: DbSession) -> AdminOverview:
     total_applications = sum(application_counts.values())
 
     # Queue depths
+    from infra.redis_pool import get_redis
+
     apply_depth = await get_queue_depth()
     score_depth = await get_score_queue_depth()
     enrich_depth = await get_enrich_queue_depth()
+    fetch_depth = await get_redis().llen(FETCH_JOBS_QUEUE)
 
     return AdminOverview(
         user_count=user_count,
@@ -72,6 +76,7 @@ async def get_overview(admin: AdminUser, db: DbSession) -> AdminOverview:
         application_counts=application_counts,
         total_applications=total_applications,
         queue_depths=QueueDepths(
+            fetch_jobs=fetch_depth,
             score_jobs=score_depth,
             apply=apply_depth,
             enrich=enrich_depth,
@@ -219,11 +224,15 @@ async def get_user_detail(
 @router.get("/queues", response_model=AdminQueueStatus)
 async def get_queues(admin: AdminUser) -> AdminQueueStatus:
     """Live queue depths for monitoring."""
+    from infra.redis_pool import get_redis
+
     apply_depth = await get_queue_depth()
     score_depth = await get_score_queue_depth()
     enrich_depth = await get_enrich_queue_depth()
+    fetch_depth = await get_redis().llen(FETCH_JOBS_QUEUE)
 
     return AdminQueueStatus(
+        fetch_jobs_queue_depth=fetch_depth,
         score_jobs_queue_depth=score_depth,
         apply_queue_depth=apply_depth,
         enrich_queue_depth=enrich_depth,
@@ -263,7 +272,7 @@ async def wipe_jobs(
 @router.get("/workers", response_model=WorkersOverview)
 async def get_workers(admin: AdminUser) -> WorkersOverview:
     """Live worker status from Redis heartbeats."""
-    from services.worker_heartbeat import get_all_worker_statuses
+    from infra.worker_heartbeat import get_all_worker_statuses
 
     statuses = await get_all_worker_statuses()
     return WorkersOverview(
@@ -276,8 +285,8 @@ async def get_workers(admin: AdminUser) -> WorkersOverview:
 
 @router.post("/triggers/fetch", response_model=TriggerResult)
 async def trigger_fetch(admin: AdminUser, db: DbSession) -> TriggerResult:
-    """Immediately fetch jobs from Fantastic Jobs API for all active users."""
-    from services.job_fetch_service import fetch_jobs_for_all_active_users
+    """Enqueue job-fetch tasks for all active users."""
+    from infra.task_queue import enqueue_fetch_jobs
 
     settings = get_settings()
     if not settings.rapidapi_key:
@@ -286,10 +295,22 @@ async def trigger_fetch(admin: AdminUser, db: DbSession) -> TriggerResult:
             detail="RapidAPI key not configured",
         )
 
-    stats = await fetch_jobs_for_all_active_users(db)
+    result = await db.execute(
+        select(AutoApplyConfig).where(AutoApplyConfig.is_active.is_(True))
+    )
+    configs = list(result.scalars().all())
+
+    if not configs:
+        return TriggerResult(triggered="job_fetch", detail="No active users found")
+
+    for config in configs:
+        await enqueue_fetch_jobs(
+            config.user_id, recent_only=False, source="admin_trigger"
+        )
+
     return TriggerResult(
         triggered="job_fetch",
-        detail=f"Fetched for {stats['users_processed']} users, {stats['total_jobs_upserted']} jobs upserted",
+        detail=f"Enqueued fetch tasks for {len(configs)} users",
     )
 
 
@@ -297,8 +318,8 @@ async def trigger_fetch(admin: AdminUser, db: DbSession) -> TriggerResult:
 async def trigger_fetch_for_user(
     user_id: uuid.UUID, admin: AdminUser, db: DbSession
 ) -> TriggerResult:
-    """Immediately fetch + score jobs for a single user via arq task."""
-    from services.auto_apply_service import enqueue_immediate_fetch
+    """Enqueue a job-fetch task for a single user."""
+    from infra.task_queue import enqueue_fetch_jobs
 
     settings = get_settings()
     if not settings.rapidapi_key:
@@ -320,18 +341,17 @@ async def trigger_fetch_for_user(
             detail="User has no target titles configured",
         )
 
-    await enqueue_immediate_fetch(user_id)
+    await enqueue_fetch_jobs(user_id, recent_only=False, source="admin_trigger")
     return TriggerResult(
         triggered="job_fetch_user",
-        detail=f"Enqueued fetch+score task for user {user_id}",
+        detail=f"Enqueued fetch task for user {user_id}",
     )
 
 
 @router.post("/triggers/enrich", response_model=TriggerResult)
 async def trigger_enrich(admin: AdminUser, db: DbSession) -> TriggerResult:
     """Immediately enqueue un-enriched jobs for LLM enrichment."""
-    from schemas.enrichment import EnrichJobsTask
-    from services.enrich_queue_service import push_enrich_task
+    from infra.task_queue import enqueue_enrich_jobs
 
     settings = get_settings()
     result = await db.execute(
@@ -348,8 +368,7 @@ async def trigger_enrich(admin: AdminUser, db: DbSession) -> TriggerResult:
     if not job_ids:
         return TriggerResult(triggered="job_enrich", detail="No un-enriched jobs found")
 
-    task = EnrichJobsTask(job_ids=job_ids)
-    await push_enrich_task(task)
+    await enqueue_enrich_jobs(job_ids, source="admin_trigger")
 
     return TriggerResult(
         triggered="job_enrich",
@@ -359,35 +378,28 @@ async def trigger_enrich(admin: AdminUser, db: DbSession) -> TriggerResult:
 
 @router.post("/triggers/rescore", response_model=TriggerResult)
 async def trigger_rescore(admin: AdminUser, db: DbSession) -> TriggerResult:
-    """Push all active jobs to the score queue for LLM rescoring.
+    """Enqueue per-user rescoring tasks for all active users.
 
-    Unlike /triggers/fetch, this does NOT re-fetch from Fantastic Jobs — it rescores
+    Unlike /triggers/fetch, this does NOT re-fetch from external APIs — it rescores
     existing jobs in the DB. Useful after deploying a new scoring model or
     switching from heuristic to LLM scoring.
     """
-    from schemas.crawl import ScoreJobsTask
-    from services.score_queue_service import push_score_jobs_task
+    from infra.task_queue import enqueue_score_jobs
 
     result = await db.execute(
-        select(Job.id).where(Job.is_active.is_(True))
+        select(AutoApplyConfig.user_id).where(AutoApplyConfig.is_active.is_(True))
     )
-    job_ids = list(result.scalars().all())
+    user_ids = list(result.scalars().all())
 
-    if not job_ids:
-        return TriggerResult(triggered="rescore", detail="No active jobs found")
+    if not user_ids:
+        return TriggerResult(triggered="rescore", detail="No active users found")
 
-    # Batch into chunks to avoid huge single tasks
-    batch_size = 50
-    tasks_pushed = 0
-    for i in range(0, len(job_ids), batch_size):
-        batch = job_ids[i : i + batch_size]
-        task = ScoreJobsTask(job_ids=batch)
-        await push_score_jobs_task(task, source="admin_rescore")
-        tasks_pushed += 1
+    for uid in user_ids:
+        await enqueue_score_jobs(uid, source="admin_rescore", force=True)
 
     return TriggerResult(
         triggered="rescore",
-        detail=f"Pushed {len(job_ids)} jobs in {tasks_pushed} batches to score queue",
+        detail=f"Enqueued rescore tasks for {len(user_ids)} users",
     )
 
 
@@ -427,6 +439,7 @@ async def trigger_rematch(admin: AdminUser, db: DbSession) -> TriggerResult:
 # ── Queue Purge ──────────────────────────────────────────────────────────────
 
 PURGEABLE_QUEUES = {
+    "fetch_jobs": "fetch:jobs",
     "score_jobs": "score:jobs",
     "enrich": "enrich:jobs",
 }
@@ -440,7 +453,7 @@ async def purge_queue(queue_name: str, admin: AdminUser) -> QueuePurgeResult:
             status_code=400,
             detail=f"Unknown queue: {queue_name}. Purgeable: {list(PURGEABLE_QUEUES)}",
         )
-    from services.redis_pool import get_redis
+    from infra.redis_pool import get_redis
 
     redis_key = PURGEABLE_QUEUES[queue_name]
     redis = get_redis()
@@ -456,7 +469,7 @@ async def purge_queue(queue_name: str, admin: AdminUser) -> QueuePurgeResult:
 @router.get("/dlq", response_model=DLQOverview)
 async def get_dlq_overview(admin: AdminUser) -> DLQOverview:
     """Overview of all dead-letter queues."""
-    from services.dlq_service import get_dlq_depths
+    from infra.dlq_service import get_dlq_depths
 
     depths = await get_dlq_depths()
     return DLQOverview(queues=depths, total=sum(depths.values()))
@@ -469,7 +482,7 @@ async def get_dlq_detail(
     count: int = Query(default=10, ge=1, le=100),
 ) -> DLQStatus:
     """Peek at items in a specific dead-letter queue."""
-    from services.dlq_service import peek_dlq
+    from infra.dlq_service import peek_dlq
 
     items = await peek_dlq(queue_name, count=count)
     return DLQStatus(
@@ -482,7 +495,7 @@ async def get_dlq_detail(
 @router.post("/dlq/{queue_name}/replay", response_model=DLQReplayResult)
 async def replay_dlq(queue_name: str, admin: AdminUser) -> DLQReplayResult:
     """Replay one item from a DLQ back to its original queue."""
-    from services.dlq_service import replay_dlq_item
+    from infra.dlq_service import replay_dlq_item
 
     replayed = await replay_dlq_item(queue_name)
     return DLQReplayResult(replayed=replayed, queue_name=queue_name)
@@ -491,7 +504,39 @@ async def replay_dlq(queue_name: str, admin: AdminUser) -> DLQReplayResult:
 @router.delete("/dlq/{queue_name}", response_model=QueuePurgeResult)
 async def purge_dlq_queue(queue_name: str, admin: AdminUser) -> QueuePurgeResult:
     """Purge all items from a dead-letter queue."""
-    from services.dlq_service import purge_dlq
+    from infra.dlq_service import purge_dlq
 
     purged = await purge_dlq(queue_name)
     return QueuePurgeResult(purged=purged, queue=f"dlq:{queue_name}")
+
+
+# ── Task History ──────────────────────────────────────────────────────────────
+
+
+@router.get("/tasks")
+async def get_recent_tasks(
+    admin: AdminUser,
+    status_filter: str | None = Query(default=None, alias="status"),
+    limit: int = Query(default=50, ge=1, le=200),
+) -> list[dict]:
+    """Recent task lifecycle events from Redis (task:status:* hashes).
+
+    Useful for debugging: see which tasks ran, how long they took, and which failed.
+    """
+    from infra.redis_pool import get_redis
+
+    redis = get_redis()
+    tasks = []
+    async for key in redis.scan_iter("task:status:*", count=200):
+        data = await redis.hgetall(key)
+        if not data:
+            continue
+        if status_filter and data.get("status") != status_filter:
+            continue
+        tasks.append(data)
+        if len(tasks) >= limit:
+            break
+
+    # Sort by created_at descending (most recent first)
+    tasks.sort(key=lambda t: t.get("created_at", ""), reverse=True)
+    return tasks

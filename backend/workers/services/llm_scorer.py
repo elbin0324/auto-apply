@@ -17,7 +17,6 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from config import get_settings
 from models.auto_apply_config import AutoApplyConfig
@@ -25,10 +24,13 @@ from models.job import Job
 from models.job_match_score import JobMatchScore
 from models.profile import Education, Experience, Profile
 from models.user import User
-from schemas.enrichment import EnrichJobsTask
 from schemas.scoring import LLMScoreFactors, LLMScoreResult
-from services.enrich_queue_service import push_enrich_task
-from services.llm_provider import LLMProvider
+from workers.services.job_filter import (
+    filter_candidate_jobs,
+    get_unscored_job_ids,
+    load_user_with_profile,
+)
+from workers.services.llm_provider import LLMProvider
 
 logger = logging.getLogger(__name__)
 
@@ -287,54 +289,65 @@ async def _score_jobs_for_user(
 # ---------------------------------------------------------------------------
 
 
-async def _load_active_users(db: AsyncSession) -> list[User]:
-    """Load active users with profile, skills, experiences, and educations."""
-    result = await db.execute(
-        select(User)
-        .join(AutoApplyConfig, User.id == AutoApplyConfig.user_id)
-        .join(Profile, User.id == Profile.user_id)
-        .where(AutoApplyConfig.is_active.is_(True))
-        .options(
-            selectinload(User.profile).selectinload(Profile.skills),
-            selectinload(User.profile).selectinload(Profile.experiences),
-            selectinload(User.profile).selectinload(Profile.educations),
-            selectinload(User.auto_apply_config),
-        )
-    )
-    return list(result.unique().scalars().all())
-
-
 async def score_new_jobs_llm(
     db: AsyncSession,
     provider: LLMProvider,
-    job_ids: list[uuid.UUID],
+    user_id: uuid.UUID,
+    *,
+    force: bool = False,
 ) -> dict:
-    """Score new jobs against all active users via LLM.
+    """Score jobs for a single user via LLM.
 
     This is the main entry point called by the ScoreWorker when
-    scoring_use_llm is enabled. Replaces score_service.score_new_jobs_for_users().
+    scoring_use_llm is enabled.
+
+    1. Load the user with profile/config
+    2. Pre-filter candidate jobs by user preferences
+    3. Exclude already-scored jobs (unless force=True)
+    4. LLM-score the remaining jobs
+    5. Upsert scores to DB
     """
-    settings = get_settings()
+    user = await load_user_with_profile(db, user_id)
+    if not user:
+        logger.warning("User %s not found or missing profile/config, skipping", user_id)
+        return {"jobs_scored": 0, "scores_upserted": 0}
 
-    users = await _load_active_users(db)
-    if not users:
-        return {"users_checked": 0, "scores_upserted": 0}
-
-    # Load the specific jobs
-    jobs_result = await db.execute(
-        select(Job).where(Job.id.in_(job_ids), Job.is_active.is_(True))
-    )
-    jobs = list(jobs_result.scalars().all())
+    config = user.auto_apply_config
+    jobs = await filter_candidate_jobs(db, config)
     if not jobs:
-        return {"users_checked": len(users), "scores_upserted": 0, "jobs_available": 0}
+        return {"jobs_filtered": 0, "jobs_scored": 0, "scores_upserted": 0}
+
+    job_ids = [j.id for j in jobs]
+
+    if force:
+        # Clear existing scores for this user so they get re-evaluated
+        from sqlalchemy import delete
+
+        await db.execute(
+            delete(JobMatchScore).where(
+                JobMatchScore.user_id == user_id,
+                JobMatchScore.job_id.in_(job_ids),
+            )
+        )
+        jobs_to_score = jobs
+    else:
+        unscored_ids = await get_unscored_job_ids(db, user_id, job_ids)
+        if not unscored_ids:
+            return {
+                "jobs_filtered": len(jobs),
+                "jobs_scored": 0,
+                "scores_upserted": 0,
+                "all_already_scored": True,
+            }
+        unscored_set = set(unscored_ids)
+        jobs_to_score = [j for j in jobs if j.id in unscored_set]
+
+    score_rows = await _score_jobs_for_user(provider, user, jobs_to_score)
 
     total_upserted = 0
-
-    for user in users:
-        score_rows = await _score_jobs_for_user(provider, user, jobs)
-
-        if score_rows:
-            stmt = pg_insert(JobMatchScore).values(score_rows)
+    if score_rows:
+        stmt = pg_insert(JobMatchScore).values(score_rows)
+        if force:
             stmt = stmt.on_conflict_do_update(
                 constraint="uq_job_match_scores_user_job",
                 set_={
@@ -343,47 +356,22 @@ async def score_new_jobs_llm(
                     "computed_at": stmt.excluded.computed_at,
                 },
             )
-            await db.execute(stmt)
-            total_upserted += len(score_rows)
-
-    # Optionally push top-N to enrich queue
-    if settings.scoring_enrich_after_score:
-        jobs_to_enrich: set[uuid.UUID] = set()
-        for user in users:
-            scored = await db.execute(
-                select(JobMatchScore.job_id, JobMatchScore.score)
-                .where(
-                    JobMatchScore.user_id == user.id,
-                    JobMatchScore.job_id.in_(job_ids),
-                )
-                .order_by(JobMatchScore.score.desc())
-                .limit(settings.fantastic_top_n_to_enrich)
+        else:
+            stmt = stmt.on_conflict_do_nothing(
+                constraint="uq_job_match_scores_user_job",
             )
-            for jid, _ in scored.all():
-                jobs_to_enrich.add(jid)
-
-        if jobs_to_enrich:
-            unenriched_result = await db.execute(
-                select(Job.id).where(
-                    Job.id.in_(list(jobs_to_enrich)),
-                    Job.enriched_at.is_(None),
-                    Job.description.isnot(None),
-                )
-            )
-            unenriched_ids = list(unenriched_result.scalars().all())
-            if unenriched_ids:
-                enrich_task = EnrichJobsTask(job_ids=unenriched_ids)
-                await push_enrich_task(enrich_task, source="score_worker")
-                logger.info("Pushed %d jobs to enrich queue", len(unenriched_ids))
+        await db.execute(stmt)
+        total_upserted = len(score_rows)
 
     logger.info(
-        "LLM scored %d jobs for %d users, upserted %d scores",
-        len(jobs),
-        len(users),
+        "LLM scored %d jobs for user %s, upserted %d scores (force=%s)",
+        len(jobs_to_score),
+        user_id,
         total_upserted,
+        force,
     )
     return {
-        "users_checked": len(users),
-        "jobs_scored": len(jobs),
+        "jobs_filtered": len(jobs),
+        "jobs_scored": len(jobs_to_score),
         "scores_upserted": total_upserted,
     }

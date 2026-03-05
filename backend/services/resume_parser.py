@@ -2,7 +2,7 @@ import json
 import logging
 
 from schemas.profile import ParsedResume
-from services.ai_client import chat_completion
+from infra.ai_client import chat_completion
 
 logger = logging.getLogger(__name__)
 

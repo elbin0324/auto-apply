@@ -1,0 +1,13 @@
+# Railway config: fetch worker (long-running)
+# Config path in Railway dashboard: deploy/fetch-worker.railway.toml
+#
+# Polls fetch:jobs queue, calls Active Jobs DB API to discover jobs
+# for active auto-apply users.
+
+[build]
+dockerfilePath = "backend/Dockerfile"
+
+[deploy]
+startCommand = "python -m workers.fetch"
+restartPolicyType = "ALWAYS"
+restartPolicyMaxRetries = 5

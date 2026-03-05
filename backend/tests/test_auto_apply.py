@@ -227,7 +227,7 @@ class TestAutoApplyStartStop:
         assert resp.status_code == 400
 
     @patch("routers.auto_apply.run_matching_for_user", new_callable=AsyncMock)
-    @patch("services.auto_apply_service.enqueue_immediate_fetch", new_callable=AsyncMock)
+    @patch("infra.task_queue.enqueue_fetch_jobs", new_callable=AsyncMock)
     @patch("services.auto_apply_service.count_user_scores", new_callable=AsyncMock)
     @patch("routers.auto_apply.get_or_create_config", new_callable=AsyncMock)
     def test_start_success(

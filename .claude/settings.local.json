@@ -1,25 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, indent=2\\)\\)\")",
-      "Bash(git commit:*)",
-      "Bash(git checkout -b dev)",
-      "Bash(git add docs/user-setup-tasks.md IMPLEMENTATION_STATUS.md)",
-      "Bash(/usr/bin/git -C /Users/andycraig/GitHub/auto-apply log --oneline)",
-      "Bash(/opt/homebrew/bin/git -C /Users/andycraig/GitHub/auto-apply log --oneline)",
-      "Bash(/usr/local/bin/git -C /Users/andycraig/GitHub/auto-apply log --oneline)",
-      "Bash(AGREE_TO_XCODE_LICENSE=1 git -C /Users/andycraig/GitHub/auto-apply log --oneline)",
-      "Bash(python3 -c \":*)",
-      "Bash(python3:*)",
+      "WebFetch(domain:developers.ashbyhq.com)",
+      "WebFetch(domain:rapidapi.com)",
+      "WebFetch(domain:publicapis.io)",
+      "WebFetch(domain:apify.com)",
+      "WebFetch(domain:fantastic.jobs)",
+      "WebSearch",
       "mcp__github__get_file_contents",
-      "Bash(git branch -D phase/F1-scaffold)",
-      "Bash(git stash pop)",
-      "Bash(git stash drop)",
-      "Bash(pnpm create vite frontend-temp --template react-ts)",
-      "Bash(pnpm install)",
-      "Bash(git)",
-      "Bash(pnpm dlx shadcn@latest init --yes)",
-      "WebFetch(domain:developers.ashbyhq.com)"
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git restore:*)",
+      "Bash(git diff:*)"
     ]
   }
 }

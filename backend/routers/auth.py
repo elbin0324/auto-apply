@@ -177,8 +177,8 @@ async def complete_onboarding(user: CurrentUser, db: DbSession) -> UserResponse:
     await db.flush()
 
     # Trigger 7-day job fetch so user has jobs ready
-    from services.auto_apply_service import enqueue_immediate_fetch
+    from infra.task_queue import enqueue_fetch_jobs
 
-    await enqueue_immediate_fetch(user.id)
+    await enqueue_fetch_jobs(user.id, recent_only=False, source="onboarding")
 
     return UserResponse.model_validate(user)

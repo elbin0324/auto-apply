@@ -1,13 +1,13 @@
 """Jobs API tests.
 
 Tests cover auth protection, job search/detail, match scores,
-sync endpoint, and pure heuristic scorer unit tests.
+and pure heuristic scorer unit tests.
 """
 
 import uuid
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from fastapi.testclient import TestClient
 
@@ -90,12 +90,6 @@ def _apply_overrides(
         app.dependency_overrides[get_db] = _get_db
 
 
-def _apply_internal_key_override() -> None:
-    from deps import verify_internal_api_key
-
-    app.dependency_overrides[verify_internal_api_key] = lambda: None
-
-
 def _clear_overrides() -> None:
     app.dependency_overrides.clear()
 
@@ -113,9 +107,6 @@ class TestAuthProtection:
     def test_get_match_requires_auth(self) -> None:
         assert client.get(f"/api/jobs/{_JOB_ID}/match").status_code == 401
 
-    def test_sync_requires_internal_key(self) -> None:
-        resp = client.post("/api/jobs/sync")
-        assert resp.status_code in (403, 422)
 
 
 # ── Job list ─────────────────────────────────────────────────────────────────
@@ -284,51 +275,12 @@ class TestJobMatch:
         assert data["factors"]["skill_score"] == 35.0
 
 
-# ── Sync endpoint ────────────────────────────────────────────────────────────
-
-
-class TestSync:
-    def setup_method(self) -> None:
-        self.session = _mock_db_session()
-        from db.session import get_db
-
-        async def _get_db():  # type: ignore[override]
-            yield self.session
-
-        app.dependency_overrides[get_db] = _get_db
-        _apply_internal_key_override()
-
-    def teardown_method(self) -> None:
-        _clear_overrides()
-
-    @patch("services.job_matcher.compute_scores_for_sync", new_callable=AsyncMock)
-    @patch("services.job_sync.run_sync", new_callable=AsyncMock)
-    def test_sync_returns_stats(
-        self, mock_sync: AsyncMock, mock_scores: AsyncMock
-    ) -> None:
-        mock_sync.return_value = {
-            "jobs_fetched": 50,
-            "jobs_upserted": 50,
-            "jobs_deactivated": 3,
-            "synced_external_ids": ["1", "2"],
-        }
-        mock_scores.return_value = {"scores_computed": 100}
-
-        resp = client.post("/api/jobs/sync")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["sync"]["jobs_fetched"] == 50
-        assert data["scoring"]["scores_computed"] == 100
-        mock_sync.assert_called_once()
-        mock_scores.assert_called_once()
-
-
 # ── Heuristic scorer unit tests ──────────────────────────────────────────────
 
 
 class TestScorerUnit:
     def test_skill_overlap_full_match(self) -> None:
-        from services.job_matcher import _compute_skill_score
+        from workers.services.heuristic_scorer import _compute_skill_score
 
         score = _compute_skill_score(
             ["python", "fastapi"], "python developer with fastapi skills"
@@ -336,7 +288,7 @@ class TestScorerUnit:
         assert score == 50.0
 
     def test_skill_overlap_partial(self) -> None:
-        from services.job_matcher import _compute_skill_score
+        from workers.services.heuristic_scorer import _compute_skill_score
 
         score = _compute_skill_score(
             ["python", "java", "go"], "python developer needed"
@@ -344,25 +296,25 @@ class TestScorerUnit:
         assert abs(score - (1 / 3 * 50)) < 0.1
 
     def test_skill_overlap_none(self) -> None:
-        from services.job_matcher import _compute_skill_score
+        from workers.services.heuristic_scorer import _compute_skill_score
 
         score = _compute_skill_score(["rust", "haskell"], "python developer")
         assert score == 0.0
 
     def test_skill_overlap_empty_skills(self) -> None:
-        from services.job_matcher import _compute_skill_score
+        from workers.services.heuristic_scorer import _compute_skill_score
 
         score = _compute_skill_score([], "python developer")
         assert score == 0.0
 
     def test_title_exact_match(self) -> None:
-        from services.job_matcher import _compute_title_score
+        from workers.services.heuristic_scorer import _compute_title_score
 
         score = _compute_title_score(["Python Developer"], "Python Developer")
         assert score == 30.0
 
     def test_title_partial_match(self) -> None:
-        from services.job_matcher import _compute_title_score
+        from workers.services.heuristic_scorer import _compute_title_score
 
         score = _compute_title_score(
             ["Senior Python Developer"], "Python Developer"
@@ -371,31 +323,31 @@ class TestScorerUnit:
         assert score < 30.0
 
     def test_title_no_match(self) -> None:
-        from services.job_matcher import _compute_title_score
+        from workers.services.heuristic_scorer import _compute_title_score
 
         score = _compute_title_score(["Data Scientist"], "Python Developer")
         assert score == 0.0
 
     def test_title_empty(self) -> None:
-        from services.job_matcher import _compute_title_score
+        from workers.services.heuristic_scorer import _compute_title_score
 
         score = _compute_title_score([], "Python Developer")
         assert score == 0.0
 
     def test_location_remote_always_matches(self) -> None:
-        from services.job_matcher import _compute_location_score
+        from workers.services.heuristic_scorer import _compute_location_score
 
         score = _compute_location_score("Vancouver", None, "New York", "remote")
         assert score == 20.0
 
     def test_location_city_match(self) -> None:
-        from services.job_matcher import _compute_location_score
+        from workers.services.heuristic_scorer import _compute_location_score
 
         score = _compute_location_score("Toronto, ON", None, "Toronto", "onsite")
         assert score == 20.0
 
     def test_location_target_match(self) -> None:
-        from services.job_matcher import _compute_location_score
+        from workers.services.heuristic_scorer import _compute_location_score
 
         score = _compute_location_score(
             None, ["Toronto", "Vancouver"], "Toronto, ON", "hybrid"
@@ -403,19 +355,19 @@ class TestScorerUnit:
         assert score == 20.0
 
     def test_location_no_match(self) -> None:
-        from services.job_matcher import _compute_location_score
+        from workers.services.heuristic_scorer import _compute_location_score
 
         score = _compute_location_score("Vancouver", None, "Calgary", "onsite")
         assert score == 0.0
 
     def test_location_no_job_location(self) -> None:
-        from services.job_matcher import _compute_location_score
+        from workers.services.heuristic_scorer import _compute_location_score
 
         score = _compute_location_score("Toronto", None, None, None)
         assert score == 0.0
 
     def test_full_score(self) -> None:
-        from services.job_matcher import score_job_for_user
+        from workers.services.heuristic_scorer import score_job_for_user
 
         score, factors = score_job_for_user(
             skill_names=["python", "fastapi"],

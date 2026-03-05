@@ -30,6 +30,7 @@ class AdminUserListResponse(BaseModel):
 
 
 class QueueDepths(BaseModel):
+    fetch_jobs: int = 0
     score_jobs: int
     apply: int
     enrich: int
@@ -49,6 +50,7 @@ class AdminOverview(BaseModel):
 class AdminQueueStatus(BaseModel):
     """Queue status for monitoring."""
 
+    fetch_jobs_queue_depth: int = 0
     score_jobs_queue_depth: int
     apply_queue_depth: int
     enrich_queue_depth: int

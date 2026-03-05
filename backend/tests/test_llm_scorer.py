@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from schemas.scoring import LLMScoreFactors, LLMScoreResult
-from services.llm_scorer import (
+from workers.services.llm_scorer import (
     _build_jobs_batch_prompt,
     _build_user_context,
     _score_batch_llm,
@@ -255,7 +255,7 @@ class TestScoreBatchLLM:
         )
 
         jobs = [_mock_job()]
-        with patch("services.llm_scorer.get_settings") as mock_settings:
+        with patch("workers.services.llm_scorer.get_settings") as mock_settings:
             mock_settings.return_value = SimpleNamespace(
                 scoring_model="claude-haiku-4-5-20251001",
                 scoring_max_tokens=1024,
@@ -279,7 +279,7 @@ class TestScoreBatchLLM:
         provider.complete.return_value = f"```json\n{inner}\n```"
 
         jobs = [_mock_job()]
-        with patch("services.llm_scorer.get_settings") as mock_settings:
+        with patch("workers.services.llm_scorer.get_settings") as mock_settings:
             mock_settings.return_value = SimpleNamespace(
                 scoring_model="test-model",
                 scoring_max_tokens=1024,
@@ -296,7 +296,7 @@ class TestScoreBatchLLM:
         provider = AsyncMock()
         provider.complete.return_value = "This is not JSON at all"
 
-        with patch("services.llm_scorer.get_settings") as mock_settings:
+        with patch("workers.services.llm_scorer.get_settings") as mock_settings:
             mock_settings.return_value = SimpleNamespace(
                 scoring_model="test-model",
                 scoring_max_tokens=1024,
@@ -312,7 +312,7 @@ class TestScoreBatchLLM:
         provider = AsyncMock()
         provider.complete.side_effect = RuntimeError("Connection failed")
 
-        with patch("services.llm_scorer.get_settings") as mock_settings:
+        with patch("workers.services.llm_scorer.get_settings") as mock_settings:
             mock_settings.return_value = SimpleNamespace(
                 scoring_model="test-model",
                 scoring_max_tokens=1024,
@@ -334,7 +334,7 @@ class TestScoreBatchLLM:
         )
 
         jobs = [_mock_job(_JOB_ID_1), _mock_job(_JOB_ID_2, title="Data Analyst")]
-        with patch("services.llm_scorer.get_settings") as mock_settings:
+        with patch("workers.services.llm_scorer.get_settings") as mock_settings:
             mock_settings.return_value = SimpleNamespace(
                 scoring_model="test-model",
                 scoring_max_tokens=1024,
@@ -373,7 +373,7 @@ class TestScoreJobsForUser:
         user = _mock_user()
         jobs = [_mock_job()]
 
-        with patch("services.llm_scorer.get_settings") as mock_settings:
+        with patch("workers.services.llm_scorer.get_settings") as mock_settings:
             mock_settings.return_value = SimpleNamespace(
                 scoring_model="claude-haiku-4-5-20251001",
                 scoring_max_tokens=1024,
@@ -399,7 +399,7 @@ class TestScoreJobsForUser:
         user = _mock_user()
         jobs = [_mock_job()]
 
-        with patch("services.llm_scorer.get_settings") as mock_settings:
+        with patch("workers.services.llm_scorer.get_settings") as mock_settings:
             mock_settings.return_value = SimpleNamespace(
                 scoring_model="test-model",
                 scoring_max_tokens=1024,
@@ -425,7 +425,7 @@ class TestScoreJobsForUser:
         )
 
         user = _mock_user()
-        with patch("services.llm_scorer.get_settings") as mock_settings:
+        with patch("workers.services.llm_scorer.get_settings") as mock_settings:
             mock_settings.return_value = SimpleNamespace(
                 scoring_model="test-model",
                 scoring_max_tokens=1024,
@@ -464,7 +464,7 @@ class TestScoreJobsForUser:
             _mock_job(_JOB_ID_3, title="Job C"),
         ]
 
-        with patch("services.llm_scorer.get_settings") as mock_settings:
+        with patch("workers.services.llm_scorer.get_settings") as mock_settings:
             mock_settings.return_value = SimpleNamespace(
                 scoring_model="test-model",
                 scoring_max_tokens=1024,
@@ -488,7 +488,7 @@ class TestScoreJobsForUser:
         )
 
         user = _mock_user()
-        with patch("services.llm_scorer.get_settings") as mock_settings:
+        with patch("workers.services.llm_scorer.get_settings") as mock_settings:
             mock_settings.return_value = SimpleNamespace(
                 scoring_model="test-model",
                 scoring_max_tokens=1024,

@@ -16,6 +16,7 @@ from schemas.enrichment import (
 
 _JOB_ID_1 = uuid.UUID("aaaa1111-1111-1111-1111-111111111111")
 _JOB_ID_2 = uuid.UUID("aaaa2222-2222-2222-2222-222222222222")
+_USER_ID = uuid.UUID("cccc1111-1111-1111-1111-111111111111")
 
 
 # ── Schema tests ──────────────────────────────────────────────────────────────
@@ -26,6 +27,37 @@ def test_enrich_jobs_task_roundtrip() -> None:
     data = task.model_dump_json()
     restored = EnrichJobsTask.model_validate_json(data)
     assert len(restored.job_ids) == 2
+    assert restored.user_id is None
+
+
+def test_enrich_jobs_task_with_user_id() -> None:
+    task = EnrichJobsTask(job_ids=[_JOB_ID_1], user_id=_USER_ID)
+    data = task.model_dump_json()
+    restored = EnrichJobsTask.model_validate_json(data)
+    assert restored.user_id == _USER_ID
+
+
+def test_enrich_jobs_task_log_summary() -> None:
+    task = EnrichJobsTask(job_ids=[_JOB_ID_1, _JOB_ID_2], user_id=_USER_ID)
+    summary = task.log_summary()
+    assert summary["job_count"] == 2
+    assert summary["user_id"] == str(_USER_ID)
+
+
+def test_enrich_jobs_task_log_summary_no_user() -> None:
+    task = EnrichJobsTask(job_ids=[_JOB_ID_1])
+    summary = task.log_summary()
+    assert summary["job_count"] == 1
+    assert "user_id" not in summary
+
+
+def test_enrich_jobs_task_classvar_excluded_from_serialization() -> None:
+    task = EnrichJobsTask(job_ids=[_JOB_ID_1])
+    data = json.loads(task.model_dump_json())
+    assert "TASK_TYPE" not in data
+    assert "QUEUE_NAME" not in data
+    assert EnrichJobsTask.TASK_TYPE == "enrich_jobs"
+    assert EnrichJobsTask.QUEUE_NAME == "enrich:jobs"
 
 
 def test_enriched_job_data_minimal() -> None:
@@ -72,32 +104,30 @@ def test_enrichment_stats_defaults() -> None:
 
 
 @pytest.mark.asyncio
-async def test_push_enrich_task() -> None:
-    from services.enrich_queue_service import push_enrich_task
-
-    task = EnrichJobsTask(job_ids=[_JOB_ID_1])
+async def test_enqueue_enrich_jobs() -> None:
+    from infra.task_queue import enqueue_enrich_jobs
 
     mock_redis = AsyncMock()
     mock_redis.rpush = AsyncMock()
 
     with patch(
-        "services.enrich_queue_service.get_redis",
+        "infra.task_queue.get_redis",
         return_value=mock_redis,
     ):
-        await push_enrich_task(task)
+        await enqueue_enrich_jobs([_JOB_ID_1], source="test")
 
     mock_redis.rpush.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_pop_enrich_task_empty() -> None:
-    from services.enrich_queue_service import pop_enrich_task
+    from workers.queues.enrich import pop_enrich_task
 
     mock_redis = AsyncMock()
     mock_redis.blpop = AsyncMock(return_value=None)
 
     with patch(
-        "services.enrich_queue_service.get_redis",
+        "workers.queues.get_redis",
         return_value=mock_redis,
     ):
         result = await pop_enrich_task()
@@ -107,7 +137,7 @@ async def test_pop_enrich_task_empty() -> None:
 
 @pytest.mark.asyncio
 async def test_pop_enrich_task_returns_task() -> None:
-    from services.enrich_queue_service import pop_enrich_task
+    from workers.queues.enrich import pop_enrich_task
 
     task = EnrichJobsTask(job_ids=[_JOB_ID_1])
 
@@ -115,7 +145,7 @@ async def test_pop_enrich_task_returns_task() -> None:
     mock_redis.blpop = AsyncMock(return_value=("enrich:jobs", task.model_dump_json()))
 
     with patch(
-        "services.enrich_queue_service.get_redis",
+        "workers.queues.get_redis",
         return_value=mock_redis,
     ):
         result = await pop_enrich_task()
@@ -130,7 +160,7 @@ async def test_pop_enrich_task_returns_task() -> None:
 
 @pytest.mark.asyncio
 async def test_enrich_single_job_parses_json() -> None:
-    from services.job_enrichment import enrich_single_job
+    from workers.services.job_enrichment import enrich_single_job
 
     mock_response = json.dumps({
         "experience_level": "senior",
@@ -148,7 +178,7 @@ async def test_enrich_single_job_parses_json() -> None:
     })
 
     with patch(
-        "services.job_enrichment.chat_completion",
+        "workers.services.job_enrichment.chat_completion",
         new_callable=AsyncMock,
         return_value=mock_response,
     ):
@@ -162,7 +192,7 @@ async def test_enrich_single_job_parses_json() -> None:
 
 @pytest.mark.asyncio
 async def test_enrich_single_job_strips_markdown_fences() -> None:
-    from services.job_enrichment import enrich_single_job
+    from workers.services.job_enrichment import enrich_single_job
 
     inner_json = json.dumps({
         "experience_level": "mid",
@@ -181,7 +211,7 @@ async def test_enrich_single_job_strips_markdown_fences() -> None:
     mock_response = f"```json\n{inner_json}\n```"
 
     with patch(
-        "services.job_enrichment.chat_completion",
+        "workers.services.job_enrichment.chat_completion",
         new_callable=AsyncMock,
         return_value=mock_response,
     ):
@@ -193,10 +223,10 @@ async def test_enrich_single_job_strips_markdown_fences() -> None:
 
 @pytest.mark.asyncio
 async def test_enrich_single_job_returns_none_on_bad_json() -> None:
-    from services.job_enrichment import enrich_single_job
+    from workers.services.job_enrichment import enrich_single_job
 
     with patch(
-        "services.job_enrichment.chat_completion",
+        "workers.services.job_enrichment.chat_completion",
         new_callable=AsyncMock,
         return_value="This is not valid JSON at all",
     ):
@@ -207,10 +237,10 @@ async def test_enrich_single_job_returns_none_on_bad_json() -> None:
 
 @pytest.mark.asyncio
 async def test_enrich_single_job_returns_none_on_exception() -> None:
-    from services.job_enrichment import enrich_single_job
+    from workers.services.job_enrichment import enrich_single_job
 
     with patch(
-        "services.job_enrichment.chat_completion",
+        "workers.services.job_enrichment.chat_completion",
         new_callable=AsyncMock,
         side_effect=RuntimeError("API error"),
     ):
@@ -220,7 +250,7 @@ async def test_enrich_single_job_returns_none_on_exception() -> None:
 
 
 def test_build_requirements_jsonb_full() -> None:
-    from services.job_enrichment import _build_requirements_jsonb
+    from workers.services.job_enrichment import _build_requirements_jsonb
 
     enriched = EnrichedJobData(
         required_skills=["Python", "FastAPI"],
@@ -240,7 +270,7 @@ def test_build_requirements_jsonb_full() -> None:
 
 
 def test_build_requirements_jsonb_empty() -> None:
-    from services.job_enrichment import _build_requirements_jsonb
+    from workers.services.job_enrichment import _build_requirements_jsonb
 
     enriched = EnrichedJobData()
     result = _build_requirements_jsonb(enriched)
@@ -248,7 +278,7 @@ def test_build_requirements_jsonb_empty() -> None:
 
 
 def test_build_requirements_jsonb_partial() -> None:
-    from services.job_enrichment import _build_requirements_jsonb
+    from workers.services.job_enrichment import _build_requirements_jsonb
 
     enriched = EnrichedJobData(
         required_skills=["React"],

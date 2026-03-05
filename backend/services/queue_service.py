@@ -1,7 +1,7 @@
 import logging
 
 from schemas.auto_apply import ApplyTask
-from services.redis_pool import get_redis
+from infra.redis_pool import get_redis
 
 logger = logging.getLogger(__name__)
 

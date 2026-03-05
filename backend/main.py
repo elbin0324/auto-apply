@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
 from routers import admin, applications, auth, auto_apply, health, jobs, profile
-from services.logging_config import setup_logging
+from infra.logging_config import setup_logging
 
 settings = get_settings()
 
@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
     yield
     # Shutdown
-    from services.redis_pool import close_pool
+    from infra.redis_pool import close_pool
 
     await close_pool()
 

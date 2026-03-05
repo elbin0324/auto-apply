@@ -9,20 +9,16 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.auto_apply_config import AutoApplyConfig
 from models.job import Job
-from schemas.crawl import ScoreJobsTask
-from services.job_search_api import (
+from workers.services.job_search_api import (
     EXPERIENCE_LEVEL_MAP,
     WORK_ARRANGEMENT_MAP,
     JobSearchParams,
-    search_jobs_advanced,
 )
-from services.score_queue_service import push_score_jobs_task
 
 logger = logging.getLogger(__name__)
 
@@ -135,103 +131,3 @@ async def _upsert_jobs(
     result = await db.execute(stmt)
     job_ids = [row[0] for row in result.fetchall()]
     return job_ids
-
-
-async def fetch_jobs_for_user(
-    db: AsyncSession,
-    user_id: uuid.UUID,
-    config: AutoApplyConfig,
-    *,
-    recent_only: bool = False,
-) -> dict[str, Any]:
-    """Fetch jobs from Active Jobs DB based on user config, upsert, and push to score queue.
-
-    Args:
-        db: Async database session.
-        user_id: The user's UUID.
-        config: User's AutoApplyConfig with target titles, locations, preferences.
-        recent_only: If True, use 24h endpoint (daily cron). If False, use 7d (login/on-demand).
-
-    Returns:
-        Stats: {queries_made, api_results, jobs_upserted}
-    """
-    params = _build_search_params(config)
-    if not params:
-        logger.debug("No search params for user %s (no target titles)", user_id)
-        return {"queries_made": 0, "api_results": 0, "jobs_upserted": 0}
-
-    results = await search_jobs_advanced(params, recent_only=recent_only)
-
-    if not results:
-        logger.info("No jobs found for user %s", user_id)
-        return {
-            "queries_made": 1,
-            "api_results": 0,
-            "jobs_upserted": 0,
-        }
-
-    # Upsert to DB
-    job_ids = await _upsert_jobs(db, results)
-    await db.flush()
-
-    # Push to score queue for heuristic scoring
-    if job_ids:
-        score_task = ScoreJobsTask(job_ids=job_ids)
-        await push_score_jobs_task(score_task, source="job_fetch")
-
-    logger.info(
-        "Fetched jobs for user %s: api_results=%d, upserted=%d, recent_only=%s",
-        user_id,
-        len(results),
-        len(job_ids),
-        recent_only,
-    )
-
-    return {
-        "queries_made": 1,
-        "api_results": len(results),
-        "jobs_upserted": len(job_ids),
-    }
-
-
-async def fetch_jobs_for_all_active_users(
-    db: AsyncSession,
-    *,
-    recent_only: bool = False,
-) -> dict[str, Any]:
-    """Fetch jobs for all users with active AutoApplyConfig.
-
-    Called by the arq scheduler cron task.
-    """
-    result = await db.execute(
-        select(AutoApplyConfig).where(AutoApplyConfig.is_active.is_(True))
-    )
-    configs = list(result.scalars().all())
-
-    if not configs:
-        logger.debug("No active auto-apply configs, skipping fetch")
-        return {"users_processed": 0, "total_jobs_upserted": 0}
-
-    total_stats = {
-        "users_processed": 0,
-        "total_queries": 0,
-        "total_api_results": 0,
-        "total_jobs_upserted": 0,
-    }
-
-    for config in configs:
-        try:
-            stats = await fetch_jobs_for_user(
-                db, config.user_id, config, recent_only=recent_only
-            )
-            total_stats["users_processed"] += 1
-            total_stats["total_queries"] += stats.get("queries_made", 0)
-            total_stats["total_api_results"] += stats.get("api_results", 0)
-            total_stats["total_jobs_upserted"] += stats.get("jobs_upserted", 0)
-        except Exception:
-            logger.exception("Job fetch failed for user %s", config.user_id)
-
-    await db.commit()
-
-    logger.info("Job fetch for all users complete: %s", total_stats)
-    return total_stats

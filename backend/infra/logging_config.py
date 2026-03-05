@@ -14,8 +14,9 @@ from datetime import datetime, timezone
 
 from config import get_settings
 
-# Thread-local (well, asyncio-task-local) storage for the current task_id
+# Thread-local (well, asyncio-task-local) storage for correlation context
 _task_id: str = ""
+_correlation_id: str = ""
 
 
 def set_task_id(task_id: str) -> None:
@@ -27,6 +28,17 @@ def set_task_id(task_id: str) -> None:
 def clear_task_id() -> None:
     global _task_id
     _task_id = ""
+
+
+def set_correlation_id(correlation_id: str) -> None:
+    """Set the current correlation_id for cross-queue tracing."""
+    global _correlation_id
+    _correlation_id = correlation_id
+
+
+def clear_correlation_id() -> None:
+    global _correlation_id
+    _correlation_id = ""
 
 
 class JSONFormatter(logging.Formatter):
@@ -47,8 +59,14 @@ class JSONFormatter(logging.Formatter):
             entry["worker"] = self.worker_name
         if _task_id:
             entry["task_id"] = _task_id
+        if _correlation_id:
+            entry["correlation_id"] = _correlation_id
         if record.exc_info and record.exc_info[1] is not None:
             entry["exception"] = "".join(traceback.format_exception(*record.exc_info))
+        # Merge structured extra data (e.g. lifecycle events) as flat keys
+        data = getattr(record, "data", None)
+        if isinstance(data, dict):
+            entry.update(data)
         return json.dumps(entry, default=str)
 
 

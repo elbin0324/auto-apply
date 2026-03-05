@@ -58,6 +58,7 @@ class JobSearchParams:
     """
 
     advanced_title_filter: str | None = None
+    title_filter: str | None = None
     location_filter: str | None = None
     remote: bool | None = None
     ai_work_arrangement_filter: str | None = None
@@ -80,7 +81,9 @@ def _build_api_params(params: JobSearchParams) -> dict[str, str]:
         "description_type": params.description_type,
     }
 
-    if params.advanced_title_filter:
+    if params.title_filter:
+        api_params["title_filter"] = params.title_filter
+    elif params.advanced_title_filter:
         api_params["advanced_title_filter"] = params.advanced_title_filter
     if params.location_filter:
         api_params["location_filter"] = params.location_filter
@@ -347,7 +350,7 @@ async def search_jobs_advanced(
                         result.get("id"),
                     )
 
-            filter_desc = params.advanced_title_filter or "(no title filter)"
+            filter_desc = params.title_filter or params.advanced_title_filter or "(no title filter)"
             logger.info(
                 "Active Jobs DB %s filter=%r returned %d results, parsed %d jobs",
                 endpoint,
@@ -364,7 +367,7 @@ async def search_jobs_advanced(
         except httpx.TimeoutException:
             logger.error(
                 "Active Jobs DB API timed out for %s",
-                params.advanced_title_filter,
+                params.title_filter or params.advanced_title_filter,
             )
 
     return all_jobs
@@ -383,7 +386,7 @@ async def search_jobs(
     Builds a simple JobSearchParams from positional args.
     """
     params = JobSearchParams(
-        advanced_title_filter=f"'{query}'",
+        title_filter=f'"{query}"',
         limit=limit,
         include_ai=True,
         agency=False,
@@ -391,10 +394,10 @@ async def search_jobs(
 
     location_parts: list[str] = []
     if location:
-        location_parts.append(f'"{location}"')
+        location_parts.append(location)
     if remote_only:
         params.remote = True
-        location_parts.append('"Remote"')
+        location_parts.append("Remote")
     if location_parts:
         params.location_filter = " OR ".join(location_parts)
 

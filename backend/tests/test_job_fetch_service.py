@@ -24,25 +24,25 @@ class TestBuildSearchParams:
         config = _mock_config(target_titles=["Senior Engineer"])
         params = _build_search_params(config)
         assert params is not None
-        assert params.advanced_title_filter == "'Senior Engineer'"
+        assert params.title_filter == '"Senior Engineer"'
 
     def test_multiple_titles_or_combined(self) -> None:
         config = _mock_config(target_titles=["Senior Engineer", "Tech Lead", "Staff Dev"])
         params = _build_search_params(config)
         assert params is not None
-        assert params.advanced_title_filter == "'Senior Engineer' | 'Tech Lead' | 'Staff Dev'"
+        assert params.title_filter == '"Senior Engineer" OR "Tech Lead" OR "Staff Dev"'
 
     def test_single_location(self) -> None:
         config = _mock_config(target_locations=["New York"])
         params = _build_search_params(config)
         assert params is not None
-        assert params.location_filter == '"New York"'
+        assert params.location_filter == "New York"
 
     def test_multiple_locations_or_combined(self) -> None:
         config = _mock_config(target_locations=["San Francisco", "New York"])
         params = _build_search_params(config)
         assert params is not None
-        assert params.location_filter == '"San Francisco" OR "New York"'
+        assert params.location_filter == "San Francisco OR New York"
 
     def test_no_locations(self) -> None:
         config = _mock_config(target_locations=None)
@@ -179,8 +179,8 @@ class TestBuildSearchParams:
         )
         params = _build_search_params(config)
         assert params is not None
-        assert params.advanced_title_filter == "'Data Engineer' | 'ML Engineer'"
-        assert params.location_filter == '"United States" OR "United Kingdom"'
+        assert params.title_filter == '"Data Engineer" OR "ML Engineer"'
+        assert params.location_filter == "United States OR United Kingdom"
         assert params.remote is True
         assert "Remote Solely" in params.ai_work_arrangement_filter
         assert params.ai_experience_level_filter == "5-10"

@@ -45,8 +45,8 @@ from infra.worker_heartbeat import WorkerHeartbeat
 T = TypeVar("T")
 logger = logging.getLogger(__name__)
 
-# Health check port — Railway sets PORT for web services; workers use a fixed port.
-_HEALTH_PORT = int(os.environ.get("HEALTH_PORT", "8080"))
+# Health check port — use Railway's PORT if set, otherwise default to 8080.
+_HEALTH_PORT = int(os.environ.get("PORT", os.environ.get("HEALTH_PORT", "8080")))
 
 # Task status Redis hash TTLs
 _COMPLETED_TTL = 3600  # 1 hour for successful tasks
@@ -224,6 +224,9 @@ class BaseWorker(ABC, Generic[T]):
         self._shutdown.set()
 
     async def _loop(self) -> None:
+        # Raw print before any config/logging — diagnostic for Railway log capture
+        print(f"[{self.name}] Worker process starting (PID {os.getpid()})", flush=True)
+
         settings = get_settings()
         setup_logging(self.name)
 

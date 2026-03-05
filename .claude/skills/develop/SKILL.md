@@ -1,7 +1,7 @@
 ---
 name: develop
 description: Development conventions, branch workflow, and coding standards for auto-apply (backend + frontend). Use when implementing features, fixing bugs, or making any code changes.
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 # Auto-Apply Development Guide

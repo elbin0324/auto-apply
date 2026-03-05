@@ -158,24 +158,6 @@ async def count_user_scores(db: AsyncSession, user_id: uuid.UUID) -> int:
     return result.scalar_one()
 
 
-async def enqueue_immediate_fetch(user_id: uuid.UUID) -> None:
-    """Enqueue an arq task to immediately fetch + score jobs for a single user."""
-    from arq.connections import RedisSettings, create_pool
-
-    from config import get_settings
-
-    settings = get_settings()
-    redis = await create_pool(RedisSettings.from_dsn(settings.redis_url))
-    try:
-        await redis.enqueue_job(
-            "task_fetch_jobs_for_single_user",
-            str(user_id),
-            _queue_name="arq:scheduler",
-        )
-    finally:
-        await redis.aclose()
-
-
 async def run_matching_for_user(
     db: AsyncSession,
     user_id: uuid.UUID,

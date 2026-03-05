@@ -9,7 +9,9 @@
       "WebSearch",
       "mcp__github__get_file_contents",
       "Bash(git checkout:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git restore:*)",
+      "Bash(git diff:*)"
     ]
   }
 }

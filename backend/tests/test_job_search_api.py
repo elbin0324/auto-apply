@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from services.job_search_api import (
+from workers.services.job_search_api import (
     FANTASTIC_API_HOST,
     FANTASTIC_BASE_URL,
     JobSearchParams,
@@ -402,7 +402,7 @@ class TestParseFantasticResult:
 
 @pytest.mark.asyncio
 async def test_search_jobs_returns_empty_when_no_api_key() -> None:
-    with patch("services.job_search_api.get_settings") as mock_settings:
+    with patch("workers.services.job_search_api.get_settings") as mock_settings:
         mock_settings.return_value.rapidapi_key = ""
         result = await search_jobs("Python Developer")
     assert result == []
@@ -416,7 +416,7 @@ async def test_search_jobs_sends_correct_headers() -> None:
     mock_response.json.return_value = [_sample_result()]
 
     with (
-        patch("services.job_search_api.get_settings") as mock_settings,
+        patch("workers.services.job_search_api.get_settings") as mock_settings,
         patch("httpx.AsyncClient") as mock_client_cls,
     ):
         mock_settings.return_value.rapidapi_key = "test-rapid-key"
@@ -458,7 +458,7 @@ async def test_search_jobs_uses_24h_endpoint() -> None:
     mock_response.json.return_value = []
 
     with (
-        patch("services.job_search_api.get_settings") as mock_settings,
+        patch("workers.services.job_search_api.get_settings") as mock_settings,
         patch("httpx.AsyncClient") as mock_client_cls,
     ):
         mock_settings.return_value.rapidapi_key = "test-key"
@@ -481,7 +481,7 @@ async def test_search_jobs_remote_only() -> None:
     mock_response.json.return_value = []
 
     with (
-        patch("services.job_search_api.get_settings") as mock_settings,
+        patch("workers.services.job_search_api.get_settings") as mock_settings,
         patch("httpx.AsyncClient") as mock_client_cls,
     ):
         mock_settings.return_value.rapidapi_key = "test-key"
@@ -509,7 +509,7 @@ async def test_search_jobs_advanced_with_filters() -> None:
     mock_response.json.return_value = [_sample_result()]
 
     with (
-        patch("services.job_search_api.get_settings") as mock_settings,
+        patch("workers.services.job_search_api.get_settings") as mock_settings,
         patch("httpx.AsyncClient") as mock_client_cls,
     ):
         mock_settings.return_value.rapidapi_key = "test-key"
@@ -539,7 +539,7 @@ async def test_search_jobs_advanced_with_filters() -> None:
 
 @pytest.mark.asyncio
 async def test_search_jobs_advanced_returns_empty_no_key() -> None:
-    with patch("services.job_search_api.get_settings") as mock_settings:
+    with patch("workers.services.job_search_api.get_settings") as mock_settings:
         mock_settings.return_value.rapidapi_key = ""
         result = await search_jobs_advanced(JobSearchParams())
     assert result == []
@@ -556,7 +556,7 @@ async def test_search_jobs_handles_http_error() -> None:
     )
 
     with (
-        patch("services.job_search_api.get_settings") as mock_settings,
+        patch("workers.services.job_search_api.get_settings") as mock_settings,
         patch("httpx.AsyncClient") as mock_client_cls,
     ):
         mock_settings.return_value.rapidapi_key = "test-key"
@@ -573,7 +573,7 @@ async def test_search_jobs_handles_http_error() -> None:
 @pytest.mark.asyncio
 async def test_search_jobs_handles_timeout() -> None:
     with (
-        patch("services.job_search_api.get_settings") as mock_settings,
+        patch("workers.services.job_search_api.get_settings") as mock_settings,
         patch("httpx.AsyncClient") as mock_client_cls,
     ):
         mock_settings.return_value.rapidapi_key = "test-key"

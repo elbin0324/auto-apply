@@ -51,17 +51,8 @@ class Settings(BaseSettings):
     # AI
     anthropic_api_key: str
 
-    # Job data — Adzuna (optional legacy source)
-    adzuna_app_id: str = ""
-    adzuna_api_key: str = ""
-    adzuna_sync_country: str = "ca"
-    adzuna_sync_categories: str = "it-jobs"  # comma-separated for multiple
-    adzuna_sync_pages: int = 5
-
-    # Job data — Fantastic Jobs API (primary source via RapidAPI)
-    rapidapi_key: str = ""  # RapidAPI key (Fantastic Jobs Job Search API)
-    fantastic_results_per_query: int = 100  # results per API call (max allowed)
-    fantastic_top_n_to_enrich: int = 20  # top-scoring jobs per user to enrich
+    # Job data — Active Jobs DB API (primary source via RapidAPI)
+    rapidapi_key: str = ""  # RapidAPI key (Active Jobs DB API)
 
     # Job enrichment (LLM-based description processing)
     enrichment_model: str = "claude-haiku-4-5-20251001"
@@ -78,11 +69,10 @@ class Settings(BaseSettings):
     scoring_batch_size: int = 5  # jobs per LLM call
     scoring_concurrency: int = 3  # max parallel LLM calls per worker
     scoring_use_llm: bool = True  # False = heuristic only (rollback)
-    scoring_enrich_after_score: bool = False  # True = also run enrichment on top-N
     scoring_openai_base_url: str = ""  # for openai_compat provider (Ollama, vLLM, etc.)
     scoring_openai_api_key: str = ""  # for openai_compat provider
 
-    # Stripe (optional until billing is implemented)
+    # Stripe — TODO: billing not yet implemented
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""
     stripe_webhook_secret: str = ""
@@ -96,7 +86,7 @@ class Settings(BaseSettings):
     # Internal auth (agent → platform)
     internal_api_key: str
 
-    # OAuth
+    # OAuth (unused — Supabase handles OAuth directly; kept for .env compat)
     google_client_id: str = ""
     google_client_secret: str = ""
 

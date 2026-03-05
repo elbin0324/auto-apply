@@ -1,14 +1,27 @@
 """Schemas for the job enrichment pipeline."""
 
+from typing import ClassVar
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+from schemas.base_task import BaseTask
 
-class EnrichJobsTask(BaseModel):
+
+class EnrichJobsTask(BaseTask):
     """Pushed to enrich:jobs queue after scoring completes."""
 
+    TASK_TYPE: ClassVar[str] = "enrich_jobs"
+    QUEUE_NAME: ClassVar[str] = "enrich:jobs"
+
     job_ids: list[UUID]
+    user_id: UUID | None = None  # Optional user context for monitoring
+
+    def log_summary(self) -> dict:
+        summary: dict = {"job_count": len(self.job_ids)}
+        if self.user_id:
+            summary["user_id"] = str(self.user_id)
+        return summary
 
 
 class SalaryExtracted(BaseModel):

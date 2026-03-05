@@ -1,0 +1,12 @@
+# Railway config: fetch cron job (short-lived)
+# Config path in Railway dashboard: deploy/fetch-cron.railway.toml
+#
+# Runs daily at 6 AM UTC. Enqueues a fetch:jobs task per active user,
+# then exits. The fetch worker picks up and processes those tasks.
+
+[build]
+dockerfilePath = "backend/Dockerfile"
+
+[deploy]
+startCommand = "python -m cron.enqueue_fetch"
+cronSchedule = "0 6 * * *"

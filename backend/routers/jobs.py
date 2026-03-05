@@ -1,11 +1,11 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from deps import CurrentUser, DbSession, verify_internal_api_key
+from deps import CurrentUser, DbSession
 from models.application import Application
 from models.job import Job
 from models.job_match_score import JobMatchScore
@@ -192,35 +192,25 @@ async def get_job_match(
 
 
 @router.post("/rescore")
-async def rescore_jobs(user: CurrentUser, db: DbSession) -> dict:
+async def rescore_jobs(
+    user: CurrentUser,
+    db: DbSession,
+    force: bool = Query(False),
+) -> dict:
     """Rescore all active jobs for the current user via the score queue.
 
-    Useful after updating profile, skills, or preferences. Pushes existing
-    job IDs to the score worker — does not re-fetch from Fantastic Jobs.
+    Useful after updating profile, skills, or preferences. Enqueues a single
+    per-user scoring task — does not re-fetch from external APIs.
+
+    Set force=true to clear existing scores and rescore all filtered jobs.
     """
-    from schemas.crawl import ScoreJobsTask
-    from services.score_queue_service import push_score_jobs_task
+    from infra.task_queue import enqueue_score_jobs
 
-    result = await db.execute(
-        select(Job.id).where(Job.is_active.is_(True))
-    )
-    job_ids = list(result.scalars().all())
-
-    if not job_ids:
-        return {"detail": "No active jobs to rescore", "jobs_queued": 0}
-
-    batch_size = 50
-    tasks_pushed = 0
-    for i in range(0, len(job_ids), batch_size):
-        batch = job_ids[i : i + batch_size]
-        task = ScoreJobsTask(job_ids=batch)
-        await push_score_jobs_task(task, source="user_rescore")
-        tasks_pushed += 1
+    await enqueue_score_jobs(user.id, source="user_rescore", force=force)
 
     return {
-        "detail": f"Queued {len(job_ids)} jobs for rescoring",
-        "jobs_queued": len(job_ids),
-        "batches": tasks_pushed,
+        "detail": "Queued scoring task for user",
+        "force": force,
     }
 
 
@@ -388,26 +378,3 @@ async def unskip_job(job_id: uuid.UUID, user: CurrentUser, db: DbSession) -> dic
     await db.delete(application)
     await db.flush()
     return {"status": "new"}
-
-
-# ── Admin sync endpoint ──────────────────────────────────────────────────────
-
-
-@router.post(
-    "/sync",
-    dependencies=[Depends(verify_internal_api_key)],
-    status_code=status.HTTP_200_OK,
-)
-async def trigger_sync(db: DbSession) -> dict:
-    from services.job_sync import run_sync
-    from services.job_matcher import compute_scores_for_sync
-
-    sync_stats = await run_sync(db)
-    synced_ids = sync_stats.pop("synced_external_ids", [])
-
-    score_stats = await compute_scores_for_sync(db, synced_ids)
-
-    return {
-        "sync": sync_stats,
-        "scoring": score_stats,
-    }

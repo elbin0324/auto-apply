@@ -1,8 +1,8 @@
-"""Tests for the job fetch service (services/job_fetch_service.py)."""
+"""Tests for the job fetch service (workers/services/job_fetch.py)."""
 
 from types import SimpleNamespace
 
-from services.job_fetch_service import _build_search_params
+from workers.services.job_fetch import _build_search_params
 
 
 def _mock_config(**overrides: object) -> SimpleNamespace:

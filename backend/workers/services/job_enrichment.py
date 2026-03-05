@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import get_settings
 from models.job import Job
 from schemas.enrichment import EnrichedJobData, EnrichmentStats
-from services.ai_client import chat_completion
+from infra.ai_client import chat_completion
 
 logger = logging.getLogger(__name__)
 

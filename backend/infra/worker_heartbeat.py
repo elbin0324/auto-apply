@@ -9,7 +9,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from services.redis_pool import get_redis
+from infra.redis_pool import get_redis
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ HEARTBEAT_TTL = 30  # seconds before key expires if worker dies
 BEAT_INTERVAL = 10  # seconds between heartbeat refreshes
 
 # All known standalone worker names (used for reading status)
-WORKER_NAMES = ["crawl", "score", "enrich"]
+WORKER_NAMES = ["score", "enrich", "fetch"]
 
 
 class WorkerHeartbeat:
@@ -82,14 +82,13 @@ class WorkerHeartbeat:
 
 
 async def get_all_worker_statuses() -> list[dict]:
-    """Read heartbeat data for all known workers + arq scheduler.
+    """Read heartbeat data for all known standalone workers.
 
     Returns a list of dicts suitable for constructing WorkerStatus schemas.
     """
     redis = get_redis()
     statuses = []
 
-    # Standalone workers (crawl, score, enrich)
     for name in WORKER_NAMES:
         key = f"worker:heartbeat:{name}"
         data = await redis.hgetall(key)
@@ -117,34 +116,5 @@ async def get_all_worker_statuses() -> list[dict]:
                 "status": "offline",
                 "is_alive": False,
             })
-
-    # arq scheduler — check for arq:worker:* keys
-    arq_keys = []
-    async for key in redis.scan_iter("arq:worker:*"):
-        arq_keys.append(key)
-    if arq_keys:
-        statuses.append({
-            "name": "scheduler",
-            "worker_id": arq_keys[0].split(":")[-1] if arq_keys else None,
-            "started_at": None,
-            "last_beat_at": None,
-            "tasks_processed": 0,
-            "tasks_failed": 0,
-            "current_task": "",
-            "status": "idle",
-            "is_alive": True,
-        })
-    else:
-        statuses.append({
-            "name": "scheduler",
-            "worker_id": None,
-            "started_at": None,
-            "last_beat_at": None,
-            "tasks_processed": 0,
-            "tasks_failed": 0,
-            "current_task": "",
-            "status": "offline",
-            "is_alive": False,
-        })
 
     return statuses

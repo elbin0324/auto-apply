@@ -19,7 +19,7 @@ test-cov:
 
 # ── Cron Jobs ────────────────────────────────────────────────────────────────
 cron-fetch:
-	cd backend && poetry run python -m cron.enqueue_fetch
+	curl -sf -X POST -H "X-Internal-API-Key: $${INTERNAL_API_KEY}" http://localhost:8000/api/internal/scheduler/fetch
 
 # ── Queue Workers ─────────────────────────────────────────────────────────
 score-worker:
@@ -80,7 +80,7 @@ help:
 	@echo "  lint          - Run ruff + mypy"
 	@echo "  format        - Format code with ruff"
 	@echo "  clean         - Remove cache files"
-	@echo "  cron-fetch    - Run fetch cron job (enqueue fetch tasks for active users)"
+	@echo "  cron-fetch    - Trigger fetch cron via local API (requires running server)"
 	@echo "  score-worker  - Start score worker (consumes score:jobs queue)"
 	@echo "  enrich-worker - Start enrich worker (consumes enrich:jobs queue)"
 	@echo "  fetch-worker  - Start fetch worker (consumes fetch:jobs queue)"

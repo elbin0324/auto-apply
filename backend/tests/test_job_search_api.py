@@ -433,10 +433,10 @@ async def test_search_jobs_sends_correct_headers() -> None:
     assert headers["x-rapidapi-host"] == FANTASTIC_API_HOST
     assert headers["x-rapidapi-key"] == "test-rapid-key"
 
-    # Verify params use advanced_title_filter (from wrapper)
+    # Verify params use title_filter (from wrapper)
     params = call_kwargs.kwargs.get("params") or call_kwargs[1].get("params")
-    assert params["advanced_title_filter"] == "'Python Developer'"
-    assert params["location_filter"] == '"United States"'
+    assert params["title_filter"] == '"Python Developer"'
+    assert params["location_filter"] == "United States"
     assert params["description_type"] == "text"
     assert params["include_ai"] == "true"
     assert params["agency"] == "false"
@@ -493,8 +493,8 @@ async def test_search_jobs_remote_only() -> None:
         await search_jobs("Developer", "United States", remote_only=True)
 
     params = mock_client.get.call_args.kwargs.get("params")
-    assert '"Remote"' in params["location_filter"]
-    assert '"United States"' in params["location_filter"]
+    assert "Remote" in params["location_filter"]
+    assert "United States" in params["location_filter"]
     assert params["remote"] == "true"
 
 

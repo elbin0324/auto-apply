@@ -25,35 +25,29 @@ logger = logging.getLogger(__name__)
 
 def _build_search_params(
     config: AutoApplyConfig,
-) -> JobSearchParams | None:
-    """Build a single JobSearchParams from user's AutoApplyConfig.
+) -> list[JobSearchParams]:
+    """Build one JobSearchParams per target title from user's AutoApplyConfig.
 
-    Combines all target titles into one advanced_title_filter (Lucene OR),
-    all locations into one location_filter, and maps all preference fields
-    to their corresponding API filter params.
+    The title_filter API param only accepts a single title, so we create
+    a separate query for each title. All other filters (location, experience,
+    etc.) are shared across queries.
 
-    Returns None if no target_titles are configured.
+    Returns an empty list if no target_titles are configured.
     """
     titles = list(config.target_titles or [])
     if not titles:
-        return None
+        return []
 
     locations = list(config.target_locations or [])
     location_prefs = list(config.location_type_pref or [])
 
-    params = JobSearchParams(
-        include_ai=True,
-        agency=False,
-    )
-
-    # Combine titles with Lucene OR: 'Title A' | 'Title B'
-    params.advanced_title_filter = " | ".join(f"'{t}'" for t in titles)
-
-    # Combine locations: "City A" OR "City B"
+    # Build shared filter values
+    location_filter: str | None = None
     if locations:
-        params.location_filter = " OR ".join(f'"{loc}"' for loc in locations)
+        location_filter = " OR ".join(locations)
 
-    # Work arrangement / remote preference
+    ai_work_arrangement_filter: str | None = None
+    remote: bool | None = None
     if location_prefs:
         arrangement_parts: list[str] = []
         for pref in location_prefs:
@@ -61,25 +55,22 @@ def _build_search_params(
             if mapped:
                 arrangement_parts.append(mapped)
         if arrangement_parts:
-            params.ai_work_arrangement_filter = ",".join(arrangement_parts)
-
-        # Also set the remote boolean for exclusive remote preference
+            ai_work_arrangement_filter = ",".join(arrangement_parts)
         if location_prefs == ["remote"]:
-            params.remote = True
+            remote = True
 
-    # Experience level
+    ai_experience_level_filter: str | None = None
     if config.experience_level:
         api_level = EXPERIENCE_LEVEL_MAP.get(config.experience_level)
         if api_level:
-            params.ai_experience_level_filter = api_level
+            ai_experience_level_filter = api_level
 
-    # Excluded companies (exact match, comma-delimited without spaces)
+    organization_exclusion_filter: str | None = None
     excluded = list(config.excluded_companies or [])
     if excluded:
-        params.organization_exclusion_filter = ",".join(excluded)
+        organization_exclusion_filter = ",".join(excluded)
 
-    # Preferred industries → ai_taxonomies_a_filter
-    # Double-quote any containing '&' per API docs
+    ai_taxonomies_a_filter: str | None = None
     industries = list(config.preferred_industries or [])
     if industries:
         formatted = []
@@ -88,9 +79,23 @@ def _build_search_params(
                 formatted.append(f'"{ind}"')
             else:
                 formatted.append(ind)
-        params.ai_taxonomies_a_filter = ",".join(formatted)
+        ai_taxonomies_a_filter = ",".join(formatted)
 
-    return params
+    # One query per title
+    return [
+        JobSearchParams(
+            title_filter=title,
+            location_filter=location_filter,
+            remote=remote,
+            ai_work_arrangement_filter=ai_work_arrangement_filter,
+            ai_experience_level_filter=ai_experience_level_filter,
+            organization_exclusion_filter=organization_exclusion_filter,
+            ai_taxonomies_a_filter=ai_taxonomies_a_filter,
+            include_ai=True,
+            agency=False,
+        )
+        for title in titles
+    ]
 
 
 async def _upsert_jobs(

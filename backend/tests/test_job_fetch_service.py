@@ -22,150 +22,151 @@ def _mock_config(**overrides: object) -> SimpleNamespace:
 class TestBuildSearchParams:
     def test_single_title(self) -> None:
         config = _mock_config(target_titles=["Senior Engineer"])
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.advanced_title_filter == "'Senior Engineer'"
+        params_list = _build_search_params(config)
+        assert len(params_list) == 1
+        assert params_list[0].title_filter == "Senior Engineer"
 
-    def test_multiple_titles_or_combined(self) -> None:
+    def test_multiple_titles_one_per_query(self) -> None:
         config = _mock_config(target_titles=["Senior Engineer", "Tech Lead", "Staff Dev"])
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.advanced_title_filter == "'Senior Engineer' | 'Tech Lead' | 'Staff Dev'"
+        params_list = _build_search_params(config)
+        assert len(params_list) == 3
+        assert params_list[0].title_filter == "Senior Engineer"
+        assert params_list[1].title_filter == "Tech Lead"
+        assert params_list[2].title_filter == "Staff Dev"
+
+    def test_shared_filters_across_titles(self) -> None:
+        config = _mock_config(
+            target_titles=["Engineer", "Developer"],
+            target_locations=["New York"],
+        )
+        params_list = _build_search_params(config)
+        assert len(params_list) == 2
+        for params in params_list:
+            assert params.location_filter == "New York"
 
     def test_single_location(self) -> None:
         config = _mock_config(target_locations=["New York"])
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.location_filter == '"New York"'
+        params_list = _build_search_params(config)
+        assert len(params_list) == 1
+        assert params_list[0].location_filter == "New York"
 
     def test_multiple_locations_or_combined(self) -> None:
         config = _mock_config(target_locations=["San Francisco", "New York"])
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.location_filter == '"San Francisco" OR "New York"'
+        params_list = _build_search_params(config)
+        assert len(params_list) == 1
+        assert params_list[0].location_filter == "San Francisco OR New York"
 
     def test_no_locations(self) -> None:
         config = _mock_config(target_locations=None)
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.location_filter is None
+        params_list = _build_search_params(config)
+        assert len(params_list) == 1
+        assert params_list[0].location_filter is None
 
     def test_empty_locations(self) -> None:
         config = _mock_config(target_locations=[])
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.location_filter is None
+        params_list = _build_search_params(config)
+        assert len(params_list) == 1
+        assert params_list[0].location_filter is None
 
-    def test_returns_none_when_no_titles(self) -> None:
+    def test_returns_empty_when_no_titles(self) -> None:
         config = _mock_config(target_titles=None)
-        assert _build_search_params(config) is None
+        assert _build_search_params(config) == []
 
-    def test_returns_none_when_empty_titles(self) -> None:
+    def test_returns_empty_when_empty_titles(self) -> None:
         config = _mock_config(target_titles=[])
-        assert _build_search_params(config) is None
+        assert _build_search_params(config) == []
 
     def test_remote_only_preference(self) -> None:
         config = _mock_config(location_type_pref=["remote"])
-        params = _build_search_params(config)
-        assert params is not None
+        params_list = _build_search_params(config)
+        assert len(params_list) == 1
+        params = params_list[0]
         assert params.remote is True
         assert "Remote Solely" in params.ai_work_arrangement_filter
         assert "Remote OK" in params.ai_work_arrangement_filter
 
     def test_hybrid_preference(self) -> None:
         config = _mock_config(location_type_pref=["hybrid"])
-        params = _build_search_params(config)
-        assert params is not None
+        params_list = _build_search_params(config)
+        params = params_list[0]
         assert params.ai_work_arrangement_filter == "Hybrid"
         assert params.remote is None  # not exclusively remote
 
     def test_onsite_preference(self) -> None:
         config = _mock_config(location_type_pref=["onsite"])
-        params = _build_search_params(config)
-        assert params is not None
+        params_list = _build_search_params(config)
+        params = params_list[0]
         assert params.ai_work_arrangement_filter == "On-site"
 
     def test_mixed_location_type_prefs(self) -> None:
         config = _mock_config(location_type_pref=["remote", "hybrid"])
-        params = _build_search_params(config)
-        assert params is not None
+        params_list = _build_search_params(config)
+        params = params_list[0]
         assert "Remote Solely,Remote OK" in params.ai_work_arrangement_filter
         assert "Hybrid" in params.ai_work_arrangement_filter
         assert params.remote is None  # not exclusively remote
 
     def test_experience_level_entry(self) -> None:
         config = _mock_config(experience_level="entry")
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.ai_experience_level_filter == "0-2"
+        params_list = _build_search_params(config)
+        assert params_list[0].ai_experience_level_filter == "0-2"
 
     def test_experience_level_mid(self) -> None:
         config = _mock_config(experience_level="mid")
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.ai_experience_level_filter == "2-5"
+        params_list = _build_search_params(config)
+        assert params_list[0].ai_experience_level_filter == "2-5"
 
     def test_experience_level_senior(self) -> None:
         config = _mock_config(experience_level="senior")
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.ai_experience_level_filter == "5-10"
+        params_list = _build_search_params(config)
+        assert params_list[0].ai_experience_level_filter == "5-10"
 
     def test_experience_level_lead(self) -> None:
         config = _mock_config(experience_level="lead")
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.ai_experience_level_filter == "10+"
+        params_list = _build_search_params(config)
+        assert params_list[0].ai_experience_level_filter == "10+"
 
     def test_experience_level_none(self) -> None:
         config = _mock_config(experience_level=None)
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.ai_experience_level_filter is None
+        params_list = _build_search_params(config)
+        assert params_list[0].ai_experience_level_filter is None
 
     def test_excluded_companies(self) -> None:
         config = _mock_config(excluded_companies=["BadCorp", "WorstCo"])
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.organization_exclusion_filter == "BadCorp,WorstCo"
+        params_list = _build_search_params(config)
+        assert params_list[0].organization_exclusion_filter == "BadCorp,WorstCo"
 
     def test_excluded_companies_none(self) -> None:
         config = _mock_config(excluded_companies=None)
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.organization_exclusion_filter is None
+        params_list = _build_search_params(config)
+        assert params_list[0].organization_exclusion_filter is None
 
     def test_preferred_industries_simple(self) -> None:
         config = _mock_config(preferred_industries=["Technology", "Healthcare"])
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.ai_taxonomies_a_filter == "Technology,Healthcare"
+        params_list = _build_search_params(config)
+        assert params_list[0].ai_taxonomies_a_filter == "Technology,Healthcare"
 
     def test_preferred_industries_with_ampersand(self) -> None:
         config = _mock_config(
             preferred_industries=["Technology", "Finance & Accounting"]
         )
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.ai_taxonomies_a_filter == 'Technology,"Finance & Accounting"'
+        params_list = _build_search_params(config)
+        assert params_list[0].ai_taxonomies_a_filter == 'Technology,"Finance & Accounting"'
 
     def test_preferred_industries_none(self) -> None:
         config = _mock_config(preferred_industries=None)
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.ai_taxonomies_a_filter is None
+        params_list = _build_search_params(config)
+        assert params_list[0].ai_taxonomies_a_filter is None
 
     def test_always_sets_include_ai(self) -> None:
         config = _mock_config()
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.include_ai is True
+        params_list = _build_search_params(config)
+        assert params_list[0].include_ai is True
 
     def test_always_sets_agency_false(self) -> None:
         config = _mock_config()
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.agency is False
+        params_list = _build_search_params(config)
+        assert params_list[0].agency is False
 
     def test_full_config(self) -> None:
         """Test with all fields populated."""
@@ -177,12 +178,15 @@ class TestBuildSearchParams:
             excluded_companies=["SpamCo"],
             preferred_industries=["Technology", "Data & Analytics"],
         )
-        params = _build_search_params(config)
-        assert params is not None
-        assert params.advanced_title_filter == "'Data Engineer' | 'ML Engineer'"
-        assert params.location_filter == '"United States" OR "United Kingdom"'
-        assert params.remote is True
-        assert "Remote Solely" in params.ai_work_arrangement_filter
-        assert params.ai_experience_level_filter == "5-10"
-        assert params.organization_exclusion_filter == "SpamCo"
-        assert params.ai_taxonomies_a_filter == 'Technology,"Data & Analytics"'
+        params_list = _build_search_params(config)
+        assert len(params_list) == 2
+        assert params_list[0].title_filter == "Data Engineer"
+        assert params_list[1].title_filter == "ML Engineer"
+        # Shared filters are the same on both
+        for params in params_list:
+            assert params.location_filter == "United States OR United Kingdom"
+            assert params.remote is True
+            assert "Remote Solely" in params.ai_work_arrangement_filter
+            assert params.ai_experience_level_filter == "5-10"
+            assert params.organization_exclusion_filter == "SpamCo"
+            assert params.ai_taxonomies_a_filter == 'Technology,"Data & Analytics"'

@@ -6,6 +6,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- HTTP health check server on port 8080 in BaseWorker for Railway health monitoring
+
 ### Fixed
 - Add `PYTHONUNBUFFERED=1` to Dockerfile so worker logs (fetch, score) flush immediately to Railway
 

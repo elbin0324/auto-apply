@@ -22,6 +22,7 @@ Usage::
 
 import asyncio
 import logging
+import os
 import signal
 import time
 from abc import ABC, abstractmethod
@@ -43,6 +44,9 @@ from infra.worker_heartbeat import WorkerHeartbeat
 
 T = TypeVar("T")
 logger = logging.getLogger(__name__)
+
+# Health check port — Railway sets PORT for web services; workers use a fixed port.
+_HEALTH_PORT = int(os.environ.get("HEALTH_PORT", "8080"))
 
 # Task status Redis hash TTLs
 _COMPLETED_TTL = 3600  # 1 hour for successful tasks
@@ -182,6 +186,37 @@ class BaseWorker(ABC, Generic[T]):
         except Exception:
             logger.debug("Failed to check queue depth for %s", self.queue_name)
 
+    # -- health check HTTP server ----------------------------------------------
+
+    async def _health_handler(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        """Minimal HTTP handler — responds 200 to any request."""
+        try:
+            await reader.read(1024)  # consume request
+            body = f'{{"worker":"{self.name}","status":"ok"}}'
+            response = (
+                f"HTTP/1.1 200 OK\r\n"
+                f"Content-Type: application/json\r\n"
+                f"Content-Length: {len(body)}\r\n"
+                f"\r\n"
+                f"{body}"
+            )
+            writer.write(response.encode())
+            await writer.drain()
+        except Exception:
+            pass
+        finally:
+            writer.close()
+
+    async def _start_health_server(self) -> asyncio.Server | None:
+        """Start a lightweight TCP health check server for Railway."""
+        try:
+            server = await asyncio.start_server(self._health_handler, "0.0.0.0", _HEALTH_PORT)
+            logger.info("Health check listening on port %d", _HEALTH_PORT)
+            return server
+        except OSError:
+            logger.warning("Could not bind health check port %d (already in use?)", _HEALTH_PORT)
+            return None
+
     # -- machinery -------------------------------------------------------------
 
     def _handle_signal(self, signum: int, _frame: object) -> None:
@@ -199,6 +234,8 @@ class BaseWorker(ABC, Generic[T]):
 
         if not await self.preflight():
             return
+
+        health_server = await self._start_health_server()
 
         heartbeat = WorkerHeartbeat(self.name)
         await heartbeat.start()
@@ -292,6 +329,9 @@ class BaseWorker(ABC, Generic[T]):
                 heartbeat.set_idle()
 
         await beat_task
+        if health_server:
+            health_server.close()
+            await health_server.wait_closed()
         await self.on_shutdown()
 
         from infra.redis_pool import close_pool

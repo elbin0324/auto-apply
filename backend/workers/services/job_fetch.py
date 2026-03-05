@@ -46,12 +46,12 @@ def _build_search_params(
         agency=False,
     )
 
-    # Combine titles with Lucene OR: 'Title A' | 'Title B'
-    params.advanced_title_filter = " | ".join(f"'{t}'" for t in titles)
+    # Combine titles with Google-like broad matching: "Title A" OR "Title B"
+    params.title_filter = " OR ".join(f'"{t}"' for t in titles)
 
     # Combine locations: "City A" OR "City B"
     if locations:
-        params.location_filter = " OR ".join(f'"{loc}"' for loc in locations)
+        params.location_filter = " OR ".join(locations)
 
     # Work arrangement / remote preference
     if location_prefs:

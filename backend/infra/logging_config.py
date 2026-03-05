@@ -70,21 +70,6 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(entry, default=str)
 
 
-class _PrintHandler(logging.Handler):
-    """Logging handler that uses print() — guaranteed to appear in Railway.
-
-    StreamHandler writes to a captured sys.stdout reference and may not flush
-    reliably in containerized environments. print() always works.
-    """
-
-    def emit(self, record: logging.LogRecord) -> None:
-        try:
-            msg = self.format(record)
-            print(msg, flush=True)
-        except Exception:
-            self.handleError(record)
-
-
 def setup_logging(worker_name: str = "", level: str | None = None) -> None:
     """Configure the root logger for structured or plain-text output.
 
@@ -99,7 +84,7 @@ def setup_logging(worker_name: str = "", level: str | None = None) -> None:
     # Remove any existing handlers (e.g. from basicConfig)
     root.handlers.clear()
 
-    handler = _PrintHandler()
+    handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(log_level)
 
     if settings.log_format == "json":

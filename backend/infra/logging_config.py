@@ -84,7 +84,7 @@ def setup_logging(worker_name: str = "", level: str | None = None) -> None:
     # Remove any existing handlers (e.g. from basicConfig)
     root.handlers.clear()
 
-    handler = logging.StreamHandler(sys.stderr)
+    handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(log_level)
 
     if settings.log_format == "json":

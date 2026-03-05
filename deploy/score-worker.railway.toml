@@ -9,5 +9,7 @@ dockerfilePath = "backend/Dockerfile"
 
 [deploy]
 startCommand = "python -m workers.score"
+healthcheckPath = "/"
+healthcheckTimeout = 30
 restartPolicyType = "ALWAYS"
 restartPolicyMaxRetries = 5

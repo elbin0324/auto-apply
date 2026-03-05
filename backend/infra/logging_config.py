@@ -70,6 +70,21 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(entry, default=str)
 
 
+class _PrintHandler(logging.Handler):
+    """Logging handler that uses print() — guaranteed to appear in Railway.
+
+    StreamHandler writes to a captured sys.stdout reference and may not flush
+    reliably in containerized environments. print() always works.
+    """
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = self.format(record)
+            print(msg, flush=True)
+        except Exception:
+            self.handleError(record)
+
+
 def setup_logging(worker_name: str = "", level: str | None = None) -> None:
     """Configure the root logger for structured or plain-text output.
 
@@ -84,12 +99,8 @@ def setup_logging(worker_name: str = "", level: str | None = None) -> None:
     # Remove any existing handlers (e.g. from basicConfig)
     root.handlers.clear()
 
-    # Use print()'s stream — it flushes reliably in containerized environments.
-    # Python's logging.StreamHandler does not flush after every emit by default,
-    # causing logs to vanish in Railway/Docker even with PYTHONUNBUFFERED=1.
-    handler = logging.StreamHandler(sys.stdout)
+    handler = _PrintHandler()
     handler.setLevel(log_level)
-    handler.flush = sys.stdout.flush  # force flush after every log line
 
     if settings.log_format == "json":
         handler.setFormatter(JSONFormatter(worker_name=worker_name))

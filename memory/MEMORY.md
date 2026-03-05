@@ -1,62 +1,65 @@
-# Agent Memory — auto-apply Project
+# Agent Memory — auto-apply
 
-> Persistent memory across sessions. Update this file when new stable patterns are confirmed.
-> Lines after 200 are truncated — keep this concise and link to topic files for details.
+> Persistent memory across sessions. Lines after 200 are truncated — keep concise.
 
-## Project Identity
-- **Repo:** `auto-apply` (Repo 1/2 — platform, not agent workers)
-- **Goal:** SaaS auto-job-application platform
-- **Current focus:** Backend API (FastAPI) implementation
-- **Architecture:** `aiapply-clone-implementation-plan.md`
+## Project State (2026-03-04)
 
-## Current State (2026-02-27)
-- Phases 1–6 complete (scaffold, models, schemas, auth, profile API, jobs API)
-- Branch: `phase/6-jobs` (all phase work here; `dev` branch behind — needs merge)
-- Tests: 20 passing (3 auth + 17 profile) + new job tests
-- Next: Phase 7 — see `docs/backend-todo.md`
+- ~85% backend complete. ~239 tests passing.
+- Job source: Active Jobs DB API (migrated from JSearch, which replaced Adzuna)
+- Scoring: LLM-based batched scoring (replaced heuristic scorer)
+- Frontend: React 19 + Vite SPA, all pages built, UI polish done
+- Deploy: Railway (backend + worker), Vercel (frontend)
+- Not started: document generation (cover letters), billing (Stripe)
 
-## Key File Paths
-- Backend todo: `docs/backend-todo.md`
-- User setup checklist: `docs/user-setup-tasks.md`
-- Build status: `IMPLEMENTATION_STATUS.md`
-- Dev skill: `.claude/skills/auto-apply-dev.md`
-- Backend env example: `backend/.env.example`
-- Docker compose (local Redis): `docker-compose.yml`
-- Makefile: `Makefile`
+## Architecture Decisions (Locked)
 
-## Stack Decisions (Confirmed)
-- Queue: `arq` (async Python, not Celery/BullMQ)
-- DB access: SQLAlchemy 2.0 async (not Supabase Python client)
-- Auth: Supabase JWT verified server-side
-- Internal auth: `INTERNAL_API_KEY` header for agent→platform calls
-- AI model: `claude-sonnet-4-6` default, `claude-opus-4-6` for quality-critical tasks
-- Pydantic v2 (not v1)
+1. **Supabase for Auth** — JWT verification only in backend
+2. **SQLAlchemy 2.0 async** — not Supabase Python client for DB
+3. **arq** (not Celery) — async Redis queue for Python async stack
+4. **Two repos** — `auto-apply` (platform) + `apply-agents` (workers)
+5. **Credits per application** — one credit per auto-apply task
+6. **Internal API key** — agent workers use `INTERNAL_API_KEY`, not user JWTs
+7. **Active Jobs DB API** — sole job source (Adzuna and ATS scraping removed)
 
 ## Code Patterns
-- Poetry not system-installed — installed via `pip install poetry`
-- `arq` requires `redis<6` — don't add `redis` explicitly, it's pulled transitively
-- `greenlet` must be added explicitly as SQLAlchemy asyncio dependency
-- Alembic env.py for async: use `asyncio.run()` + `create_async_engine` pattern
-- Models use `Mapped[T]` + `mapped_column()` (SQLAlchemy 2.0 style), not Column()
-- `lazy="noload"` on all relationship()s by default — load explicitly with `selectinload()` when needed
-- GIN index for jobs FTS: use `sa.text(...)` in Index for computed expression
-- DATABASE_URL format: `postgresql+asyncpg://...` (not `postgresql://`)
-- Profile auto-creates on first access via `_get_or_create_profile` helper
-- Bulk replace pattern for sub-collections: delete existing + insert new + flush
-- Supabase storage is sync — use directly from async handlers (bounded file sizes)
-- PDF text extraction: `pdfplumber` (import lazily inside function to avoid startup cost)
-- Test pattern: `app.dependency_overrides` for auth/DB + `@patch` for internal helpers
-- Use `SimpleNamespace` for mock ORM objects in tests (Pydantic `from_attributes=True` works with it)
-- PG upsert: use `from sqlalchemy.dialects.postgresql import insert as pg_insert` — generic `sqlalchemy.insert` has no `on_conflict_do_update`. Use `index_elements=["col"]` for unique index conflicts or `constraint="constraint_name"` for named constraints.
-- Heuristic scorer: pure functions (`score_job_for_user`) are unit-testable without DB; bulk scoring entry point (`compute_scores_for_sync`) loads users+profiles+skills in one query then loops — avoids N+1.
-- Scores pre-computed after sync (not on-demand): better UX, bounded compute (250 jobs × N active users), stored in `job_match_scores` table.
 
-## API Quirks
-- Adzuna: job timestamp field is `created` (not `posted_at`); ISO format may use `Z` suffix — replace with `+00:00` for `fromisoformat()`. Job URL is under `redirect_url`. Company/location/category are nested objects with `display_name`/`label`/`tag` keys. Filter out jobs with empty `redirect_url` before upsert. Page results return empty list (not error) when past last page.
+- Poetry installed via `pip install poetry` (not system)
+- `arq` requires `redis<6` — don't add `redis` explicitly
+- `greenlet` must be added explicitly for SQLAlchemy asyncio
+- Alembic async: `asyncio.run()` + `create_async_engine` pattern
+- Models: `Mapped[T]` + `mapped_column()` (SQLAlchemy 2.0), not `Column()`
+- `lazy="noload"` on all relationships — use `selectinload()` explicitly
+- GIN index for FTS: `sa.text(...)` in Index
+- DATABASE_URL: `postgresql+asyncpg://...` (not `postgresql://`)
+- Profile auto-creates on first access via `_get_or_create_profile`
+- Bulk replace for sub-collections: delete existing + insert new + flush
+- Supabase storage is sync — safe from async handlers (bounded file sizes)
+- PDF extraction: `pdfplumber` (lazy import to avoid startup cost)
+- Test pattern: `app.dependency_overrides` for auth/DB + `@patch` for services
+- `SimpleNamespace` for mock ORM objects (Pydantic `from_attributes=True` works)
+- PG upsert: `from sqlalchemy.dialects.postgresql import insert as pg_insert`
+- Workers organized under `backend/workers/` with `queues/` and `services/` subdirs
+- Infrastructure (logging, Redis, DLQ) lives under `backend/infra/`
 
-## Bugs Found & Fixed
-_Populated during implementation._
+## API Notes
 
-## Topic Files
-- `memory/patterns.md` — Confirmed code patterns (empty until Phase 1 complete)
-- `memory/api-quirks.md` — External API behavior notes (empty until APIs used)
+### Active Jobs DB API
+- External job source via RapidAPI
+- Returns job listings with company, location, description, apply URL
+- Replaced both Adzuna API and ATS career page scraping
+
+### Supabase
+- Service role key bypasses RLS — backend only, never expose
+- Storage signed URLs expire — generate fresh per request
+- Auth JWT: `supabase.auth.get_user(token)` to verify + extract user
+- DB via SQLAlchemy, not Supabase REST
+
+### Google OAuth
+- Callback flow: Supabase handles OAuth, backend verifies JWT after redirect
+- Frontend redirects to Supabase auth URL, callback returns to app
+
+### Anthropic Claude API
+- Default model: `claude-sonnet-4-6` (speed/cost balance)
+- `claude-opus-4-6` for quality-critical tasks (resume parsing, cover letters)
+- Always set `max_tokens` explicitly
+- JSON output: system prompt "Return ONLY valid JSON" (no native JSON mode)

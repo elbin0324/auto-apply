@@ -1,9 +1,30 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep \"^down_revision\" db/migrations/versions/*.py)",
-      "Bash(python -m pytest tests/ -x -v)",
-      "Bash(pnpm typecheck)"
+      "Bash(git *)",
+      "Bash(cd backend && poetry run pytest *)",
+      "Bash(cd backend && poetry run alembic *)",
+      "Bash(cd backend && poetry run ruff *)",
+      "Bash(cd backend && poetry run mypy *)",
+      "Bash(cd frontend && pnpm *)",
+      "Bash(make *)",
+      "Bash(docker-compose *)",
+      "Bash(gh pr *)",
+      "Bash(gh issue *)",
+      "Bash(poetry *)",
+      "Bash(python3 *)",
+      "Bash(python *)",
+      "Bash(ls *)",
+      "Bash(wc *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "type": "command",
+        "command": "bash .claude/hooks/branch-guard.sh"
+      }
     ]
   }
 }

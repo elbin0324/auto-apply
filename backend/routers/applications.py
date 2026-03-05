@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 
-from deps import CurrentUser, DbSession, verify_internal_api_key
+from deps import CurrentUser, DbSession, SettingsDep, verify_internal_api_key
 from models.auto_apply_config import AutoApplyConfig
 from schemas.application import (
     ApplicationDetail,
@@ -110,3 +110,35 @@ async def trigger_rematch(db: DbSession) -> dict:
             )
 
     return total_stats
+
+
+@scheduler_router.post(
+    "/fetch",
+    dependencies=[Depends(verify_internal_api_key)],
+    status_code=status.HTTP_200_OK,
+)
+async def trigger_fetch(db: DbSession, settings: SettingsDep) -> dict:
+    """Enqueue fetch tasks for all active auto-apply users.
+
+    Called by Railway cron job daily. Replaces the old arq scheduler cron.
+    """
+    from infra.task_queue import enqueue_fetch_jobs
+
+    if not settings.rapidapi_key:
+        return {"users_enqueued": 0, "skipped": True, "reason": "rapidapi_key_not_configured"}
+
+    result = await db.execute(
+        select(AutoApplyConfig).where(AutoApplyConfig.is_active.is_(True))
+    )
+    configs = list(result.scalars().all())
+
+    if not configs:
+        return {"users_enqueued": 0}
+
+    for config in configs:
+        await enqueue_fetch_jobs(
+            config.user_id, recent_only=True, source="cron_daily"
+        )
+
+    logger.info("Cron fetch: enqueued %d fetch tasks", len(configs))
+    return {"users_enqueued": len(configs)}

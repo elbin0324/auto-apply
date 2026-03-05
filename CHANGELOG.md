@@ -6,6 +6,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- Replace standalone cron script (`backend/cron/`) with internal API endpoint `POST /api/internal/scheduler/fetch`
+- Railway cron now curls the API instead of running a Python process
+- Refactored cron fetch tests to use HTTP endpoint via TestClient
+
+### Removed
+- `backend/cron/` package (enqueue_fetch.py)
+
 ## [2026-03-04] migrate-active-jobs-db-api
 
 ### Added

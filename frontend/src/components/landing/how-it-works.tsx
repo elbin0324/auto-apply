@@ -211,7 +211,7 @@ export function HowItWorks() {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, ease, delay: 0.1 }}
         >
-          From resume to interviews{" "}
+          From resume to interviews<br />
           <span className="gradient-text">in under 3 minutes.</span>
         </motion.h2>
         <motion.p

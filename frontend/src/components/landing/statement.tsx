@@ -11,7 +11,7 @@ export function Statement() {
   const ref = useScrollReveal();
 
   return (
-    <section ref={ref} className="relative py-[160px] px-6 text-center overflow-hidden">
+    <section ref={ref} className="relative pt-[60px] pb-[140px] px-6 text-center overflow-hidden">
       {/* Decorative glow */}
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] pointer-events-none"

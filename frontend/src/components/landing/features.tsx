@@ -134,7 +134,7 @@ function ApplicationQuestionsDemo() {
 }
 
 /* ── Feature 4: Analytics Dashboard ───────── */
-const analyticsTabs = ["Overview", "Applications", "Interviews", "Analytics"] as const;
+const analyticsTabs = ["Overview", "Applications", "Analytics"] as const;
 
 const applicationItems = [
   { role: "Software Engineer", company: "Google", status: "Sent" },
@@ -167,17 +167,17 @@ function AnalyticsDemo() {
       </div>
 
       {tab === "Overview" && (
-        <div className="flex items-end gap-1.5 h-[100px]">
+        <div className="flex items-end gap-1" style={{ height: 100 }}>
           {[35, 55, 70, 45, 80, 65, 90, 50, 75, 60, 85, 95].map((h, i) => (
-            <div key={i} className="flex-1 flex flex-col justify-end">
-              <div
-                className="rounded-sm"
-                style={{
-                  height: `${h}%`,
-                  background: "linear-gradient(180deg, rgba(124,92,252,0.6) 0%, rgba(124,92,252,0.15) 100%)",
-                }}
-              />
-            </div>
+            <div
+              key={i}
+              className="flex-1 rounded-sm"
+              style={{
+                minWidth: 6,
+                height: h,
+                background: "linear-gradient(180deg, rgba(124,92,252,0.6) 0%, rgba(124,92,252,0.15) 100%)",
+              }}
+            />
           ))}
         </div>
       )}
@@ -195,26 +195,6 @@ function AnalyticsDemo() {
               }`}>
                 {item.status}
               </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {tab === "Interviews" && (
-        <div className="space-y-2">
-          {[
-            { role: "Software Engineer", company: "Google", date: "Mar 4" },
-            { role: "Product Designer", company: "Stripe", date: "Mar 6" },
-            { role: "Frontend Engineer", company: "Notion", date: "Mar 8" },
-          ].map((item) => (
-            <div key={item.role} className="flex items-center gap-3 rounded-lg bg-bg/30 p-2">
-              <span className="rounded-md bg-accent-blue/10 px-2 py-1 font-mono text-[0.62rem] text-accent-blue">
-                {item.date}
-              </span>
-              <div>
-                <p className="text-[0.78rem] font-medium text-text-primary">{item.role}</p>
-                <p className="text-[0.62rem] text-text-muted">{item.company}</p>
-              </div>
             </div>
           ))}
         </div>
@@ -271,7 +251,7 @@ const features = [
     title: "Application Tracking Dashboard.",
     desc: "Track every application from submitted to interview. Visualize your pipeline, response rates, and progress in real-time.",
     demo: AnalyticsDemo,
-    span: true,
+    span: false,
   },
 ];
 
@@ -281,7 +261,7 @@ export function Features() {
 
   return (
     <section id="features" ref={ref} className="py-[140px] px-6">
-      <div className="mx-auto max-w-[1100px] text-center">
+      <div className="mx-auto max-w-[1100px]">
         <motion.span
           className="inline-block rounded-full border border-border-card bg-bg-card px-4 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.1em] text-accent-purple-light"
           initial={{ opacity: 0, y: 20 }}
@@ -296,22 +276,35 @@ export function Features() {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, ease, delay: 0.1 }}
         >
-          Everything you need to{" "}
-          <span className="gradient-text">land your next role.</span>
+          Everything you need<br />
+          <span className="gradient-text">to get hired faster.</span>
         </motion.h2>
+        <motion.p
+          className="mt-4 text-[0.92rem] text-text-secondary leading-relaxed"
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, ease, delay: 0.2 }}
+        >
+          Powered by AI. Designed for humans.
+        </motion.p>
 
         <div className="mt-16 grid gap-4 grid-cols-1 lg:grid-cols-2">
           {features.map((f, i) => (
             <motion.div
               key={f.title}
-              className={`rounded-[20px] border border-border-card bg-bg-card text-left overflow-hidden hover:border-border-hover transition-colors ${
-                f.span ? "lg:col-span-2" : ""
-              }`}
+              className="group relative flex flex-col rounded-[20px] border border-border-card bg-bg-card text-left overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-border-hover hover:shadow-[0_20px_60px_-12px_rgba(0,0,0,0.5),0_0_40px_rgba(124,92,252,0.06)]"
               initial={{ opacity: 0, y: 40 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.7, ease, delay: 0.2 + i * 0.15 }}
             >
-              <div className="p-8 pb-4">
+              {/* Hover gradient overlay */}
+              <div
+                className="pointer-events-none absolute inset-0 rounded-[20px] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                style={{
+                  background: `linear-gradient(135deg, ${f.tagColor}0a 0%, transparent 50%)`,
+                }}
+              />
+              <div className="relative z-[1] p-8 pb-4">
                 <span
                   className="inline-block rounded-md px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-wider"
                   style={{
@@ -328,7 +321,7 @@ export function Features() {
                   {f.desc}
                 </p>
               </div>
-              <div className="border-t border-border-subtle bg-bg/30">
+              <div className="relative z-[1] mt-auto border-t border-border-subtle bg-bg/30">
                 <f.demo />
               </div>
             </motion.div>

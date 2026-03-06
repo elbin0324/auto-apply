@@ -11,7 +11,8 @@ Two endpoints available:
 
 import json
 import logging
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
@@ -31,6 +32,7 @@ EXPERIENCE_LEVEL_MAP = {
     "mid": "2-5",
     "senior": "5-10",
     "lead": "10+",
+    "executive": "10+",
 }
 
 AI_EXP_TO_INTERNAL = {
@@ -45,6 +47,153 @@ WORK_ARRANGEMENT_MAP = {
     "hybrid": "Hybrid",
     "onsite": "On-site",
 }
+
+EMPLOYMENT_TYPE_MAP = {
+    "full_time": "FULL_TIME",
+    "part_time": "PART_TIME",
+    "contract": "CONTRACTOR",
+    "internship": "INTERN",
+}
+
+# ── Title query builder ──────────────────────────────────────────────────────
+
+# Words stripped from titles before building the tsquery — these are seniority
+# filler words that rarely appear in actual job titles and hurt AND matching.
+_TITLE_FILLER_WORDS = frozenset({
+    "senior", "junior", "lead", "staff", "principal", "associate",
+    "sr", "jr", "i", "ii", "iii", "iv", "v", "level",
+})
+
+
+def build_advanced_title_query(titles: list[str]) -> str:
+    """Combine multiple user titles into a single ``advanced_title_filter`` query.
+
+    Each title is turned into an AND group of prefix-wildcarded words (``word:*``),
+    and all titles are OR'd together with ``|``.
+
+    Seniority filler words are stripped so "Senior Full Stack React Developer"
+    becomes ``(full:* & stack:* & react:* & develop:*)``.
+
+    Example::
+
+        ["Senior Full Stack React Developer", "Frontend Engineer"]
+        → "(full:* & stack:* & react:* & develop:*) | (frontend:* & engineer:*)"
+    """
+    groups: list[str] = []
+    for title in titles:
+        # Split on non-alphanumeric, lowercase
+        words = re.findall(r"[a-zA-Z0-9]+", title.lower())
+        # Strip filler words
+        words = [w for w in words if w not in _TITLE_FILLER_WORDS]
+        if not words:
+            # Fallback: use all original words if everything was stripped
+            words = re.findall(r"[a-zA-Z0-9]+", title.lower())
+        if not words:
+            continue
+        # Each word becomes a prefix match
+        parts = [f"{w}:*" for w in words]
+        groups.append(f"({' & '.join(parts)})")
+    return " | ".join(groups)
+
+
+# ── Industry taxonomy normalization ──────────────────────────────────────────
+
+AI_TAXONOMY_VALUES = [
+    "Technology", "Healthcare", "Management & Leadership",
+    "Finance & Accounting", "Human Resources", "Sales", "Marketing",
+    "Customer Service & Support", "Education", "Legal", "Engineering",
+    "Science & Research", "Trades", "Construction", "Manufacturing",
+    "Logistics", "Creative & Media", "Hospitality",
+    "Environmental & Sustainability", "Retail", "Data & Analytics",
+    "Software", "Energy", "Agriculture", "Social Services",
+    "Administrative", "Government & Public Sector", "Art & Design",
+    "Food & Beverage", "Transportation", "Consulting",
+    "Sports & Recreation", "Security & Safety",
+]
+
+# Common aliases → canonical taxonomy name
+TAXONOMY_ALIASES: dict[str, str] = {
+    "tech": "Technology",
+    "it": "Technology",
+    "information technology": "Technology",
+    "health": "Healthcare",
+    "medical": "Healthcare",
+    "finance": "Finance & Accounting",
+    "accounting": "Finance & Accounting",
+    "financial": "Finance & Accounting",
+    "hr": "Human Resources",
+    "customer service": "Customer Service & Support",
+    "support": "Customer Service & Support",
+    "science": "Science & Research",
+    "research": "Science & Research",
+    "creative": "Creative & Media",
+    "media": "Creative & Media",
+    "environment": "Environmental & Sustainability",
+    "sustainability": "Environmental & Sustainability",
+    "data": "Data & Analytics",
+    "analytics": "Data & Analytics",
+    "government": "Government & Public Sector",
+    "public sector": "Government & Public Sector",
+    "art": "Art & Design",
+    "design": "Art & Design",
+    "food": "Food & Beverage",
+    "beverage": "Food & Beverage",
+    "sports": "Sports & Recreation",
+    "recreation": "Sports & Recreation",
+    "security": "Security & Safety",
+    "safety": "Security & Safety",
+    "management": "Management & Leadership",
+    "leadership": "Management & Leadership",
+}
+
+# Lowered taxonomy values for fuzzy matching
+_TAXONOMY_LOWER = {v.lower(): v for v in AI_TAXONOMY_VALUES}
+
+
+def normalize_taxonomy(value: str) -> str | None:
+    """Map a user-entered industry string to the closest API taxonomy value.
+
+    Checks exact match, alias, then substring containment. Returns None if
+    no match is found.
+    """
+    lowered = value.strip().lower()
+    if not lowered:
+        return None
+
+    # Exact match (case-insensitive)
+    if lowered in _TAXONOMY_LOWER:
+        return _TAXONOMY_LOWER[lowered]
+
+    # Alias match
+    if lowered in TAXONOMY_ALIASES:
+        return TAXONOMY_ALIASES[lowered]
+
+    # Substring containment (user string inside taxonomy)
+    for tax_lower, tax_canonical in _TAXONOMY_LOWER.items():
+        if lowered in tax_lower:
+            return tax_canonical
+
+    # Reverse containment (taxonomy inside user string)
+    for tax_lower, tax_canonical in _TAXONOMY_LOWER.items():
+        if tax_lower in lowered:
+            return tax_canonical
+
+    return None
+
+
+def normalize_taxonomies(values: list[str]) -> list[str]:
+    """Normalize a list of user-entered industries to API taxonomy values.
+
+    Deduplicates and preserves order. Unrecognized values are dropped.
+    """
+    seen: set[str] = set()
+    result: list[str] = []
+    for v in values:
+        canonical = normalize_taxonomy(v)
+        if canonical and canonical not in seen:
+            seen.add(canonical)
+            result.append(canonical)
+    return result
 
 
 # ── Search params ────────────────────────────────────────────────────────────
@@ -81,10 +230,10 @@ def _build_api_params(params: JobSearchParams) -> dict[str, str]:
         "description_type": params.description_type,
     }
 
-    if params.title_filter:
-        api_params["title_filter"] = params.title_filter
-    elif params.advanced_title_filter:
+    if params.advanced_title_filter:
         api_params["advanced_title_filter"] = params.advanced_title_filter
+    elif params.title_filter:
+        api_params["title_filter"] = params.title_filter
     if params.location_filter:
         api_params["location_filter"] = params.location_filter
     if params.remote is True:

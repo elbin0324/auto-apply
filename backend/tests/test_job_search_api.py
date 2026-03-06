@@ -16,6 +16,9 @@ from workers.services.job_search_api import (
     _parse_location_type,
     _parse_posted_at,
     _parse_salary,
+    build_advanced_title_query,
+    normalize_taxonomies,
+    normalize_taxonomy,
     parse_fantastic_result,
     search_jobs,
     search_jobs_advanced,
@@ -165,6 +168,91 @@ class TestParsePostedAt:
 # ── JobSearchParams & _build_api_params ──────────────────────────────────────
 
 
+class TestBuildAdvancedTitleQuery:
+    def test_single_simple_title(self) -> None:
+        result = build_advanced_title_query(["Software Engineer"])
+        assert result == "(software:* & engineer:*)"
+
+    def test_multiple_titles(self) -> None:
+        result = build_advanced_title_query(
+            ["Software Engineer", "Frontend Developer"]
+        )
+        assert result == "(software:* & engineer:*) | (frontend:* & developer:*)"
+
+    def test_strips_seniority_filler(self) -> None:
+        result = build_advanced_title_query(["Senior Full Stack React Developer"])
+        assert result == "(full:* & stack:* & react:* & developer:*)"
+
+    def test_strips_multiple_filler_words(self) -> None:
+        result = build_advanced_title_query(["Junior Associate Software Engineer"])
+        assert result == "(software:* & engineer:*)"
+
+    def test_all_filler_words_fallback(self) -> None:
+        """When all words are filler, use them all as fallback."""
+        result = build_advanced_title_query(["Senior Lead"])
+        assert result == "(senior:* & lead:*)"
+
+    def test_empty_list(self) -> None:
+        assert build_advanced_title_query([]) == ""
+
+    def test_complex_titles(self) -> None:
+        result = build_advanced_title_query(
+            ["Senior Full Stack React Developer", "Frontend Engineer", "ML Engineer"]
+        )
+        assert "(full:* & stack:* & react:* & developer:*)" in result
+        assert "(frontend:* & engineer:*)" in result
+        assert "(ml:* & engineer:*)" in result
+        assert result.count(" | ") == 2
+
+
+class TestNormalizeTaxonomy:
+    def test_exact_match(self) -> None:
+        assert normalize_taxonomy("Technology") == "Technology"
+
+    def test_case_insensitive(self) -> None:
+        assert normalize_taxonomy("technology") == "Technology"
+        assert normalize_taxonomy("HEALTHCARE") == "Healthcare"
+
+    def test_alias_tech(self) -> None:
+        assert normalize_taxonomy("Tech") == "Technology"
+        assert normalize_taxonomy("IT") == "Technology"
+
+    def test_alias_finance(self) -> None:
+        assert normalize_taxonomy("Finance") == "Finance & Accounting"
+
+    def test_alias_hr(self) -> None:
+        assert normalize_taxonomy("HR") == "Human Resources"
+
+    def test_substring_match(self) -> None:
+        assert normalize_taxonomy("data") == "Data & Analytics"
+
+    def test_unrecognized(self) -> None:
+        assert normalize_taxonomy("Underwater Basket Weaving") is None
+
+    def test_empty(self) -> None:
+        assert normalize_taxonomy("") is None
+
+    def test_whitespace(self) -> None:
+        assert normalize_taxonomy("  Technology  ") == "Technology"
+
+
+class TestNormalizeTaxonomies:
+    def test_multiple_values(self) -> None:
+        result = normalize_taxonomies(["Tech", "Finance", "Healthcare"])
+        assert result == ["Technology", "Finance & Accounting", "Healthcare"]
+
+    def test_deduplication(self) -> None:
+        result = normalize_taxonomies(["Tech", "Technology", "IT"])
+        assert result == ["Technology"]
+
+    def test_drops_unrecognized(self) -> None:
+        result = normalize_taxonomies(["Tech", "FakeIndustry", "Healthcare"])
+        assert result == ["Technology", "Healthcare"]
+
+    def test_empty(self) -> None:
+        assert normalize_taxonomies([]) == []
+
+
 class TestBuildApiParams:
     def test_minimal_params(self) -> None:
         params = JobSearchParams(advanced_title_filter="'Engineer'")
@@ -219,6 +307,17 @@ class TestBuildApiParams:
         assert "ai_work_arrangement_filter" not in api
         assert "ai_employment_type_filter" not in api
         assert "ai_experience_level_filter" not in api
+
+    def test_advanced_title_filter_takes_priority(self) -> None:
+        """When both title_filter and advanced_title_filter are set,
+        advanced_title_filter should be used."""
+        params = JobSearchParams(
+            title_filter="Engineer",
+            advanced_title_filter="(engineer:* & software:*)",
+        )
+        api = _build_api_params(params)
+        assert api["advanced_title_filter"] == "(engineer:* & software:*)"
+        assert "title_filter" not in api
 
 
 # ── parse_fantastic_result ───────────────────────────────────────────────────

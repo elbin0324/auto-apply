@@ -48,7 +48,8 @@ class AutoApplyConfigUpdate(BaseModel):
     excluded_companies: list[str] | None = None
     preferred_industries: list[str] | None = None
     location_type_pref: list[str] | None = None  # remote, hybrid, onsite
-    experience_level: str | None = None  # entry, mid, senior, lead
+    employment_type_pref: list[str] | None = None  # full_time, part_time, contract, internship
+    experience_level: str | None = None  # entry, mid, senior, lead, executive
     daily_apply_limit: int | None = Field(default=None, ge=1, le=100)
     apply_mode: str | None = Field(default=None, pattern="^(safe|hybrid|auto)$")
     auto_apply_threshold: int | None = Field(default=None, ge=15, le=100)
@@ -67,6 +68,7 @@ class AutoApplyConfigResponse(BaseModel):
     excluded_companies: list[str] | None = None
     preferred_industries: list[str] | None = None
     location_type_pref: list[str] | None = None
+    employment_type_pref: list[str] | None = None
     experience_level: str | None = None
     daily_apply_limit: int = 25
     apply_mode: str = "safe"

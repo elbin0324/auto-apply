@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SectionCard } from "@/components/ui/section-card";
 import { TagInput } from "./tag-input";
+import { IndustrySelect } from "./industry-select";
 import { useUpdateAutoApplyConfig } from "@/hooks/use-auto-apply-status";
+import { EMPLOYMENT_TYPES } from "@/lib/constants";
 import type { AutoApplyConfigResponse } from "@/types/auto-apply";
 
 const locationTypes = ["remote", "hybrid", "onsite"] as const;
@@ -51,6 +53,7 @@ export function ConfigForm({ config }: ConfigFormProps) {
   const [excludedCompanies, setExcludedCompanies] = useState<string[]>([]);
   const [preferredIndustries, setPreferredIndustries] = useState<string[]>([]);
   const [locationTypePref, setLocationTypePref] = useState<string[]>([]);
+  const [employmentTypePref, setEmploymentTypePref] = useState<string[]>([]);
   const [experienceLevel, setExperienceLevel] = useState("");
   const [minSalary, setMinSalary] = useState<string>("");
   const [maxSalary, setMaxSalary] = useState<string>("");
@@ -66,6 +69,7 @@ export function ConfigForm({ config }: ConfigFormProps) {
     setExcludedCompanies(config.excluded_companies ?? []);
     setPreferredIndustries(config.preferred_industries ?? []);
     setLocationTypePref(config.location_type_pref ?? []);
+    setEmploymentTypePref(config.employment_type_pref ?? []);
     setExperienceLevel(config.experience_level ?? "");
     setMinSalary(config.min_salary?.toString() ?? "");
     setMaxSalary(config.max_salary?.toString() ?? "");
@@ -83,6 +87,9 @@ export function ConfigForm({ config }: ConfigFormProps) {
         ? preferredIndustries
         : null,
       location_type_pref: locationTypePref.length ? locationTypePref : null,
+      employment_type_pref: employmentTypePref.length
+        ? employmentTypePref
+        : null,
       experience_level: experienceLevel || null,
       min_salary: minSalary ? Number(minSalary) : null,
       max_salary: maxSalary ? Number(maxSalary) : null,
@@ -102,6 +109,10 @@ export function ConfigForm({ config }: ConfigFormProps) {
         <div className="space-y-5">
           <div className="space-y-1.5">
             <Label>Target Job Titles</Label>
+            <p className="text-xs text-text-muted">
+              Enter core job titles, e.g. &quot;Software Engineer&quot;.
+              Seniority levels are handled automatically.
+            </p>
             <TagInput
               value={targetTitles}
               onChange={setTargetTitles}
@@ -111,10 +122,15 @@ export function ConfigForm({ config }: ConfigFormProps) {
 
           <div className="space-y-1.5">
             <Label>Target Locations</Label>
+            <p className="text-xs text-text-muted">
+              Use full names, e.g. &quot;New York&quot; or &quot;United
+              States&quot;. Common abbreviations like &quot;CA&quot;,
+              &quot;NYC&quot; are also accepted.
+            </p>
             <TagInput
               value={targetLocations}
               onChange={setTargetLocations}
-              placeholder="e.g. San Francisco, CA"
+              placeholder="e.g. New York, United States"
             />
           </div>
 
@@ -124,7 +140,7 @@ export function ConfigForm({ config }: ConfigFormProps) {
               {locationTypes.map((type) => (
                 <label
                   key={type}
-                  className="flex items-center gap-1.5 text-sm text-text-secondary capitalize"
+                  className="flex items-center gap-1.5 text-sm capitalize text-text-secondary"
                 >
                   <Checkbox
                     checked={locationTypePref.includes(type)}
@@ -137,6 +153,30 @@ export function ConfigForm({ config }: ConfigFormProps) {
                     }}
                   />
                   {type}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Employment Type</Label>
+            <div className="flex flex-wrap gap-4 pt-1">
+              {EMPLOYMENT_TYPES.map((type) => (
+                <label
+                  key={type.value}
+                  className="flex items-center gap-1.5 text-sm text-text-secondary"
+                >
+                  <Checkbox
+                    checked={employmentTypePref.includes(type.value)}
+                    onCheckedChange={(val) => {
+                      setEmploymentTypePref((prev) =>
+                        val
+                          ? [...prev, type.value]
+                          : prev.filter((t) => t !== type.value),
+                      );
+                    }}
+                  />
+                  {type.label}
                 </label>
               ))}
             </div>
@@ -247,9 +287,9 @@ export function ConfigForm({ config }: ConfigFormProps) {
         </div>
       </SectionCard>
 
-      {/* Section 3: Exclusions */}
+      {/* Section 3: Exclusions & Industries */}
       <SectionCard
-        title="Exclusions"
+        title="Exclusions & Industries"
         description="Optionally filter out specific companies or focus on preferred industries."
       >
         <div className="space-y-5">
@@ -264,10 +304,13 @@ export function ConfigForm({ config }: ConfigFormProps) {
 
           <div className="space-y-1.5">
             <Label>Preferred Industries</Label>
-            <TagInput
+            <p className="text-xs text-text-muted">
+              Select from the available industry categories to focus your
+              search.
+            </p>
+            <IndustrySelect
               value={preferredIndustries}
               onChange={setPreferredIndustries}
-              placeholder="e.g. Technology, Finance"
             />
           </div>
         </div>

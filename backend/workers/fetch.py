@@ -39,6 +39,7 @@ class FetchWorker(BaseWorker[FetchJobsTask]):
 
         from models.auto_apply_config import AutoApplyConfig
         from workers.services.job_fetch import (
+            _build_relaxed_params,
             _build_search_params,
             _upsert_jobs,
         )
@@ -69,7 +70,7 @@ class FetchWorker(BaseWorker[FetchJobsTask]):
                     )
                     return
 
-                # Query Active Jobs DB API once per title
+                # Query Active Jobs DB API (single combined query)
                 all_results: list[dict] = []
                 for params in params_list:
                     results = await search_jobs_advanced(
@@ -77,8 +78,24 @@ class FetchWorker(BaseWorker[FetchJobsTask]):
                     )
                     all_results.extend(results)
 
+                # Progressive filter relaxation on zero results
+                if not all_results and params_list:
+                    relaxed_levels = _build_relaxed_params(params_list[0])
+                    for relaxed_params in relaxed_levels:
+                        results = await search_jobs_advanced(
+                            relaxed_params, recent_only=task.recent_only
+                        )
+                        if results:
+                            all_results.extend(results)
+                            logger.info(
+                                "Relaxed filters found %d jobs for user %s",
+                                len(results),
+                                task.user_id,
+                            )
+                            break
+
                 if not all_results:
-                    logger.info("No jobs found for user %s", task.user_id)
+                    logger.info("No jobs found for user %s (even after relaxation)", task.user_id)
                     return
 
                 # Upsert to DB

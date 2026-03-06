@@ -6,6 +6,7 @@ export interface AutoApplyConfigUpdate {
   excluded_companies?: string[] | null;
   preferred_industries?: string[] | null;
   location_type_pref?: string[] | null;
+  employment_type_pref?: string[] | null;
   experience_level?: string | null;
   daily_apply_limit?: number | null;
   apply_mode?: "safe" | "hybrid" | "auto" | null;
@@ -23,6 +24,7 @@ export interface AutoApplyConfigResponse {
   excluded_companies?: string[] | null;
   preferred_industries?: string[] | null;
   location_type_pref?: string[] | null;
+  employment_type_pref?: string[] | null;
   experience_level?: string | null;
   daily_apply_limit: number;
   apply_mode: "safe" | "hybrid" | "auto";

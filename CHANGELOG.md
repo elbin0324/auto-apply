@@ -6,14 +6,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Changed
-- Onboarding step components now reuse profile page components (`ProfileForm`, `PreferencesEditor`, `ResumeUpload`) instead of duplicating form logic
-- `ProfileForm` accepts `mode`, `onSubmitSuccess`, `footer` props for context-aware rendering
-- `PreferencesEditor` accepts `onSaveSuccess`, `footer` render prop for custom save/navigation
-- `ResumeUpload` accepts `autoParseOnUpload`, `compact`, `showParseSuccessState`, `onParseSuccess` props
-- Onboarding profile step now shows all 7 profile fields (added `website_url`, `summary`) with required indicators
-- Onboarding preferences step now shows all preference sections (work auth, availability, compensation, legal, custom Q&A)
-- `StepProfile` reduced from ~177 to ~55 lines, `StepPreferences` from ~145 to ~48 lines, `StepResume` from ~214 to ~50 lines
+### Fixed
+- Resume upload upsert option passed as string `"true"` instead of boolean `True`, causing RLS policy violation on re-uploads
 
 ### Added
 - `build_advanced_title_query()` — combines all user titles into a single OR query with prefix wildcards

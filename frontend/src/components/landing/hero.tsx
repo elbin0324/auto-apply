@@ -5,24 +5,24 @@ import { motion } from "motion/react";
 import { useMouseTilt } from "@/hooks/use-mouse-tilt";
 
 const jobItems = [
-  { company: "Google", role: "Software Engineer Intern", status: "Applied", time: "2s ago", logo: "#4285F4", location: "Mountain View, CA", type: "Hybrid", match: 96 },
-  { company: "Stripe", role: "Product Designer", status: "Applied", time: "14s ago", logo: "#635BFF", location: "San Francisco, CA", type: "Remote", match: 92 },
-  { company: "Linear", role: "Product Manager", status: "Applying", time: "just now", logo: "#5B68F6", location: "San Francisco, CA", type: "Remote", match: 88 },
-  { company: "Figma", role: "UX Researcher", status: "Applied", time: "1m ago", logo: "#F24E1E", location: "New York, NY", type: "Hybrid", match: 85 },
+  { company: "Google", domain: "google.com", role: "Software Engineer Intern", status: "Applied" as const, location: "Mountain View, CA", type: "Hybrid", match: 96 },
+  { company: "Stripe", domain: "stripe.com", role: "Product Designer", status: "Applied" as const, location: "San Francisco, CA", type: "Remote", match: 92 },
+  { company: "Linear", domain: "linear.app", role: "Product Manager", status: "Applying" as const, location: "San Francisco, CA", type: "Remote", match: 88 },
+  { company: "Figma", domain: "figma.com", role: "UX Researcher", status: "Applied" as const, location: "New York, NY", type: "Hybrid", match: 85 },
 ];
 
 const matchItems = [
-  { company: "Apple", role: "iOS Engineer", score: 96, logo: "#A2AAAD" },
-  { company: "Netflix", role: "Senior Frontend Engineer", score: 94, logo: "#E50914" },
-  { company: "Airbnb", role: "Design Engineer", score: 91, logo: "#FF5A5F" },
-  { company: "Notion", role: "Full Stack Engineer", score: 89, logo: "#000000" },
+  { company: "Apple", domain: "apple.com", role: "iOS Engineer", score: 96, location: "Cupertino, CA", type: "On-site" },
+  { company: "Netflix", domain: "netflix.com", role: "Senior Frontend Engineer", score: 94, location: "Los Gatos, CA", type: "Remote" },
+  { company: "Airbnb", domain: "airbnb.com", role: "Design Engineer", score: 91, location: "San Francisco, CA", type: "Hybrid" },
+  { company: "Notion", domain: "notion.so", role: "Full Stack Engineer", score: 89, location: "New York, NY", type: "Remote" },
 ];
 
 const interviewItems = [
-  { company: "Google", role: "Software Engineer", date: "Mar 4" },
-  { company: "Stripe", role: "Product Designer", date: "Mar 6" },
-  { company: "Notion", role: "Frontend Engineer", date: "Mar 8" },
-  { company: "Linear", role: "Product Manager", date: "Mar 11" },
+  { company: "Google", domain: "google.com", role: "Software Engineer", date: "Mar 4", round: "Technical" },
+  { company: "Stripe", domain: "stripe.com", role: "Product Designer", date: "Mar 6", round: "Portfolio" },
+  { company: "Notion", domain: "notion.so", role: "Frontend Engineer", date: "Mar 8", round: "On-site" },
+  { company: "Linear", domain: "linear.app", role: "Product Manager", date: "Mar 11", round: "Final" },
 ];
 
 const avatarGradients = [
@@ -37,8 +37,28 @@ type Tab = "applications" | "matches" | "interviews";
 const entrance = { initial: { opacity: 0, y: 28 }, animate: { opacity: 1, y: 0 } };
 const ease = [0.16, 1, 0.3, 1] as const;
 
+function LogoImg({ domain, company }: { domain: string; company: string }) {
+  const [err, setErr] = useState(false);
+  if (err) {
+    return (
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-border-card text-[0.6rem] font-bold text-text-primary">
+        {company[0]}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={`https://logo.clearbit.com/${domain}`}
+      alt={company}
+      className="h-8 w-8 shrink-0 rounded-lg bg-border-card object-contain"
+      onError={() => setErr(true)}
+    />
+  );
+}
+
 export function Hero() {
   const [activeTab, setActiveTab] = useState<Tab>("applications");
+  const [entranceDone, setEntranceDone] = useState(false);
   const { ref: tiltRef, springX, springY, handleMouseMove, handleMouseLeave } = useMouseTilt(6);
 
   return (
@@ -73,9 +93,9 @@ export function Hero() {
         transition={{ duration: 10, ease: "easeInOut", repeat: Infinity, delay: 3 }}
       />
 
-      <div className="relative z-10 mx-auto max-w-[1280px] grid gap-[60px] grid-cols-1 lg:grid-cols-2 items-center">
-        {/* Left column — copy */}
-        <div className="text-center lg:text-left">
+      <div className="relative z-10 mx-auto max-w-[1280px] flex flex-col items-center gap-[60px]">
+        {/* Centered copy block */}
+        <div className="text-center max-w-[640px]">
           <motion.span
             className="inline-flex items-center gap-1.5 rounded-full border border-accent-purple/30 bg-accent-purple/10 px-4 py-1.5 text-[0.72rem] font-semibold text-accent-purple-light"
             {...entrance}
@@ -96,7 +116,7 @@ export function Hero() {
           </motion.h1>
 
           <motion.p
-            className="mt-5 max-w-[440px] text-[1.05rem] text-text-secondary leading-relaxed mx-auto lg:mx-0"
+            className="mt-5 max-w-[440px] text-[1.05rem] text-text-secondary leading-relaxed mx-auto"
             {...entrance}
             transition={{ duration: 0.8, ease, delay: 0.35 }}
           >
@@ -106,35 +126,33 @@ export function Hero() {
           </motion.p>
 
           <motion.div
-            className="mt-8 flex flex-col sm:flex-row items-center gap-3 justify-center lg:justify-start"
+            className="mt-8 flex justify-center"
             {...entrance}
             transition={{ duration: 0.8, ease, delay: 0.5 }}
           >
             <Link
               to="/signup"
-              className="inline-flex items-center gap-2 h-12 px-7 rounded-xl text-[0.92rem] font-bold text-white hover:-translate-y-0.5 transition-all"
+              className="relative inline-flex items-center gap-2 h-14 px-10 rounded-2xl text-[1.05rem] font-bold text-white hover:-translate-y-0.5 transition-all overflow-hidden"
               style={{
                 background: "var(--gradient-primary)",
-                boxShadow: "0 2px 12px rgba(124,92,252,0.25), inset 0 1px 0 rgba(255,255,255,0.1)",
+                boxShadow: "0 2px 20px rgba(124,92,252,0.35), inset 0 1px 0 rgba(255,255,255,0.1)",
               }}
             >
               Get Started Free
               <ArrowRight className="h-4 w-4" />
+              <span
+                className="shimmer-sweep absolute inset-0 pointer-events-none"
+                style={{
+                  background: "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%)",
+                  animation: "btn-shimmer 2.5s ease-in-out infinite",
+                }}
+              />
             </Link>
-            <a
-              href="#how-it-works"
-              className="inline-flex items-center gap-2 h-12 px-7 rounded-xl text-[0.92rem] font-semibold text-text-secondary border border-border-card hover:bg-bg-card-hover hover:border-border-hover hover:-translate-y-0.5 transition-all"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-border-card text-[0.6rem]">
-                &#9654;
-              </span>
-              See How It Works
-            </a>
           </motion.div>
 
           {/* Social proof */}
           <motion.div
-            className="mt-8 flex items-center gap-3 justify-center lg:justify-start"
+            className="mt-8 flex items-center gap-3 justify-center"
             {...entrance}
             transition={{ duration: 0.8, ease, delay: 0.65 }}
           >
@@ -159,228 +177,239 @@ export function Hero() {
           </motion.div>
         </div>
 
-        {/* Right column — dashboard preview */}
+        {/* Dashboard preview — wide, centered, 3D entrance */}
         <motion.div
-          className="flex justify-center lg:justify-end"
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, ease, delay: 0.6 }}
+          className="w-[900px] max-w-full"
+          initial={{ rotateX: 12, rotateY: -6, rotateZ: 1.5, scale: 0.92, y: 80, opacity: 0 }}
+          animate={{ rotateX: 0, rotateY: 0, rotateZ: 0, scale: 1, y: 0, opacity: 1 }}
+          transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1], delay: 0.8 }}
+          onAnimationComplete={() => setEntranceDone(true)}
+          style={{ perspective: 1200 }}
         >
           <div className="relative">
             {/* Glow behind card */}
             <div
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full pointer-events-none"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] rounded-full pointer-events-none"
               style={{
                 background: "radial-gradient(circle, rgba(124,92,252,0.12) 0%, transparent 70%)",
                 filter: "blur(80px)",
               }}
             />
 
-            <motion.div
-              ref={tiltRef}
-              onMouseMove={handleMouseMove}
-              onMouseLeave={handleMouseLeave}
+            {/* Gradient border wrapper */}
+            <div
+              className="relative rounded-[21px] p-px"
               style={{
-                rotateX: springX,
-                rotateY: springY,
-                perspective: 1200,
-                transformStyle: "preserve-3d" as const,
-                boxShadow: "0 0 0 1px rgba(255,255,255,0.03), 0 24px 80px -12px rgba(0,0,0,0.6), 0 0 60px rgba(124,92,252,0.06)",
+                background: "linear-gradient(180deg, rgba(124,92,252,0.15), rgba(91,141,255,0.08), rgba(255,255,255,0.03))",
               }}
-              className="relative w-full max-w-[520px] rounded-[20px] border border-border-card bg-bg-card overflow-hidden"
             >
-              {/* Card header */}
-              <div className="flex items-center justify-between px-5 py-3.5 border-b border-border-subtle">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-linear-to-br from-accent-purple to-accent-blue">
-                    <Zap className="h-3 w-3 text-white" />
-                  </div>
-                  <span className="text-[0.78rem] font-semibold text-text-primary">
-                    AutoApply
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-green opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-accent-green" />
-                  </span>
-                  <span className="text-[0.62rem] font-semibold text-accent-green uppercase tracking-wider">
-                    Live
-                  </span>
-                </div>
-              </div>
-
-              {/* Stat tabs */}
-              <div className="grid grid-cols-3 border-b border-border-subtle">
-                {([
-                  { key: "applications" as Tab, label: "Applied Today", value: "47", color: "#5b8dff" },
-                  { key: "matches" as Tab, label: "Job Matches", value: "128", color: "#7c5cfc" },
-                  { key: "interviews" as Tab, label: "Interviews", value: "6", color: "#34d399" },
-                ] as const).map((tab) => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setActiveTab(tab.key)}
-                    className={`py-3 px-3 text-center transition-colors ${
-                      activeTab === tab.key
-                        ? "border-b-2"
-                        : "border-b-2 border-transparent"
-                    }`}
-                    style={{
-                      borderColor: activeTab === tab.key ? tab.color : undefined,
-                    }}
-                  >
-                    <p className="text-[0.62rem] text-text-muted uppercase tracking-wider">
-                      {tab.label}
-                    </p>
-                    <p className="mt-0.5 font-mono text-lg font-bold text-text-primary">
-                      {tab.value}
-                    </p>
-                  </button>
-                ))}
-              </div>
-
-              {/* Progress bar */}
-              <div className="px-5 py-3 border-b border-border-subtle">
-                <div className="flex items-center justify-between text-[0.68rem]">
-                  <span className="text-text-muted">Daily Goal</span>
-                  <span className="font-mono text-text-secondary">47 / 50</span>
-                </div>
-                <div className="mt-1.5 h-1.5 rounded-full bg-border-subtle overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: "94%",
-                      background: "var(--gradient-primary)",
-                      animation: "fill-bar 1.5s var(--ease) 1.4s both",
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Content area */}
-              <div className="px-5 py-3 space-y-2 min-h-[200px]">
-                {activeTab === "applications" &&
-                  jobItems.map((item) => (
-                    <div
-                      key={item.role}
-                      className="flex items-center gap-3 rounded-lg p-2 hover:bg-bg-card-hover transition-colors"
-                    >
-                      <div
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[0.6rem] font-bold text-white"
-                        style={{ backgroundColor: item.logo }}
-                      >
-                        {item.company[0]}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[0.82rem] font-semibold text-text-primary">
-                          {item.role}
-                        </p>
-                        <div className="flex items-center gap-2 text-[0.65rem] text-text-muted">
-                          <span>{item.company}</span>
-                          <span className="flex items-center gap-0.5">
-                            <MapPin className="h-2.5 w-2.5" />
-                            {item.location}
-                          </span>
-                          <span className="flex items-center gap-0.5">
-                            <Briefcase className="h-2.5 w-2.5" />
-                            {item.type}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span
-                          className={`text-[0.62rem] font-semibold ${
-                            item.status === "Applying"
-                              ? "text-amber-400"
-                              : "text-accent-green"
-                          }`}
-                        >
-                          {item.status}
-                        </span>
-                        <p className="text-[0.6rem] text-text-muted font-mono">
-                          {item.match}% match
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-
-                {activeTab === "matches" &&
-                  matchItems.map((item) => (
-                    <div
-                      key={item.role}
-                      className="flex items-center gap-3 rounded-lg p-2 hover:bg-bg-card-hover transition-colors"
-                    >
-                      <div
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[0.6rem] font-bold text-white"
-                        style={{ backgroundColor: item.logo }}
-                      >
-                        {item.company[0]}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[0.82rem] font-semibold text-text-primary">
-                          {item.role}
-                        </p>
-                        <p className="text-[0.65rem] text-text-muted">{item.company}</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="w-[50px] h-1 rounded-full bg-border-subtle overflow-hidden">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${item.score}%`,
-                              background: item.score >= 90 ? "#34d399" : "#5b8dff",
-                            }}
-                          />
-                        </div>
-                        <span className="font-mono text-[0.68rem] font-semibold text-text-primary">
-                          {item.score}%
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-
-                {activeTab === "interviews" &&
-                  interviewItems.map((item) => (
-                    <div
-                      key={item.role}
-                      className="flex items-center gap-3 rounded-lg p-2"
-                    >
-                      <span className="inline-flex items-center justify-center rounded-md bg-accent-blue/10 px-2 py-1 font-mono text-[0.62rem] font-medium text-accent-blue">
-                        {item.date}
-                      </span>
-                      <div>
-                        <p className="text-[0.82rem] font-semibold text-text-primary">
-                          {item.role}
-                        </p>
-                        <p className="text-[0.7rem] text-text-muted">
-                          {item.company}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-
-              {/* Notification toast */}
               <motion.div
-                className="mx-5 mb-4 flex items-center gap-2.5 rounded-xl bg-bg-card-hover border border-border-hover p-3"
-                initial={{ opacity: 0, y: 28 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease, delay: 2 }}
+                ref={tiltRef}
+                onMouseMove={entranceDone ? handleMouseMove : undefined}
+                onMouseLeave={entranceDone ? handleMouseLeave : undefined}
+                style={{
+                  rotateX: springX,
+                  rotateY: springY,
+                  perspective: 1200,
+                  transformStyle: "preserve-3d" as const,
+                  boxShadow: "0 24px 80px -12px rgba(0,0,0,0.6), 0 0 60px rgba(124,92,252,0.06)",
+                }}
+                className="relative rounded-[20px] bg-bg-card overflow-hidden"
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-accent-purple to-accent-blue text-[0.6rem] font-bold text-white">
-                  A
+                {/* Card header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-linear-to-br from-accent-purple to-accent-blue">
+                      <Zap className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-[0.78rem] font-semibold text-text-primary">
+                      AutoApply
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-green opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-accent-green" />
+                    </span>
+                    <span className="text-[0.62rem] font-semibold text-accent-green uppercase tracking-wider">
+                      Live
+                    </span>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[0.72rem] font-semibold text-text-primary">
-                    New match found!
-                  </p>
-                  <p className="text-[0.62rem] text-text-muted">
-                    Apple — iOS Engineer · 96% fit score
-                  </p>
+
+                {/* Stat tabs */}
+                <div className="grid grid-cols-3 border-b border-border-subtle">
+                  {([
+                    { key: "applications" as Tab, label: "Applied Today", value: "47", color: "#5b8dff" },
+                    { key: "matches" as Tab, label: "Job Matches", value: "128", color: "#7c5cfc" },
+                    { key: "interviews" as Tab, label: "Interviews", value: "6", color: "#34d399" },
+                  ] as const).map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`py-3 px-3 text-center transition-colors ${
+                        activeTab === tab.key
+                          ? "border-b-2"
+                          : "border-b-2 border-transparent"
+                      }`}
+                      style={{
+                        borderColor: activeTab === tab.key ? tab.color : undefined,
+                      }}
+                    >
+                      <p className="text-[0.62rem] text-text-muted uppercase tracking-wider">
+                        {tab.label}
+                      </p>
+                      <p className="mt-0.5 font-mono text-lg font-bold text-text-primary">
+                        {tab.value}
+                      </p>
+                    </button>
+                  ))}
                 </div>
+
+                {/* Progress bar */}
+                <div className="px-6 py-3 border-b border-border-subtle">
+                  <div className="flex items-center justify-between text-[0.68rem]">
+                    <span className="text-text-muted">Daily Goal</span>
+                    <span className="font-mono text-text-secondary">47 / 50</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 rounded-full bg-border-subtle overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: "94%",
+                        background: "var(--gradient-primary)",
+                        animation: "fill-bar 1.5s var(--ease) 1.4s both",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Content area */}
+                <div className="px-6 py-4 space-y-2 min-h-[240px]">
+                  {activeTab === "applications" &&
+                    jobItems.map((item) => (
+                      <div
+                        key={item.role}
+                        className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-bg-card-hover/60 transition-colors"
+                      >
+                        <LogoImg domain={item.domain} company={item.company} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[0.82rem] font-semibold text-text-primary">
+                            {item.role}
+                          </p>
+                          <div className="flex items-center gap-2 text-[0.65rem] text-text-muted">
+                            <span className="font-medium">{item.company}</span>
+                            <span className="text-border-hover">|</span>
+                            <span className="flex items-center gap-0.5">
+                              <MapPin className="h-2.5 w-2.5" />
+                              {item.location}
+                            </span>
+                            <span className="flex items-center gap-0.5">
+                              <Briefcase className="h-2.5 w-2.5" />
+                              {item.type}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.62rem] font-semibold ${
+                              item.status === "Applying"
+                                ? "bg-amber-400/10 text-amber-400"
+                                : "bg-accent-green/10 text-accent-green"
+                            }`}
+                          >
+                            {item.status}
+                          </span>
+                          <span className="font-mono text-[0.68rem] text-text-muted">
+                            {item.match}%
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+
+                  {activeTab === "matches" &&
+                    matchItems.map((item) => (
+                      <div
+                        key={item.role}
+                        className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-bg-card-hover/60 transition-colors"
+                      >
+                        <LogoImg domain={item.domain} company={item.company} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[0.82rem] font-semibold text-text-primary">
+                            {item.role}
+                          </p>
+                          <div className="flex items-center gap-2 text-[0.65rem] text-text-muted">
+                            <span className="font-medium">{item.company}</span>
+                            <span className="text-border-hover">|</span>
+                            <span className="flex items-center gap-0.5">
+                              <MapPin className="h-2.5 w-2.5" />
+                              {item.location}
+                            </span>
+                            <span className="flex items-center gap-0.5">
+                              <Briefcase className="h-2.5 w-2.5" />
+                              {item.type}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <div className="w-[60px] h-1.5 rounded-full bg-border-subtle overflow-hidden">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${item.score}%`,
+                                background: item.score >= 90 ? "#34d399" : "#5b8dff",
+                              }}
+                            />
+                          </div>
+                          <span className="font-mono text-[0.68rem] font-semibold text-text-primary">
+                            {item.score}%
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+
+                  {activeTab === "interviews" &&
+                    interviewItems.map((item) => (
+                      <div
+                        key={item.role}
+                        className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-bg-card-hover/60 transition-colors"
+                      >
+                        <LogoImg domain={item.domain} company={item.company} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[0.82rem] font-semibold text-text-primary">
+                            {item.role}
+                          </p>
+                          <p className="text-[0.65rem] text-text-muted">
+                            {item.company} · {item.round}
+                          </p>
+                        </div>
+                        <span className="inline-flex items-center justify-center rounded-lg bg-accent-blue/10 px-2.5 py-1 font-mono text-[0.62rem] font-medium text-accent-blue shrink-0">
+                          {item.date}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+
+                {/* Notification toast */}
+                <motion.div
+                  className="mx-6 mb-4 flex items-center gap-3 rounded-xl bg-bg-card-hover border border-border-hover p-3"
+                  initial={{ opacity: 0, y: 28 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, ease, delay: 2.5 }}
+                >
+                  <LogoImg domain="apple.com" company="Apple" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[0.72rem] font-semibold text-text-primary">
+                      New match found!
+                    </p>
+                    <p className="text-[0.62rem] text-text-muted">
+                      Apple — iOS Engineer · 96% fit score
+                    </p>
+                  </div>
+                </motion.div>
               </motion.div>
-            </motion.div>
+            </div>
           </div>
         </motion.div>
       </div>

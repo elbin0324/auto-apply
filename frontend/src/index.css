@@ -161,6 +161,17 @@
   50% { opacity: 0; }
 }
 
+/* ─── Hero button shimmer + fill bar ─── */
+
+@keyframes btn-shimmer {
+  0% { transform: translateX(-100%); }
+  60%, 100% { transform: translateX(100%); }
+}
+
+@keyframes fill-bar {
+  from { width: 0; }
+}
+
 /* ─── App-wide polish animations ─── */
 
 @keyframes pageIn {
@@ -236,5 +247,8 @@
   .card-hover:hover {
     transform: none;
     box-shadow: none;
+  }
+  .shimmer-sweep {
+    animation: none !important;
   }
 }

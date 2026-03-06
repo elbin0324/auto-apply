@@ -8,7 +8,15 @@ import { SectionCard } from "@/components/ui/section-card";
 import { usePreferences, useUpdatePreferences } from "@/hooks/use-profile";
 import type { ApplicationPreferencesUpdate } from "@/types/profile";
 
-export function PreferencesEditor() {
+interface PreferencesEditorProps {
+  onSaveSuccess?: () => void;
+  footer?: (props: { save: () => void; isPending: boolean }) => React.ReactNode;
+}
+
+export function PreferencesEditor({
+  onSaveSuccess,
+  footer,
+}: PreferencesEditorProps) {
   const { data: prefs, isLoading } = usePreferences();
   const mutation = useUpdatePreferences();
 
@@ -63,7 +71,10 @@ export function PreferencesEditor() {
         custom_answers[entry.key.trim()] = entry.value;
       }
     }
-    mutation.mutate({ ...form, custom_answers });
+    mutation.mutate(
+      { ...form, custom_answers },
+      { onSuccess: () => onSaveSuccess?.() },
+    );
   };
 
   if (isLoading) {
@@ -272,20 +283,24 @@ export function PreferencesEditor() {
         </div>
       </SectionCard>
 
-      {/* Save */}
-      <div className="flex items-center gap-3">
-        <Button type="button" onClick={save} disabled={mutation.isPending}>
-          {mutation.isPending ? (
-            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="mr-1.5 h-4 w-4" />
+      {/* Save / Footer */}
+      {footer ? (
+        footer({ save, isPending: mutation.isPending })
+      ) : (
+        <div className="flex items-center gap-3">
+          <Button type="button" onClick={save} disabled={mutation.isPending}>
+            {mutation.isPending ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-1.5 h-4 w-4" />
+            )}
+            Save Preferences
+          </Button>
+          {mutation.isSuccess && (
+            <p className="text-sm text-accent-green">Preferences saved.</p>
           )}
-          Save Preferences
-        </Button>
-        {mutation.isSuccess && (
-          <p className="text-sm text-accent-green">Preferences saved.</p>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

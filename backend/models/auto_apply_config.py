@@ -30,7 +30,8 @@ class AutoApplyConfig(Base, TimestampMixin):
     excluded_companies: Mapped[list | None] = mapped_column(JSONB)
     preferred_industries: Mapped[list | None] = mapped_column(JSONB)
     location_type_pref: Mapped[list | None] = mapped_column(JSONB)
-    experience_level: Mapped[str | None] = mapped_column(String)  # entry, mid, senior, lead
+    employment_type_pref: Mapped[list | None] = mapped_column(JSONB)
+    experience_level: Mapped[str | None] = mapped_column(String)
     daily_apply_limit: Mapped[int] = mapped_column(Integer, default=25)
     apply_mode: Mapped[str] = mapped_column(String, default="safe")  # safe, hybrid, auto
     auto_apply_threshold: Mapped[int] = mapped_column(Integer, default=70)  # score threshold for hybrid mode

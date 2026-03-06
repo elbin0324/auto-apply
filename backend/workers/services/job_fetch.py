@@ -15,10 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.auto_apply_config import AutoApplyConfig
 from models.job import Job
 from workers.services.job_search_api import (
+    EMPLOYMENT_TYPE_MAP,
     EXPERIENCE_LEVEL_MAP,
     WORK_ARRANGEMENT_MAP,
     JobSearchParams,
+    build_advanced_title_query,
+    normalize_taxonomies,
 )
+from workers.services.location_normalizer import normalize_locations
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +30,13 @@ logger = logging.getLogger(__name__)
 def _build_search_params(
     config: AutoApplyConfig,
 ) -> list[JobSearchParams]:
-    """Build one JobSearchParams per target title from user's AutoApplyConfig.
+    """Build a single JobSearchParams from user's AutoApplyConfig.
 
-    The title_filter API param only accepts a single title, so we create
-    a separate query for each title. All other filters (location, experience,
-    etc.) are shared across queries.
+    All titles are combined into one ``advanced_title_filter`` query using
+    OR logic, so only one API call is needed instead of N.
 
     Returns an empty list if no target_titles are configured.
+    Returns a list with exactly one JobSearchParams otherwise.
     """
     titles = list(config.target_titles or [])
     if not titles:
@@ -41,13 +45,18 @@ def _build_search_params(
     locations = list(config.target_locations or [])
     location_prefs = list(config.location_type_pref or [])
 
-    # Build shared filter values
+    # Build advanced title query — combines all titles into one OR query
+    advanced_title_filter = build_advanced_title_query(titles)
+
+    # Location filter — normalize abbreviations/aliases before sending
     location_filter: str | None = None
     if locations:
-        location_filter = " OR ".join(locations)
+        normalized = normalize_locations(locations)
+        if normalized:
+            location_filter = " OR ".join(normalized)
 
+    # Work arrangement filter — only use ai_work_arrangement_filter (no remote=True)
     ai_work_arrangement_filter: str | None = None
-    remote: bool | None = None
     if location_prefs:
         arrangement_parts: list[str] = []
         for pref in location_prefs:
@@ -56,8 +65,6 @@ def _build_search_params(
                 arrangement_parts.append(mapped)
         if arrangement_parts:
             ai_work_arrangement_filter = ",".join(arrangement_parts)
-        if location_prefs == ["remote"]:
-            remote = True
 
     ai_experience_level_filter: str | None = None
     if config.experience_level:
@@ -70,32 +77,81 @@ def _build_search_params(
     if excluded:
         organization_exclusion_filter = ",".join(excluded)
 
+    # Industry taxonomy — normalize user values to API taxonomy
     ai_taxonomies_a_filter: str | None = None
     industries = list(config.preferred_industries or [])
     if industries:
-        formatted = []
-        for ind in industries:
-            if "&" in ind:
-                formatted.append(f'"{ind}"')
-            else:
-                formatted.append(ind)
-        ai_taxonomies_a_filter = ",".join(formatted)
+        normalized_industries = normalize_taxonomies(industries)
+        if normalized_industries:
+            formatted = []
+            for ind in normalized_industries:
+                if "&" in ind:
+                    formatted.append(f'"{ind}"')
+                else:
+                    formatted.append(ind)
+            ai_taxonomies_a_filter = ",".join(formatted)
 
-    # One query per title
+    # Employment type filter
+    ai_employment_type_filter: str | None = None
+    employment_prefs = list(getattr(config, "employment_type_pref", None) or [])
+    if employment_prefs:
+        emp_parts: list[str] = []
+        for pref in employment_prefs:
+            mapped = EMPLOYMENT_TYPE_MAP.get(pref)
+            if mapped:
+                emp_parts.append(mapped)
+        if emp_parts:
+            ai_employment_type_filter = ",".join(emp_parts)
+
     return [
         JobSearchParams(
-            title_filter=title,
+            advanced_title_filter=advanced_title_filter,
             location_filter=location_filter,
-            remote=remote,
+            remote=None,  # never set remote=True, use ai_work_arrangement_filter only
             ai_work_arrangement_filter=ai_work_arrangement_filter,
+            ai_employment_type_filter=ai_employment_type_filter,
             ai_experience_level_filter=ai_experience_level_filter,
             organization_exclusion_filter=organization_exclusion_filter,
             ai_taxonomies_a_filter=ai_taxonomies_a_filter,
             include_ai=True,
             agency=False,
         )
-        for title in titles
     ]
+
+
+def _build_relaxed_params(
+    base: JobSearchParams,
+) -> list[JobSearchParams]:
+    """Build progressively relaxed versions of search params.
+
+    Returns a list of JobSearchParams with filters dropped in order:
+    1. Drop ai_taxonomies_a_filter (industry)
+    2. Drop ai_experience_level_filter (experience)
+    3. Drop ai_work_arrangement_filter + location_filter (location constraints)
+
+    Each level includes all previous relaxations. The caller should try
+    each in order, stopping as soon as results are found.
+    """
+    from dataclasses import replace
+
+    levels: list[JobSearchParams] = []
+
+    # Level 1: drop industry
+    level1 = replace(base, ai_taxonomies_a_filter=None)
+    if level1 != base:
+        levels.append(level1)
+
+    # Level 2: also drop experience
+    level2 = replace(level1, ai_experience_level_filter=None)
+    if level2 != level1:
+        levels.append(level2)
+
+    # Level 3: also drop location constraints
+    level3 = replace(level2, ai_work_arrangement_filter=None, location_filter=None)
+    if level3 != level2:
+        levels.append(level3)
+
+    return levels
 
 
 async def _upsert_jobs(

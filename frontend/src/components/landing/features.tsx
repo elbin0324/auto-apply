@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { useScrollReveal } from "@/hooks/use-scroll-reveal";
+import { useState, useRef } from "react";
+import { motion, useInView } from "motion/react";
+
+const ease = [0.16, 1, 0.3, 1] as const;
 
 /* ── Feature 1: Smart Job Matching ───────── */
 const matchJobs = [
@@ -81,34 +83,50 @@ function CoverLetterDemo() {
   );
 }
 
-/* ── Feature 3: Multi-Platform ───────── */
-const platforms = [
-  { name: "LinkedIn", apps: 68, width: 92, color: "#5b8dff" },
-  { name: "Indeed", apps: 52, width: 78, color: "#7c5cfc" },
-  { name: "Greenhouse", apps: 31, width: 55, color: "#34d399" },
-  { name: "Workday", apps: 24, width: 42, color: "#22d3ee" },
+/* ── Feature 3: AI Application Questions ───────── */
+const appQuestions = [
+  {
+    q: "Why are you interested in this role at Stripe?",
+    a: "My experience building payment infrastructure at scale directly aligns with Stripe's mission to increase the GDP of the internet...",
+    done: true,
+  },
+  {
+    q: "Describe a challenging project you led.",
+    a: "I led the migration of our monolithic checkout system to a microservices architecture, reducing latency by 40%...",
+    done: true,
+  },
+  {
+    q: "What's your approach to cross-functional collaboration?",
+    a: "",
+    done: false,
+  },
 ];
 
-function PlatformDemo() {
+function ApplicationQuestionsDemo() {
   return (
     <div className="space-y-3 p-4">
-      {platforms.map((p) => (
-        <div key={p.name} className="flex items-center gap-3">
-          <span className="w-[100px] text-[0.82rem] font-medium text-text-primary shrink-0">
-            {p.name}
-          </span>
-          <div className="h-2 flex-1 rounded-full bg-border-subtle overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${p.width}%`, backgroundColor: p.color }}
-            />
-          </div>
-          <span className="font-mono text-[0.72rem] text-text-secondary shrink-0 w-8 text-right">
-            {p.apps}
-          </span>
-          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-green/20 shrink-0">
-            <span className="text-[0.6rem] text-accent-green">&#10003;</span>
-          </div>
+      {appQuestions.map((item, i) => (
+        <div key={i} className="rounded-lg bg-bg/30 p-3">
+          <p className="text-[0.75rem] font-semibold text-text-primary">{item.q}</p>
+          {item.done ? (
+            <div className="mt-1.5 flex items-start gap-2">
+              <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-accent-green/20 mt-0.5">
+                <span className="text-[0.5rem] text-accent-green">&#10003;</span>
+              </div>
+              <p className="text-[0.7rem] italic text-text-secondary leading-relaxed">{item.a}</p>
+            </div>
+          ) : (
+            <div className="mt-1.5 flex items-center gap-2">
+              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-purple/20 text-[0.45rem] font-bold text-accent-purple-light">
+                AI
+              </div>
+              <span className="text-[0.7rem] text-text-muted">Generating answer</span>
+              <span
+                className="inline-block w-0.5 h-3.5 bg-accent-purple"
+                style={{ animation: "blink-cursor 1s step-end infinite" }}
+              />
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -240,11 +258,11 @@ const features = [
     span: false,
   },
   {
-    tag: "Integrations",
+    tag: "AI Answers",
     tagColor: "#34d399",
-    title: "Multi-Platform Apply.",
-    desc: "Submit across all major platforms simultaneously. One click, every job board.",
-    demo: PlatformDemo,
+    title: "AI Application Questions.",
+    desc: "Our AI reads each application's questions and generates personalized answers from your resume and experience.",
+    demo: ApplicationQuestionsDemo,
     span: false,
   },
   {
@@ -258,27 +276,40 @@ const features = [
 ];
 
 export function Features() {
-  const ref = useScrollReveal();
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
 
   return (
     <section id="features" ref={ref} className="py-[140px] px-6">
       <div className="mx-auto max-w-[1100px] text-center">
-        <span data-r className="inline-block rounded-full border border-border-card bg-bg-card px-4 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.1em] text-accent-purple-light">
+        <motion.span
+          className="inline-block rounded-full border border-border-card bg-bg-card px-4 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.1em] text-accent-purple-light"
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, ease }}
+        >
           Features
-        </span>
-        <h2 data-r className="d1 mt-5 text-[clamp(2.2rem,4.8vw,3.6rem)] font-extrabold tracking-[-0.045em] leading-[1.02]">
+        </motion.span>
+        <motion.h2
+          className="mt-5 text-[clamp(2.2rem,4.8vw,3.6rem)] font-extrabold tracking-[-0.045em] leading-[1.02]"
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, ease, delay: 0.1 }}
+        >
           Everything you need to{" "}
           <span className="gradient-text">land your next role.</span>
-        </h2>
+        </motion.h2>
 
         <div className="mt-16 grid gap-4 grid-cols-1 lg:grid-cols-2">
-          {features.map((f) => (
-            <div
+          {features.map((f, i) => (
+            <motion.div
               key={f.title}
-              data-r
               className={`rounded-[20px] border border-border-card bg-bg-card text-left overflow-hidden hover:border-border-hover transition-colors ${
                 f.span ? "lg:col-span-2" : ""
               }`}
+              initial={{ opacity: 0, y: 40 }}
+              animate={inView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.7, ease, delay: 0.2 + i * 0.15 }}
             >
               <div className="p-8 pb-4">
                 <span
@@ -300,7 +331,7 @@ export function Features() {
               <div className="border-t border-border-subtle bg-bg/30">
                 <f.demo />
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

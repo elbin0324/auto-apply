@@ -37,7 +37,7 @@ export default function OnboardingPage() {
         <StepProfile profile={profile} onNext={goNext} onBack={goBack} />
       )}
       {currentStep === 2 && (
-        <StepPreferences profile={profile} onNext={goNext} onBack={goBack} />
+        <StepPreferences onNext={goNext} onBack={goBack} />
       )}
       {currentStep === 3 && (
         <StepJobSearch

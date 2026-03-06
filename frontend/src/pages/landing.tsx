@@ -15,10 +15,10 @@ export default function LandingPage() {
     <div className="min-h-screen bg-bg">
       <NavBar />
       <Hero />
-      <Marquee />
       <Statement />
       <HowItWorks />
       <Features />
+      <Marquee />
       <Pricing />
       <Testimonials />
       <ComingSoon />

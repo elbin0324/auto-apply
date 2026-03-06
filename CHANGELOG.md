@@ -6,6 +6,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- Resume upload upsert option passed as string `"true"` instead of boolean `True`, causing RLS policy violation on re-uploads
+
 ### Added
 - `build_advanced_title_query()` — combines all user titles into a single OR query with prefix wildcards
 - `backend/workers/services/location_normalizer.py` — normalizes US state abbrevs, country codes, city aliases

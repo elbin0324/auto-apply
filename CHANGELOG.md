@@ -6,7 +6,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- `build_advanced_title_query()` — combines all user titles into a single OR query with prefix wildcards
+- `backend/workers/services/location_normalizer.py` — normalizes US state abbrevs, country codes, city aliases
+- Industry taxonomy normalization with `AI_TAXONOMY_VALUES`, alias matching, substring matching
+- Progressive filter relaxation fallback when job search returns zero results
+- `employment_type_pref` field on AutoApplyConfig (Full Time, Part Time, Contract, Internship)
+- `EMPLOYMENT_TYPE_MAP` for mapping user prefs to API filter values
+- `frontend/src/components/auto-apply/industry-select.tsx` — searchable multi-select dropdown for industries
+- `frontend/src/lib/constants.ts` — shared industry taxonomy and employment type constants
+- Helper text on Target Job Titles and Target Locations inputs
+- Executive experience level mapping (`"executive": "10+"`)
+- 57 new tests (location normalizer, taxonomy, title query, relaxation, employment type)
+
 ### Changed
+- Job search now uses single `advanced_title_filter` query instead of N separate `title_filter` calls
+- Seniority filler words (senior, junior, lead, etc.) stripped from title queries automatically
+- Locations normalized before API call (e.g. "San Francisco, CA" → "San Francisco, California, United States")
+- Industries normalized to API taxonomy before sending (e.g. "Tech" → "Technology", "Finance" → "Finance & Accounting")
+- Remote preference now only uses `ai_work_arrangement_filter` (removed redundant `remote=True`)
+- Preferred Industries input replaced with searchable multi-select dropdown (was free-form TagInput)
+- `_build_api_params()` now prefers `advanced_title_filter` over `title_filter`
+
+### Changed (prior)
 - Replace standalone cron script (`backend/cron/`) with internal API endpoint `POST /api/internal/scheduler/fetch`
 - Railway cron now curls the API instead of running a Python process
 - Refactored cron fetch tests to use HTTP endpoint via TestClient

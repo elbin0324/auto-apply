@@ -44,7 +44,7 @@ def upload_resume(user_id: UUID, file_bytes: bytes, content_type: str = "applica
     supabase.storage.from_(RESUMES_BUCKET).upload(
         path=path,
         file=file_bytes,
-        file_options={"content-type": content_type, "upsert": True},
+        file_options={"content-type": content_type, "upsert": "true"},
     )
 
     return path

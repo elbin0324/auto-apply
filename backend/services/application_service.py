@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from models.application import Application
 from schemas.application import ApplicationListResponse, ApplicationStats
-from schemas.auto_apply import ApplyResult
+from schemas.auto_apply import ApplyResult, ProgressUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +125,43 @@ async def get_application_stats(
     )
 
 
+async def process_progress_update(
+    db: AsyncSession,
+    update: ProgressUpdate,
+) -> Application:
+    """Process a progress update from the runner, updating phase info."""
+    stmt = select(Application).where(Application.id == uuid.UUID(update.task_id))
+    row = await db.execute(stmt)
+    application = row.scalar_one_or_none()
+    if not application:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Application {update.task_id} not found",
+        )
+
+    # Skip if already in a terminal state
+    if application.status in ("applied", "failed", "skipped", "withdrawn"):
+        return application
+
+    application.current_phase = update.phase
+    application.phase_message = update.message
+
+    # Auto-transition queued → in_progress on first progress update
+    if application.status == "queued":
+        application.status = "in_progress"
+
+    await db.flush()
+
+    logger.info(
+        "Progress update for application %s: phase=%s message=%s",
+        application.id,
+        update.phase,
+        update.message,
+    )
+
+    return application
+
+
 async def process_agent_result(
     db: AsyncSession,
     result: ApplyResult,
@@ -138,16 +175,35 @@ async def process_agent_result(
             detail=f"Application {result.application_id} not found",
         )
 
+    # Determine outcome based on runner's status string
     if result.success:
-        application.status = "applied"
-        application.applied_at = datetime.now(timezone.utc)
+        # For extract_only mode, move to pending_review instead of applied
+        if application.task_mode == "extract_only":
+            application.status = "pending_review"
+        else:
+            application.status = "applied"
+            application.applied_at = datetime.now(timezone.utc)
+        application.current_phase = "completed"
+    elif result.status == "needs_review":
+        application.status = "pending_review"
+        application.current_phase = "completed"
     else:
         application.status = "failed"
-        application.error_message = result.error_message
+        application.current_phase = "failed"
+        # Use runner's reason field, fall back to legacy error_message
+        application.error_message = result.reason or result.error_message
 
-    if result.screenshot_url:
+    # Handle screenshot — prefer screenshot_urls list, fall back to single
+    if result.screenshot_urls:
+        application.screenshot_url = result.screenshot_urls[0]
+    elif result.screenshot_url:
         application.screenshot_url = result.screenshot_url
 
+    # Store generated application artifact if present
+    if result.generated_application:
+        application.generated_application = result.generated_application.model_dump()
+
+    # Merge metadata
     if result.metadata:
         application.metadata_ = result.metadata
 

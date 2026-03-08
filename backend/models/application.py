@@ -34,6 +34,10 @@ class Application(Base, TimestampMixin):
     screenshot_url: Mapped[str | None] = mapped_column(String)
     error_message: Mapped[str | None] = mapped_column(Text)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB)
+    current_phase: Mapped[str | None] = mapped_column(String, default=None)
+    phase_message: Mapped[str | None] = mapped_column(String, default=None)
+    generated_application: Mapped[dict | None] = mapped_column("generated_application", JSONB, default=None)
+    task_mode: Mapped[str | None] = mapped_column(String, default=None)
 
     user: Mapped["User"] = relationship(back_populates="applications")  # type: ignore[name-defined]  # noqa: F821
     job: Mapped["Job"] = relationship(lazy="noload")  # type: ignore[name-defined]  # noqa: F821

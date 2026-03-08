@@ -454,7 +454,8 @@ class TestQueueServiceUnit:
         depth = await get_queue_depth()
         assert depth == 7
 
-    def test_apply_task_serialization(self) -> None:
+    def test_apply_task_serialization_uses_task_id_alias(self) -> None:
+        import json
         from schemas.auto_apply import ApplyTask
 
         task = ApplyTask(
@@ -464,11 +465,47 @@ class TestQueueServiceUnit:
             job_url="https://example.com/job",
             resume_url="https://storage.example.com/resume.pdf",
         )
-        payload = task.model_dump_json()
+        # by_alias=True produces task_id for the runner
+        payload = task.model_dump_json(by_alias=True)
+        parsed = json.loads(payload)
+        assert "task_id" in parsed
+        assert "application_id" not in parsed
+        assert parsed["mode"] == "full_auto"
+
+        # Round-trip still works (model accepts both task_id and application_id)
         roundtrip = ApplyTask.model_validate_json(payload)
         assert roundtrip.application_id == _APP_ID
         assert roundtrip.job_url == "https://example.com/job"
         assert roundtrip.resume_url == "https://storage.example.com/resume.pdf"
+
+    def test_apply_task_default_serialization_uses_application_id(self) -> None:
+        import json
+        from schemas.auto_apply import ApplyTask
+
+        task = ApplyTask(
+            application_id=_APP_ID,
+            user_id=_USER_ID,
+            job_id=_JOB_ID,
+            job_url="https://example.com/job",
+        )
+        # Default (no alias) uses application_id
+        payload = task.model_dump_json()
+        parsed = json.loads(payload)
+        assert "application_id" in parsed
+
+    def test_apply_task_with_mode_and_answers(self) -> None:
+        from schemas.auto_apply import ApplyTask
+
+        task = ApplyTask(
+            application_id=_APP_ID,
+            user_id=_USER_ID,
+            job_id=_JOB_ID,
+            job_url="https://example.com/job",
+            mode="fill_and_submit",
+            provided_answers={"first_name": "John"},
+        )
+        assert task.mode == "fill_and_submit"
+        assert task.provided_answers == {"first_name": "John"}
 
     def test_apply_task_with_preferences_roundtrip(self) -> None:
         from schemas.auto_apply import ApplyTask, UserProfileForAgent
@@ -494,7 +531,7 @@ class TestQueueServiceUnit:
             job_url="https://example.com/job",
             user_profile=profile,
         )
-        payload = task.model_dump_json()
+        payload = task.model_dump_json(by_alias=True)
         roundtrip = ApplyTask.model_validate_json(payload)
         assert roundtrip.user_profile is not None
         assert roundtrip.user_profile.application_preferences is not None

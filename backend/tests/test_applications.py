@@ -1,7 +1,8 @@
 """Applications API tests.
 
 Tests cover auth protection, list/detail/stats endpoints,
-internal agent result endpoint, and service unit tests.
+internal agent result endpoint, progress endpoint, submit endpoint,
+and service unit tests.
 """
 
 import uuid
@@ -47,6 +48,10 @@ def _mock_application(**overrides: object) -> SimpleNamespace:
         "created_at": datetime(2026, 2, 27, tzinfo=timezone.utc),
         "updated_at": datetime(2026, 2, 27, tzinfo=timezone.utc),
         "job": None,
+        "current_phase": None,
+        "phase_message": None,
+        "generated_application": None,
+        "task_mode": None,
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -85,7 +90,7 @@ def _clear_overrides() -> None:
     app.dependency_overrides.clear()
 
 
-# ── Auth protection ──────────────────────────────────────────────────────────
+# ── Auth protection ──────────────────────────────────────────────────────
 
 
 class TestAuthProtection:
@@ -102,14 +107,31 @@ class TestAuthProtection:
         resp = client.post(
             "/api/internal/applications/result",
             json={
-                "application_id": str(_APP_ID),
-                "success": True,
+                "task_id": str(_APP_ID),
+                "status": "success",
             },
         )
         assert resp.status_code in (403, 422)
 
+    def test_progress_requires_internal_key(self) -> None:
+        resp = client.post(
+            "/api/internal/applications/progress",
+            json={
+                "task_id": str(_APP_ID),
+                "phase": "extracting",
+            },
+        )
+        assert resp.status_code in (403, 422)
 
-# ── Application list ─────────────────────────────────────────────────────────
+    def test_submit_requires_auth(self) -> None:
+        resp = client.post(
+            f"/api/applications/{_APP_ID}/submit",
+            json={"answers": {"field1": "value1"}},
+        )
+        assert resp.status_code == 401
+
+
+# ── Application list ─────────────────────────────────────────────────────
 
 
 class TestApplicationList:
@@ -179,7 +201,7 @@ class TestApplicationList:
         assert call_args.args[6] == 10  # per_page
 
 
-# ── Application detail ───────────────────────────────────────────────────────
+# ── Application detail ───────────────────────────────────────────────────
 
 
 class TestApplicationDetail:
@@ -245,8 +267,27 @@ class TestApplicationDetail:
         assert data["job"] is not None
         assert data["job"]["title"] == "Python Developer"
 
+    @patch("routers.applications.get_application", new_callable=AsyncMock)
+    def test_get_application_includes_phase09_fields(self, mock_get: AsyncMock) -> None:
+        app_obj = _mock_application(
+            status="in_progress",
+            current_phase="extracting",
+            phase_message="Found 12 fields",
+            task_mode="full_auto",
+            generated_application={"fields": [], "answers": []},
+        )
+        mock_get.return_value = app_obj
 
-# ── Application stats ────────────────────────────────────────────────────────
+        resp = client.get(f"/api/applications/{_APP_ID}")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["current_phase"] == "extracting"
+        assert data["phase_message"] == "Found 12 fields"
+        assert data["task_mode"] == "full_auto"
+        assert data["generated_application"] == {"fields": [], "answers": []}
+
+
+# ── Application stats ────────────────────────────────────────────────────
 
 
 class TestApplicationStats:
@@ -296,7 +337,7 @@ class TestApplicationStats:
         assert data["success_rate"] == 0.0
 
 
-# ── Agent result endpoint ────────────────────────────────────────────────────
+# ── Agent result endpoint ────────────────────────────────────────────────
 
 
 class TestAgentResult:
@@ -315,9 +356,9 @@ class TestAgentResult:
         resp = client.post(
             "/api/internal/applications/result",
             json={
-                "application_id": str(_APP_ID),
-                "success": True,
-                "screenshot_url": "https://storage.example.com/screenshot.png",
+                "task_id": str(_APP_ID),
+                "status": "success",
+                "screenshot_urls": ["https://storage.example.com/screenshot.png"],
                 "metadata": {"fields_filled": 5, "duration": 30.2},
             },
         )
@@ -335,14 +376,38 @@ class TestAgentResult:
         resp = client.post(
             "/api/internal/applications/result",
             json={
-                "application_id": str(_APP_ID),
-                "success": False,
-                "error_message": "CAPTCHA detected",
+                "task_id": str(_APP_ID),
+                "status": "failed",
+                "reason": "CAPTCHA detected",
             },
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "failed"
+
+    @patch("routers.applications.process_agent_result", new_callable=AsyncMock)
+    def test_result_with_generated_application(self, mock_process: AsyncMock) -> None:
+        mock_process.return_value = _mock_application(
+            status="pending_review",
+            generated_application={"fields": [{"name": "first_name"}], "answers": []},
+        )
+
+        resp = client.post(
+            "/api/internal/applications/result",
+            json={
+                "task_id": str(_APP_ID),
+                "status": "needs_review",
+                "generated_application": {
+                    "fields": [
+                        {"name": "first_name", "label": "First Name", "field_type": "text"}
+                    ],
+                    "answers": [
+                        {"field_name": "first_name", "value": "John", "source": "generated"}
+                    ],
+                },
+            },
+        )
+        assert resp.status_code == 200
 
     @patch("routers.applications.process_agent_result", new_callable=AsyncMock)
     def test_result_not_found(self, mock_process: AsyncMock) -> None:
@@ -356,8 +421,8 @@ class TestAgentResult:
         resp = client.post(
             "/api/internal/applications/result",
             json={
-                "application_id": str(_APP_ID),
-                "success": True,
+                "task_id": str(_APP_ID),
+                "status": "success",
             },
         )
         assert resp.status_code == 404
@@ -365,12 +430,129 @@ class TestAgentResult:
     def test_result_missing_required_fields(self) -> None:
         resp = client.post(
             "/api/internal/applications/result",
-            json={"application_id": str(_APP_ID)},
+            json={"task_id": str(_APP_ID)},
         )
         assert resp.status_code == 422
 
 
-# ── Service unit tests ───────────────────────────────────────────────────────
+# ── Progress endpoint ────────────────────────────────────────────────────
+
+
+class TestProgressEndpoint:
+    def setup_method(self) -> None:
+        self.session = _mock_db_session()
+        _apply_internal_key_override()
+        _apply_overrides(session=self.session)
+
+    def teardown_method(self) -> None:
+        _clear_overrides()
+
+    @patch("routers.applications.process_progress_update", new_callable=AsyncMock)
+    def test_progress_update(self, mock_process: AsyncMock) -> None:
+        mock_process.return_value = _mock_application(
+            status="in_progress", current_phase="extracting"
+        )
+
+        resp = client.post(
+            "/api/internal/applications/progress",
+            json={
+                "task_id": str(_APP_ID),
+                "phase": "extracting",
+                "message": "Found 12 fields",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["application_id"] == str(_APP_ID)
+        assert data["phase"] == "extracting"
+
+    @patch("routers.applications.process_progress_update", new_callable=AsyncMock)
+    def test_progress_not_found(self, mock_process: AsyncMock) -> None:
+        from fastapi import HTTPException
+
+        mock_process.side_effect = HTTPException(
+            status_code=404,
+            detail=f"Application {_APP_ID} not found",
+        )
+
+        resp = client.post(
+            "/api/internal/applications/progress",
+            json={
+                "task_id": str(_APP_ID),
+                "phase": "navigating",
+            },
+        )
+        assert resp.status_code == 404
+
+
+# ── Submit endpoint ──────────────────────────────────────────────────────
+
+
+class TestSubmitEndpoint:
+    def setup_method(self) -> None:
+        self.user = _mock_user()
+        self.session = _mock_db_session()
+        _apply_overrides(user=self.user, session=self.session)
+
+    def teardown_method(self) -> None:
+        _clear_overrides()
+
+    @patch("routers.applications.push_apply_task", new_callable=AsyncMock)
+    @patch("routers.applications.build_user_profile_for_agent", new_callable=AsyncMock)
+    @patch("routers.applications.get_application", new_callable=AsyncMock)
+    def test_submit_success(
+        self, mock_get: AsyncMock, mock_build: AsyncMock, mock_push: AsyncMock
+    ) -> None:
+        app_obj = _mock_application(
+            status="pending_review",
+            generated_application={"fields": [{"name": "f1"}], "answers": []},
+        )
+        mock_get.return_value = app_obj
+        mock_build.return_value = (None, None, None)
+
+        # Mock the job URL lookup
+        job_result = MagicMock()
+        job_row = SimpleNamespace(url="https://example.com/job", apply_url=None)
+        job_result.one_or_none.return_value = job_row
+        self.session.execute = AsyncMock(return_value=job_result)
+
+        resp = client.post(
+            f"/api/applications/{_APP_ID}/submit",
+            json={"answers": {"first_name": "John", "last_name": "Doe"}},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "queued"
+        assert app_obj.status == "queued"
+        assert app_obj.task_mode == "fill_and_submit"
+        mock_push.assert_called_once()
+
+    @patch("routers.applications.get_application", new_callable=AsyncMock)
+    def test_submit_wrong_status(self, mock_get: AsyncMock) -> None:
+        app_obj = _mock_application(status="applied")
+        mock_get.return_value = app_obj
+
+        resp = client.post(
+            f"/api/applications/{_APP_ID}/submit",
+            json={"answers": {"f1": "v1"}},
+        )
+        assert resp.status_code == 400
+        assert "pending_review" in resp.json()["detail"]
+
+    @patch("routers.applications.get_application", new_callable=AsyncMock)
+    def test_submit_no_generated_application(self, mock_get: AsyncMock) -> None:
+        app_obj = _mock_application(status="pending_review", generated_application=None)
+        mock_get.return_value = app_obj
+
+        resp = client.post(
+            f"/api/applications/{_APP_ID}/submit",
+            json={"answers": {"f1": "v1"}},
+        )
+        assert resp.status_code == 400
+        assert "no generated application" in resp.json()["detail"]
+
+
+# ── Service unit tests ───────────────────────────────────────────────────
 
 
 class TestApplicationServiceUnit:
@@ -382,15 +564,15 @@ class TestApplicationServiceUnit:
         from schemas.auto_apply import ApplyResult
         from services.application_service import process_agent_result
 
-        app_obj = _mock_application(status="queued")
+        app_obj = _mock_application(status="queued", task_mode="full_auto")
         result_mock = MagicMock()
         result_mock.scalar_one_or_none.return_value = app_obj
         self.session.execute = AsyncMock(return_value=result_mock)
 
         apply_result = ApplyResult(
-            application_id=_APP_ID,
-            success=True,
-            screenshot_url="https://example.com/shot.png",
+            task_id=_APP_ID,
+            status="success",
+            screenshot_urls=["https://example.com/shot.png"],
             metadata={"fields_filled": 3},
         )
 
@@ -399,6 +581,7 @@ class TestApplicationServiceUnit:
         assert updated.applied_at is not None
         assert updated.screenshot_url == "https://example.com/shot.png"
         assert updated.metadata_ == {"fields_filled": 3}
+        assert updated.current_phase == "completed"
 
     @patch("services.application_service.select")
     async def test_process_result_failure(self, mock_select: MagicMock) -> None:
@@ -411,15 +594,57 @@ class TestApplicationServiceUnit:
         self.session.execute = AsyncMock(return_value=result_mock)
 
         apply_result = ApplyResult(
-            application_id=_APP_ID,
-            success=False,
-            error_message="Login wall detected",
+            task_id=_APP_ID,
+            status="failed",
+            reason="Login wall detected",
         )
 
         updated = await process_agent_result(self.session, apply_result)
         assert updated.status == "failed"
         assert updated.error_message == "Login wall detected"
         assert updated.applied_at is None
+        assert updated.current_phase == "failed"
+
+    @patch("services.application_service.select")
+    async def test_process_result_extract_only(self, mock_select: MagicMock) -> None:
+        from schemas.auto_apply import ApplyResult, GeneratedApplication
+        from services.application_service import process_agent_result
+
+        app_obj = _mock_application(status="in_progress", task_mode="extract_only")
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = app_obj
+        self.session.execute = AsyncMock(return_value=result_mock)
+
+        apply_result = ApplyResult(
+            task_id=_APP_ID,
+            status="success",
+            generated_application=GeneratedApplication(
+                fields=[], answers=[], pages_found=2
+            ),
+        )
+
+        updated = await process_agent_result(self.session, apply_result)
+        assert updated.status == "pending_review"
+        assert updated.generated_application is not None
+        assert updated.current_phase == "completed"
+
+    @patch("services.application_service.select")
+    async def test_process_result_needs_review(self, mock_select: MagicMock) -> None:
+        from schemas.auto_apply import ApplyResult
+        from services.application_service import process_agent_result
+
+        app_obj = _mock_application(status="in_progress")
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = app_obj
+        self.session.execute = AsyncMock(return_value=result_mock)
+
+        apply_result = ApplyResult(
+            task_id=_APP_ID,
+            status="needs_review",
+        )
+
+        updated = await process_agent_result(self.session, apply_result)
+        assert updated.status == "pending_review"
 
     @patch("services.application_service.select")
     async def test_process_result_not_found(self, mock_select: MagicMock) -> None:
@@ -434,13 +659,55 @@ class TestApplicationServiceUnit:
         self.session.execute = AsyncMock(return_value=result_mock)
 
         apply_result = ApplyResult(
-            application_id=_APP_ID,
-            success=True,
+            task_id=_APP_ID,
+            status="success",
         )
 
         with pytest.raises(HTTPException) as exc_info:
             await process_agent_result(self.session, apply_result)
         assert exc_info.value.status_code == 404
+
+    @patch("services.application_service.select")
+    async def test_process_progress_update(self, mock_select: MagicMock) -> None:
+        from schemas.auto_apply import ProgressUpdate
+        from services.application_service import process_progress_update
+
+        app_obj = _mock_application(status="queued")
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = app_obj
+        self.session.execute = AsyncMock(return_value=result_mock)
+
+        update = ProgressUpdate(
+            task_id=str(_APP_ID),
+            phase="extracting",
+            message="Found 12 fields",
+        )
+
+        updated = await process_progress_update(self.session, update)
+        assert updated.current_phase == "extracting"
+        assert updated.phase_message == "Found 12 fields"
+        assert updated.status == "in_progress"  # auto-transitioned from queued
+
+    @patch("services.application_service.select")
+    async def test_process_progress_skips_terminal(self, mock_select: MagicMock) -> None:
+        from schemas.auto_apply import ProgressUpdate
+        from services.application_service import process_progress_update
+
+        app_obj = _mock_application(status="applied")
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = app_obj
+        self.session.execute = AsyncMock(return_value=result_mock)
+
+        update = ProgressUpdate(
+            task_id=str(_APP_ID),
+            phase="extracting",
+            message="Should be ignored",
+        )
+
+        updated = await process_progress_update(self.session, update)
+        # Should not update phase for terminal status
+        assert updated.current_phase is None
+        assert updated.status == "applied"
 
     def test_stats_success_rate_calculation(self) -> None:
         from schemas.application import ApplicationStats
@@ -463,7 +730,22 @@ class TestApplicationServiceUnit:
     def test_apply_result_schema_defaults(self) -> None:
         from schemas.auto_apply import ApplyResult
 
-        result = ApplyResult(application_id=_APP_ID, success=True)
+        result = ApplyResult(task_id=_APP_ID, status="success")
         assert result.screenshot_url is None
         assert result.error_message is None
         assert result.metadata == {}
+        assert result.success is True
+
+    def test_apply_result_schema_failure(self) -> None:
+        from schemas.auto_apply import ApplyResult
+
+        result = ApplyResult(task_id=_APP_ID, status="failed", reason="timeout")
+        assert result.success is False
+        assert result.reason == "timeout"
+
+    def test_apply_result_accepts_application_id(self) -> None:
+        """Backwards compat: application_id field name should also work."""
+        from schemas.auto_apply import ApplyResult
+
+        result = ApplyResult(application_id=_APP_ID, status="success")
+        assert result.application_id == _APP_ID

@@ -429,6 +429,7 @@ def parse_fantastic_result(result: dict[str, Any]) -> dict[str, Any]:
         "employment_type": employment_type,
         "experience_level": experience_level,
         "tags": tags if tags else [],
+        "ats_platform": result.get("source"),  # "greenhouse", "lever", etc.
         "is_active": True,
         "posted_at": posted_at,
     }

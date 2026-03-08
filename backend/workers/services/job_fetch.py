@@ -184,6 +184,7 @@ async def _upsert_jobs(
             "employment_type": stmt.excluded.employment_type,
             "experience_level": stmt.excluded.experience_level,
             "tags": stmt.excluded.tags,
+            "ats_platform": stmt.excluded.ats_platform,
             "posted_at": stmt.excluded.posted_at,
             "is_active": stmt.excluded.is_active,
         },

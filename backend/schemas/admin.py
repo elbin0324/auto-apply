@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from schemas.ats_registry import ATSDistribution
+
 
 class AdminUserSummary(BaseModel):
     """User row with profile and application summary for admin list."""
@@ -45,6 +47,7 @@ class AdminOverview(BaseModel):
     application_counts: dict[str, int]
     total_applications: int
     queue_depths: QueueDepths
+    ats_distribution: list[ATSDistribution] = []
 
 
 class AdminQueueStatus(BaseModel):

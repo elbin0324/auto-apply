@@ -155,6 +155,7 @@ async def review_application(
 
     if action == "approve":
         application.status = "queued"
+        application.task_mode = "full_auto"
         await db.flush()
 
         job_result = await db.execute(
@@ -174,6 +175,7 @@ async def review_application(
             resume_url=resume_url or application.resume_used_url,
             resume_text=resume_text,
             user_profile=user_profile,
+            mode="full_auto",
         )
         await push_apply_task(task)
         return {"application_id": str(application_id), "status": "queued"}

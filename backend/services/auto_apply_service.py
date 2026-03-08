@@ -259,6 +259,7 @@ async def run_matching_for_user(
             job_id=job.id,
             status="queued",
             resume_used_url=resume_url,
+            task_mode="full_auto",
         )
         db.add(application)
         await db.flush()

@@ -5,12 +5,12 @@ from infra.redis_pool import get_redis
 
 logger = logging.getLogger(__name__)
 
-QUEUE_KEY = "auto_apply:tasks"
+QUEUE_KEY = "apply_agent:tasks"
 
 
 async def push_apply_task(task: ApplyTask) -> None:
     redis = get_redis()
-    payload = task.model_dump_json()
+    payload = task.model_dump_json(by_alias=True)
     await redis.rpush(QUEUE_KEY, payload)
     logger.info("Pushed apply task for application %s", task.application_id)
 

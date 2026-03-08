@@ -2,24 +2,28 @@ import logging
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 
 from deps import CurrentUser, DbSession, SettingsDep, verify_internal_api_key
+from models.application import Application
 from models.auto_apply_config import AutoApplyConfig
+from models.job import Job
 from schemas.application import (
     ApplicationDetail,
     ApplicationListResponse,
     ApplicationStats,
 )
-from schemas.auto_apply import ApplyResult
+from schemas.auto_apply import ApplyResult, ApplyTask, ProgressUpdate, SubmitAnswersRequest
 from services.application_service import (
     get_application,
     get_application_stats,
     list_applications,
     process_agent_result,
+    process_progress_update,
 )
-from services.auto_apply_service import run_matching_for_user
+from services.auto_apply_service import build_user_profile_for_agent, run_matching_for_user
+from services.queue_service import push_apply_task
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +65,67 @@ async def get_application_detail(
     return ApplicationDetail.model_validate(application)
 
 
-# ── Internal endpoint (agent workers) ────────────────────────────────────────
+@router.post("/{application_id}/submit")
+async def submit_reviewed_application(
+    application_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
+    body: SubmitAnswersRequest,
+) -> dict:
+    """Submit reviewed/edited answers for an extracted application.
+
+    Used in the human-in-the-loop flow: runner extracts fields + generates
+    answers (extract_only mode), user reviews and edits, then submits here
+    to trigger fill_and_submit mode.
+    """
+    application = await get_application(db, user.id, application_id)
+
+    if application.status != "pending_review":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Application must be in pending_review status (current: {application.status})",
+        )
+
+    if not application.generated_application:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Application has no generated application data to submit",
+        )
+
+    # Look up job URL
+    job_result = await db.execute(
+        select(Job.url, Job.apply_url).where(Job.id == application.job_id)
+    )
+    job_row = job_result.one_or_none()
+    job_url = (job_row.apply_url or job_row.url) if job_row else ""
+
+    user_profile, resume_text, resume_url = await build_user_profile_for_agent(
+        db, user.id
+    )
+
+    task = ApplyTask(
+        application_id=application.id,
+        user_id=user.id,
+        job_id=application.job_id,
+        job_url=job_url,
+        resume_url=resume_url or application.resume_used_url,
+        resume_text=resume_text,
+        user_profile=user_profile,
+        mode="fill_and_submit",
+        provided_answers=body.answers,
+    )
+    await push_apply_task(task)
+
+    application.status = "queued"
+    application.task_mode = "fill_and_submit"
+    application.current_phase = None
+    application.phase_message = None
+    await db.flush()
+
+    return {"application_id": str(application.id), "status": "queued"}
+
+
+# ── Internal endpoint (agent workers) ────────────────────────────────────
 
 internal_router = APIRouter(
     prefix="/internal/applications", tags=["internal"]
@@ -81,7 +145,21 @@ async def receive_agent_result(body: ApplyResult, db: DbSession) -> dict:
     }
 
 
-# ── Internal: manual rematch trigger ─────────────────────────────────────────
+@internal_router.post(
+    "/progress",
+    dependencies=[Depends(verify_internal_api_key)],
+    status_code=status.HTTP_200_OK,
+)
+async def receive_progress_update(body: ProgressUpdate, db: DbSession) -> dict:
+    """Receive a progress update from the runner during task execution."""
+    application = await process_progress_update(db, body)
+    return {
+        "application_id": str(application.id),
+        "phase": application.current_phase,
+    }
+
+
+# ── Internal: manual rematch trigger ─────────────────────────────────────
 
 scheduler_router = APIRouter(prefix="/internal/scheduler", tags=["internal"])
 

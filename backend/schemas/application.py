@@ -31,6 +31,10 @@ class ApplicationDetail(BaseModel):
     error_message: str | None = None
     created_at: datetime
     job: JobResponse | None = None
+    current_phase: str | None = None
+    phase_message: str | None = None
+    generated_application: dict | None = None
+    task_mode: str | None = None
 
 
 class ApplicationListResponse(BaseModel):

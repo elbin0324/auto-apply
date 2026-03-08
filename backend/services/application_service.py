@@ -9,8 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from models.application import Application
+from models.job import Job
 from schemas.application import ApplicationListResponse, ApplicationStats
 from schemas.auto_apply import ApplyResult, ProgressUpdate
+from services.ats_registry_service import record_result as record_ats_result
 
 logger = logging.getLogger(__name__)
 
@@ -206,6 +208,12 @@ async def process_agent_result(
     # Merge metadata
     if result.metadata:
         application.metadata_ = result.metadata
+
+    # Track ATS success/failure stats
+    if application.job_id:
+        job = await db.get(Job, application.job_id)
+        if job and job.ats_platform:
+            await record_ats_result(db, job.ats_platform, result.success)
 
     await db.flush()
 

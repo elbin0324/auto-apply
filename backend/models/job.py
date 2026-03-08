@@ -32,6 +32,7 @@ class Job(Base, TimestampMixin):
     source: Mapped[str] = mapped_column(String, default="adzuna")
     category: Mapped[str | None] = mapped_column(String)
     tags: Mapped[list | None] = mapped_column(JSONB)
+    ats_platform: Mapped[str | None] = mapped_column(String, index=True)
 
     # Enrichment fields (populated by LLM enrichment worker)
     experience_level: Mapped[str | None] = mapped_column(String)  # entry, mid, senior, lead, executive

@@ -18,6 +18,7 @@ from schemas.admin import (
     AdminQueueStatus,
     AdminUserListResponse,
     AdminUserSummary,
+    ATSDistribution,
     DLQItem,
     DLQOverview,
     DLQReplayResult,
@@ -28,6 +29,18 @@ from schemas.admin import (
     WipeResult,
     WorkerStatus,
     WorkersOverview,
+)
+from schemas.ats_registry import (
+    ATSPlatformCreate,
+    ATSPlatformResponse,
+    ATSPlatformUpdate,
+)
+from services.ats_registry_service import (
+    create_platform,
+    get_all_platforms,
+    get_ats_job_counts,
+    get_platform_by_name,
+    update_platform,
 )
 from services.queue_service import get_queue_depth
 from workers.queues.enrich import get_enrich_queue_depth
@@ -69,6 +82,13 @@ async def get_overview(admin: AdminUser, db: DbSession) -> AdminOverview:
     enrich_depth = await get_enrich_queue_depth()
     fetch_depth = await get_redis().llen(FETCH_JOBS_QUEUE)
 
+    # ATS distribution
+    ats_counts = await get_ats_job_counts(db)
+    ats_distribution = [
+        ATSDistribution(name=name, active_job_count=count)
+        for name, count in sorted(ats_counts.items(), key=lambda x: x[1], reverse=True)
+    ]
+
     return AdminOverview(
         user_count=user_count,
         job_count=job_count,
@@ -81,6 +101,7 @@ async def get_overview(admin: AdminUser, db: DbSession) -> AdminOverview:
             apply=apply_depth,
             enrich=enrich_depth,
         ),
+        ats_distribution=ats_distribution,
     )
 
 
@@ -508,6 +529,112 @@ async def purge_dlq_queue(queue_name: str, admin: AdminUser) -> QueuePurgeResult
 
     purged = await purge_dlq(queue_name)
     return QueuePurgeResult(purged=purged, queue=f"dlq:{queue_name}")
+
+
+# ── ATS Registry ─────────────────────────────────────────────────────────────
+
+
+@router.get("/ats-platforms", response_model=list[ATSPlatformResponse])
+async def list_ats_platforms(
+    admin: AdminUser, db: DbSession
+) -> list[ATSPlatformResponse]:
+    """List all ATS platforms with stats and active job counts."""
+    platforms = await get_all_platforms(db)
+    ats_counts = await get_ats_job_counts(db)
+
+    return [
+        ATSPlatformResponse(
+            id=p.id,
+            name=p.name,
+            display_name=p.display_name,
+            is_enabled=p.is_enabled,
+            notes=p.notes,
+            success_count=p.success_count,
+            failure_count=p.failure_count,
+            last_success_at=p.last_success_at,
+            last_failure_at=p.last_failure_at,
+            created_at=p.created_at,
+            updated_at=p.updated_at,
+            active_job_count=ats_counts.get(p.name, 0),
+        )
+        for p in platforms
+    ]
+
+
+@router.patch("/ats-platforms/{name}", response_model=ATSPlatformResponse)
+async def update_ats_platform(
+    name: str,
+    body: ATSPlatformUpdate,
+    admin: AdminUser,
+    db: DbSession,
+) -> ATSPlatformResponse:
+    """Toggle enabled, update notes or display name for an ATS platform."""
+    platform = await update_platform(
+        db,
+        name,
+        display_name=body.display_name,
+        is_enabled=body.is_enabled,
+        notes=body.notes,
+    )
+    if not platform:
+        raise HTTPException(status_code=404, detail=f"ATS platform '{name}' not found")
+
+    ats_counts = await get_ats_job_counts(db)
+    await db.commit()
+
+    return ATSPlatformResponse(
+        id=platform.id,
+        name=platform.name,
+        display_name=platform.display_name,
+        is_enabled=platform.is_enabled,
+        notes=platform.notes,
+        success_count=platform.success_count,
+        failure_count=platform.failure_count,
+        last_success_at=platform.last_success_at,
+        last_failure_at=platform.last_failure_at,
+        created_at=platform.created_at,
+        updated_at=platform.updated_at,
+        active_job_count=ats_counts.get(platform.name, 0),
+    )
+
+
+@router.post("/ats-platforms", response_model=ATSPlatformResponse, status_code=201)
+async def create_ats_platform(
+    body: ATSPlatformCreate,
+    admin: AdminUser,
+    db: DbSession,
+) -> ATSPlatformResponse:
+    """Register a new ATS platform."""
+    existing = await get_platform_by_name(db, body.name)
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"ATS platform '{body.name}' already exists",
+        )
+
+    platform = await create_platform(
+        db,
+        name=body.name,
+        display_name=body.display_name,
+        is_enabled=body.is_enabled,
+        notes=body.notes,
+    )
+    await db.commit()
+
+    return ATSPlatformResponse(
+        id=platform.id,
+        name=platform.name,
+        display_name=platform.display_name,
+        is_enabled=platform.is_enabled,
+        notes=platform.notes,
+        success_count=platform.success_count,
+        failure_count=platform.failure_count,
+        last_success_at=platform.last_success_at,
+        last_failure_at=platform.last_failure_at,
+        created_at=platform.created_at,
+        updated_at=platform.updated_at,
+        active_job_count=0,
+    )
 
 
 # ── Task History ──────────────────────────────────────────────────────────────

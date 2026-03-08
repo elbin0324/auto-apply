@@ -21,6 +21,7 @@ from schemas.auto_apply import (
     UserProfileForAgent,
 )
 from schemas.profile import ApplicationPreferences
+from services.ats_registry_service import get_enabled_ats_names
 from services.queue_service import push_apply_task
 
 logger = logging.getLogger(__name__)
@@ -236,14 +237,24 @@ async def run_matching_for_user(
         db, user_id
     )
 
+    # 5b. Load enabled ATS platforms for filtering
+    enabled_ats = await get_enabled_ats_names(db)
+
     # 6. Create Applications and push tasks based on apply_mode
     queued_count = 0
     skipped_already = 0
     skipped_limit = 0
+    skipped_ats = 0
 
     for job, score in candidate_jobs:
         if job.id in already_applied_ids:
             skipped_already += 1
+            continue
+
+        # Skip jobs from disabled/unregistered ATS platforms
+        # Jobs with ats_platform=None pass through (handled by generic fallback)
+        if job.ats_platform and job.ats_platform not in enabled_ats:
+            skipped_ats += 1
             continue
 
         # Hybrid mode: only auto-queue jobs above the threshold
@@ -278,13 +289,14 @@ async def run_matching_for_user(
         queued_count += 1
 
     logger.info(
-        "Matching for user %s (mode=%s): matched=%d queued=%d skipped_applied=%d skipped_limit=%d",
+        "Matching for user %s (mode=%s): matched=%d queued=%d skipped_applied=%d skipped_limit=%d skipped_ats=%d",
         user_id,
         config.apply_mode,
         len(candidate_jobs),
         queued_count,
         skipped_already,
         skipped_limit,
+        skipped_ats,
     )
 
     return {
@@ -292,6 +304,7 @@ async def run_matching_for_user(
         "queued": queued_count,
         "skipped_already_applied": skipped_already,
         "skipped_daily_limit": skipped_limit,
+        "skipped_ats_unsupported": skipped_ats,
     }
 
 

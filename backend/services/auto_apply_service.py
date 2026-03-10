@@ -178,37 +178,19 @@ async def run_matching_for_user(
         return {"matched": 0, "queued": 0, "skipped_already_applied": 0, "skipped_daily_limit": 0}
 
     # 1. Active jobs with pre-computed score above threshold, including score value
+    from services.job_scope import apply_config_scope
+
     stmt = (
         select(Job, JobMatchScore.score)
         .join(JobMatchScore, JobMatchScore.job_id == Job.id)
         .where(
-            Job.is_active.is_(True),
             JobMatchScore.user_id == user_id,
             JobMatchScore.score >= SCORE_THRESHOLD,
         )
     )
 
-    # 2. Config filters
-    if config.location_type_pref:
-        stmt = stmt.where(
-            Job.location_type.in_(config.location_type_pref) | Job.location_type.is_(None)
-        )
-
-    if config.min_salary is not None:
-        stmt = stmt.where(
-            (Job.salary_min >= config.min_salary) | (Job.salary_min.is_(None))
-        )
-
-    if config.max_salary is not None:
-        stmt = stmt.where(
-            (Job.salary_max <= config.max_salary) | (Job.salary_max.is_(None))
-        )
-
-    if config.excluded_companies:
-        for company_name in config.excluded_companies:
-            stmt = stmt.where(
-                ~func.lower(Job.company).contains(company_name.lower())
-            )
+    # 2. Config filters (unified scope — handles is_active, salary, location, excluded, etc.)
+    stmt = apply_config_scope(stmt, config)
 
     stmt = stmt.order_by(JobMatchScore.score.desc())
 

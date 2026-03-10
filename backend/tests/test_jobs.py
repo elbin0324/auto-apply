@@ -125,11 +125,15 @@ class TestJobList:
         job1 = _mock_job()
         job2 = _mock_job(id=_JOB_ID_2, external_id="adzuna-456")
 
-        # First execute: count query
+        # First execute: config query (no config)
+        config_result = MagicMock()
+        config_result.scalar_one_or_none.return_value = None
+
+        # Second execute: count query
         count_result = MagicMock()
         count_result.scalar_one.return_value = 2
 
-        # Second execute: joined query returns row tuples
+        # Third execute: joined query returns row tuples
         # Each row is (Job, score, factors, application_id, application_status)
         rows_result = MagicMock()
         rows_result.all.return_value = [
@@ -138,7 +142,7 @@ class TestJobList:
         ]
 
         self.session.execute = AsyncMock(
-            side_effect=[count_result, rows_result]
+            side_effect=[config_result, count_result, rows_result]
         )
 
         resp = client.get("/api/jobs")
@@ -156,6 +160,10 @@ class TestJobList:
         job = _mock_job()
         app_id = uuid.uuid4()
 
+        # Config query (no config)
+        config_result = MagicMock()
+        config_result.scalar_one_or_none.return_value = None
+
         count_result = MagicMock()
         count_result.scalar_one.return_value = 1
 
@@ -165,7 +173,7 @@ class TestJobList:
         ]
 
         self.session.execute = AsyncMock(
-            side_effect=[count_result, rows_result]
+            side_effect=[config_result, count_result, rows_result]
         )
 
         resp = client.get("/api/jobs")

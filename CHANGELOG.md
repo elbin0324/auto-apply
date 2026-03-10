@@ -6,6 +6,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- `backend/services/job_scope.py` — unified `apply_config_scope()` for config-based job filtering across all call sites
+- `employment_type_pref` and `experience_level` filters now applied in scoring pre-filter, auto-apply matching, and job listing
+- `backend/tests/test_job_scope.py` — 12 unit tests for the scope function
+
+### Changed
+- Job listing endpoint (`GET /api/jobs`) now respects user's AutoApplyConfig preferences (excluded companies, salary range, location type, employment type, experience level)
+- `filter_candidate_jobs()` in job_filter.py delegates to shared `get_scoped_jobs()`
+- `run_matching_for_user()` in auto_apply_service.py uses `apply_config_scope()` instead of inline filters
+- Fixed excluded companies filter in auto-apply matching — was using `func.lower().contains()` which didn't handle NULL company; now uses ILIKE with NULL pass-through
+
 ### Fixed
 - Remove `_ensure_bucket_exists` check from resume upload — failed `get_bucket`/`create_bucket` calls caused intermittent 400 errors on subsequent uploads
 

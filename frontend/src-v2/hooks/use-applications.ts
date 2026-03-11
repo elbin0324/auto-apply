@@ -22,6 +22,7 @@ export function useApplicationStats() {
   return useQuery({
     queryKey: ["application-stats"],
     queryFn: () => api.get<ApplicationStats>("/api/applications/stats"),
+    refetchInterval: 60_000,
   });
 }
 

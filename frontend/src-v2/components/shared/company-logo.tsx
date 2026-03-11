@@ -23,7 +23,7 @@ export function CompanyLogo({ company, logoUrl, size = "md" }: CompanyLogoProps)
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-lg overflow-hidden",
+        "flex shrink-0 items-center justify-center rounded-lg overflow-hidden border border-muted",
         showImage ? "bg-white" : "bg-bg-deep",
         sizeClasses[size],
       )}

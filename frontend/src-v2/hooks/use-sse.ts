@@ -27,8 +27,9 @@ export function useSSE() {
       esRef.current = es;
 
       es.addEventListener("progress", () => {
-        queryClient.invalidateQueries({ queryKey: ["applications", "in_progress"] });
+        queryClient.invalidateQueries({ queryKey: ["applications"] });
         queryClient.invalidateQueries({ queryKey: ["queue-status"] });
+        queryClient.invalidateQueries({ queryKey: ["application-stats"] });
       });
 
       es.addEventListener("result", () => {

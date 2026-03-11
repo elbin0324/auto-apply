@@ -1,6 +1,6 @@
 import { StatCard } from "@/components/ui/stat-card";
 import { SkeletonStatCard } from "@/components/ui/skeleton";
-import { Plane, Check, Chart, Target } from "@/icons";
+import { Plane, Check, Chart, Target, ApplyPilotMark } from "@/icons";
 import type { ApplicationStats } from "@/types/application";
 
 interface StatsRowProps {
@@ -23,9 +23,9 @@ export function StatsRow({ stats, isLoading }: StatsRowProps) {
   return (
     <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
       <StatCard
-        label="Deployed"
+        label="Sent"
         value={stats?.total ?? 0}
-        icon={<Plane size={18} />}
+        icon={<ApplyPilotMark size={18} />}
       />
       <StatCard
         label="Interviews"

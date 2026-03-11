@@ -25,6 +25,18 @@ export function useJobActions() {
 
   const onExitComplete = useCallback(() => {
     if (!exitingJobId) return;
+    const removedId = exitingJobId;
+
+    // Optimistically strip the job from cached lists BEFORE clearing
+    // exitingJobId, so it never briefly reappears between renders.
+    queryClient.setQueriesData<{ jobs: { id: string }[] }>(
+      { queryKey: ["jobs"] },
+      (old) => {
+        if (!old?.jobs) return old;
+        return { ...old, jobs: old.jobs.filter((j) => j.id !== removedId) };
+      },
+    );
+
     setExitingJobId(null);
     queryClient.invalidateQueries({ queryKey: ["jobs"] });
     queryClient.invalidateQueries({ queryKey: ["queue-status"] });

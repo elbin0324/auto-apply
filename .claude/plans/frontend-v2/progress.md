@@ -171,5 +171,7 @@ frontend/src-v2/
 | 2026-03-11 | 12.2 Formatting Utilities | Added formatSalaryRange (with AI fallback), formatSalaryFull, formatLocationType, formatExperienceLevel, formatEmploymentType to utils.ts |
 | 2026-03-11 | 12.3 Job Card Redesign | Replaced meaningless tags with location_type/experience_level/employment_type badges. Remote badge uses pri color. Enhanced salary display with AI fallback. |
 | 2026-03-11 | 12.4 Side Panel AI Enrichment | Added Compensation (full salary + benefits), Details (visa, hours, education, office days), Requirements, Responsibilities, Skills/Keywords sections. All conditional. Section dividers. Match breakdown uses structured fields with legacy fallback. |
+| 2026-03-11 | 12.5 Side Panel Tabs | Split side panel into Match (default) and Job Info tabs. TabBar component with teal active indicator. Match tab shows score/summary/strengths/concerns/key matches+gaps. Job Info tab shows compensation/details/requirements/responsibilities/skills. Non-tabbed pages (dashboard, queue, tracker) show job info inline without tabs. |
+| 2026-03-11 | 12.6 Instant-Open Side Panel | Panel opens immediately using list-level Job data (selectedJob prop) while detail API loads. Loading skeletons shown for match and job info tab content. jobs.tsx passes selectedListJob from the list + isLoadingDetail/isLoadingMatch flags. |
 
 **Config changes:** Updated tsconfig.json + tsconfig.app.json path aliases from `src/` to `src-v2/`. Updated tsconfig.app.json include from `src` to `src-v2`.

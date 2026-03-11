@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SidePanel } from "@/components/shared/side-panel";
@@ -27,6 +27,12 @@ export default function JobsPage() {
   const jobs = data?.jobs ?? [];
   const totalPages = data?.pages ?? 1;
   const currentPage = data?.page ?? 1;
+
+  // Find the list-level job for instant rendering while detail loads
+  const selectedListJob = useMemo(
+    () => (selectedJobId ? jobs.find((j) => j.id === selectedJobId) ?? null : null),
+    [selectedJobId, jobs],
+  );
 
   const handleFilterChange = useCallback((next: UseJobsParams) => {
     setFilters(next);
@@ -123,8 +129,11 @@ export default function JobsPage() {
       {/* Side panel for job detail */}
       <SidePanel
         job={jobDetail.data ?? null}
+        selectedJob={selectedListJob}
         matchBreakdown={matchDetail.data ?? null}
         isOpen={selectedJobId !== null}
+        isLoadingDetail={jobDetail.isLoading}
+        isLoadingMatch={matchDetail.isLoading}
         onClose={handleClosePanel}
         onApply={handleApply}
       />

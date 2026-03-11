@@ -25,7 +25,7 @@ interface CardHeaderProps {
 
 export function CardHeader({ title, count, right }: CardHeaderProps) {
   return (
-    <div className="flex items-center gap-3 border-b border-border-subtle bg-bg-inset px-[18px] py-3">
+    <div className="flex items-center gap-3 rounded-t-xl border-b border-border-subtle bg-bg-inset px-[18px] py-3">
       <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-t-500">
         {title}
       </span>

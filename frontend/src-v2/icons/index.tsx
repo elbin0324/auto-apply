@@ -279,6 +279,23 @@ export function Menu(props: IconProps) {
   );
 }
 
+/** ApplyPilot brand mark — filled arrow shape from SVG assets. */
+export function ApplyPilotMark(props: IconProps) {
+  const size = props.size ?? defaults.size;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill={props.color ?? defaults.color}
+      xmlns="http://www.w3.org/2000/svg"
+      className={props.className}
+    >
+      <path d="M4 4L31 16L4 28V19L18 16L4 13V4Z" />
+    </svg>
+  );
+}
+
 export const ICONS = {
   Plane,
   Target,

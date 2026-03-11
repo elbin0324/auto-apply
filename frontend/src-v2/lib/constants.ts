@@ -24,7 +24,7 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 export const PAGE_TITLES: Record<string, string> = {
-  "/dashboard": "FLIGHT OPS",
+  "/dashboard": "DASHBOARD",
   "/jobs": "JOB RADAR",
   "/queue": "FLIGHT QUEUE",
   "/profile": "RESUME HANGAR",

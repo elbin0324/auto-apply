@@ -1,11 +1,13 @@
 import { memo } from "react";
 import { Badge } from "@/components/ui/badge";
-import { MatchDot } from "./match-dot";
+import { MatchSignal } from "./match-signal";
+import { CompanyLogo } from "./company-logo";
 import { statusColor, statusLabel } from "@/theme/tokens";
 
 interface JRowJob {
   id: string;
   company: string;
+  company_logo_url?: string | null;
   title: string;
   location?: string;
   salary_min?: number;
@@ -19,10 +21,6 @@ interface JRowProps {
   job: JRowJob;
   onClick?: () => void;
   actions?: React.ReactNode;
-}
-
-function companyCode(name: string): string {
-  return name.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
 }
 
 function formatSalary(min?: number, max?: number): string {
@@ -39,18 +37,14 @@ export const JRow = memo(function JRow({ job, onClick, actions }: JRowProps) {
     .join(" / ");
 
   return (
-    <div className="group">
+    <div className="group py-1">
       <div
         onClick={onClick}
-        className="grid cursor-pointer items-center gap-3 rounded-lg border border-transparent px-3 py-3 transition-all hover:border-[var(--pri-border)] hover:shadow-[0_0_0_2px_var(--pri-glow)]"
+        className="grid cursor-pointer items-center gap-3 rounded-lg border border-border-subtle px-3 py-3 transition-all hover:border-[var(--pri-border)] hover:shadow-[0_0_0_2px_var(--pri-glow)]"
         style={{ gridTemplateColumns: "44px 1fr 120px 80px" }}
       >
         {/* Logo */}
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-bg-deep">
-          <span className="font-mono text-[10px] font-bold text-pri">
-            {companyCode(job.company)}
-          </span>
-        </div>
+        <CompanyLogo company={job.company} logoUrl={job.company_logo_url} size="sm" />
 
         {/* Info */}
         <div className="min-w-0">
@@ -60,7 +54,7 @@ export const JRow = memo(function JRow({ job, onClick, actions }: JRowProps) {
 
         {/* Match */}
         <div>
-          {job.match_score != null && <MatchDot score={job.match_score} size="sm" />}
+          {job.match_score != null && <MatchSignal score={job.match_score} />}
         </div>
 
         {/* Status */}

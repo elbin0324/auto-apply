@@ -1,11 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MatchDot } from "@/components/shared/match-dot";
+import { MatchSignal } from "@/components/shared/match-signal";
+import { CompanyLogo } from "@/components/shared/company-logo";
+import { ApplyPilotMark } from "@/icons";
 import {
   formatSalaryRange,
   formatLocationType,
   formatExperienceLevel,
-  formatEmploymentType,
+
+  formatTimeAgo,
 } from "@/lib/utils";
 import type { Job } from "@/types/job";
 
@@ -13,10 +16,6 @@ interface JobCardProps {
   job: Job;
   onApply: (jobId: string) => void;
   onClick: (job: Job) => void;
-}
-
-function companyCode(name: string): string {
-  return name.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
 }
 
 export function JobCard({ job, onApply, onClick }: JobCardProps) {
@@ -27,37 +26,40 @@ export function JobCard({ job, onApply, onClick }: JobCardProps) {
     job.ai_enrichment?.salary,
   );
 
-  const meta = [job.company, job.location, salary].filter(Boolean).join(" / ");
+  const postedDate = job.posted_at ? formatTimeAgo(new Date(job.posted_at)) : null;
 
-  const badges: { label: string; color: "pri" | "muted" }[] = [];
+  const meta = [job.company, postedDate, salary, job.location]
+    .filter(Boolean)
+    .join(" / ");
+
+  const badges: { label: string; color: "pri" | "ok" | "warn" | "fail" | "muted" }[] = [];
 
   const locType = formatLocationType(job.location_type);
   if (locType) {
-    badges.push({
-      label: locType,
-      color: job.location_type === "remote" ? "pri" : "muted",
-    });
+    badges.push({ label: locType, color: "muted" });
   }
 
+  const expLevelColorMap: Record<string, "pri" | "ok" | "warn" | "fail" | "muted"> = {
+    entry: "pri",
+    mid: "ok",
+    senior: "warn",
+    lead: "fail",
+    executive: "fail",
+  };
   const expLevel = formatExperienceLevel(job.experience_level);
-  if (expLevel) badges.push({ label: expLevel, color: "muted" });
+  if (expLevel) {
+    badges.push({ label: expLevel, color: expLevelColorMap[job.experience_level ?? ""] ?? "muted" });
+  }
 
-  const empType = formatEmploymentType(job.employment_type);
-  if (empType) badges.push({ label: empType, color: "muted" });
+
 
   return (
     <div
-      className="grid cursor-pointer items-center gap-3 rounded-lg border border-transparent px-3 py-3 transition-all hover:border-[var(--pri-border)] hover:shadow-[0_0_0_2px_var(--pri-glow)]"
-      style={{ gridTemplateColumns: "48px 1fr 120px auto" }}
+      className="grid cursor-pointer items-center gap-6 rounded-lg border border-transparent px-3 py-3 transition-all hover:border-[var(--pri-border)] hover:shadow-[0_0_0_2px_var(--pri-glow)] grid-cols-[48px_1fr_auto] md:grid-cols-[48px_1fr_auto_auto] lg:grid-cols-[48px_1fr_auto_auto_auto]"
     >
       {/* Logo */}
-      <div
-        className="flex h-[44px] w-[44px] items-center justify-center rounded-lg bg-bg-deep"
-        onClick={() => onClick(job)}
-      >
-        <span className="font-mono text-[10px] font-bold text-pri">
-          {companyCode(job.company ?? "")}
-        </span>
+      <div onClick={() => onClick(job)}>
+        <CompanyLogo company={job.company ?? ""} logoUrl={job.company_logo_url} />
       </div>
 
       {/* Info */}
@@ -66,30 +68,35 @@ export function JobCard({ job, onApply, onClick }: JobCardProps) {
           {job.title}
         </p>
         <p className="truncate font-mono text-[11px] text-t-400">{meta}</p>
-        {badges.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {badges.map((b) => (
-              <Badge key={b.label} color={b.color}>
-                {b.label}
-              </Badge>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Match */}
-      <div className="w-[120px]">
-        {job.match_score != null && <MatchDot score={job.match_score} />}
-      </div>
+      {/* Tags — hidden below xl */}
+      {badges.length > 0 && (
+        <div className="hidden lg:flex shrink-0 gap-1.5">
+          {badges.map((b) => (
+            <Badge key={b.label} color={b.color}>
+              {b.label}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {/* Match — hidden below md */}
+      {job.match_score != null && (
+        <div className="hidden md:block">
+          <MatchSignal score={job.match_score} />
+        </div>
+      )}
 
       {/* Actions */}
       <div>
         <Button
           variant="primary"
           onClick={() => onApply(job.id)}
-          className="px-3 py-1.5 text-[10px]"
+          className="px-3 py-1.5 text-[10px] gap-1.5"
         >
           Apply
+          <ApplyPilotMark size={10} color="currentColor" />
         </Button>
       </div>
     </div>

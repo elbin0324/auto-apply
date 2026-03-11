@@ -1,7 +1,7 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { NAV_ITEMS, NAV_SECTIONS } from "@/lib/constants";
 import { ICONS } from "@/icons";
-import { Plane } from "@/icons";
+import { ApplyPilotMark } from "@/icons";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui-store";
 
@@ -52,7 +52,7 @@ export function Sidebar({ badges = {} }: SidebarProps) {
       <div className="px-5 pt-5 pb-4" style={{ borderBottom: "1px solid var(--tw-10)" }}>
         <div className="flex items-center gap-2.5">
           <div className="flex h-[30px] w-[30px] items-center justify-center rounded-[6px] bg-pri">
-            <Plane size={14} color="var(--color-bg-deep)" />
+            <ApplyPilotMark size={18} color="var(--color-bg-deep)" />
           </div>
           <span className="font-mono text-[15px] font-bold" style={{ color: "var(--tw-90)" }}>
             APPLY<span className="text-pri">PILOT</span>

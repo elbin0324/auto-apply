@@ -21,8 +21,13 @@ export function useUpdateProfile() {
 export function useUpdateExperiences() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (experiences: unknown[]) =>
-      api.put("/api/profile/experiences", { experiences }),
+    mutationFn: (experiences: unknown[]) => {
+      // Backend expects list[ExperienceCreate] directly — strip id/profile_id
+      const payload = (experiences as Record<string, unknown>[]).map(
+        ({ id: _id, profile_id: _pid, ...rest }) => rest,
+      );
+      return api.put("/api/profile/experiences", payload);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["profile"] }),
   });
 }
@@ -30,7 +35,15 @@ export function useUpdateExperiences() {
 export function useUpdateSkills() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (skills: string[]) => api.put("/api/profile/skills", { skills }),
+    mutationFn: (skills: string[]) => {
+      // Backend expects list[SkillCreate] — map strings to {name, category, proficiency}
+      const payload = skills.map((name) => ({
+        name,
+        category: "technical",
+        proficiency: "intermediate",
+      }));
+      return api.put("/api/profile/skills", payload);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["profile"] }),
   });
 }

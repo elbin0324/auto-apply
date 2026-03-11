@@ -93,6 +93,7 @@ function ReviewItem({
   const rowJob = {
     id: application.id,
     company: job?.company ?? "Unknown",
+    company_logo_url: job?.company_logo_url,
     title: job?.title ?? "Application",
     location: job?.location ?? undefined,
     salary_min: job?.salary_min ?? undefined,

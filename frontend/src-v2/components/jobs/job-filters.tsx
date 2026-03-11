@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Search } from "@/icons";
@@ -32,20 +32,21 @@ const SORT_OPTIONS = [
 
 export function JobFilters({ filters, onFilterChange }: JobFiltersProps) {
   const [searchValue, setSearchValue] = useState(filters.query ?? "");
-
-  const debouncedUpdate = useCallback(
-    (value: string) => {
-      onFilterChange({ ...filters, query: value || undefined, page: 1 });
-    },
-    [filters, onFilterChange],
-  );
+  const [lastEmittedQuery, setLastEmittedQuery] = useState(filters.query ?? "");
 
   useEffect(() => {
+    const normalized = searchValue || undefined;
+    const normalizedLast = lastEmittedQuery || undefined;
+    if (normalized === normalizedLast) return;
+
     const timer = setTimeout(() => {
-      debouncedUpdate(searchValue);
+      setLastEmittedQuery(searchValue);
+      onFilterChange({ ...filters, query: normalized, page: 1 });
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchValue, debouncedUpdate]);
+    // Only re-run when searchValue changes, not when filters change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchValue]);
 
   const handleSelectChange = (key: keyof UseJobsParams, value: string) => {
     onFilterChange({ ...filters, [key]: value || undefined, page: 1 });

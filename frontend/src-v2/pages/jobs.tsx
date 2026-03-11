@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SidePanel } from "@/components/shared/side-panel";
@@ -21,12 +22,18 @@ export default function JobsPage() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
   const { data, isLoading } = useJobs(filters);
-  const { apply } = useJobActions();
+  const { apply, applyingJobId, exitingJobId, onExitComplete } = useJobActions();
   const { job: jobDetail, match: matchDetail } = useJobDetail(selectedJobId);
 
   const jobs = data?.jobs ?? [];
   const totalPages = data?.pages ?? 1;
   const currentPage = data?.page ?? 1;
+
+  // Filter out the exiting job so AnimatePresence detects removal
+  const visibleJobs = useMemo(
+    () => (exitingJobId ? jobs.filter((j) => j.id !== exitingJobId) : jobs),
+    [jobs, exitingJobId],
+  );
 
   // Find the list-level job for instant rendering while detail loads
   const selectedListJob = useMemo(
@@ -88,15 +95,25 @@ export default function JobsPage() {
 
         {!isLoading && jobs.length > 0 && (
           <div className="space-y-3">
-            {jobs.map((job) => (
-              <Card key={job.id}>
-                <JobCard
-                  job={job}
-                  onApply={handleApply}
-                  onClick={handleJobClick}
-                />
-              </Card>
-            ))}
+            <AnimatePresence mode="popLayout" onExitComplete={onExitComplete}>
+              {visibleJobs.map((job) => (
+                <motion.div
+                  key={job.id}
+                  layout
+                  exit={{ opacity: 0, x: 120 }}
+                  transition={{ duration: 0.3, ease: [0.4, 0, 0.7, 0.2] }}
+                >
+                  <Card>
+                    <JobCard
+                      job={job}
+                      onApply={handleApply}
+                      onClick={handleJobClick}
+                      isApplying={applyingJobId === job.id}
+                    />
+                  </Card>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
         )}
 
@@ -136,6 +153,7 @@ export default function JobsPage() {
         isLoadingMatch={matchDetail.isLoading}
         onClose={handleClosePanel}
         onApply={handleApply}
+        isApplying={!!applyingJobId && applyingJobId === selectedJobId}
       />
     </>
   );

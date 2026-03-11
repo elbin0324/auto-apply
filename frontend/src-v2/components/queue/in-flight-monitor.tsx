@@ -92,19 +92,34 @@ interface InFlightMonitorProps {
 }
 
 export function InFlightMonitor({ inProgressCount }: InFlightMonitorProps) {
+  const isIdle = inProgressCount === 0;
+
   const { data } = useQuery({
     queryKey: ["applications", "in_progress", 1],
     queryFn: () =>
       api.get<ApplicationListResponse>(
         "/api/applications?status=in_progress&page=1&per_page=10",
       ),
-    refetchInterval: 4_000,
-    enabled: inProgressCount > 0,
+    enabled: !isIdle,
   });
 
-  if (inProgressCount === 0) return null;
-
   const applications = data?.applications ?? [];
+
+  if (isIdle) {
+    return (
+      <Card className="border-border-main opacity-60">
+        <div className="flex items-center gap-2 px-4 py-2.5">
+          <Led color="muted" size={8} />
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-t-400">
+            IDLE
+          </span>
+          <span className="font-mono text-[10px] text-t-300">
+            No applications in flight
+          </span>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card

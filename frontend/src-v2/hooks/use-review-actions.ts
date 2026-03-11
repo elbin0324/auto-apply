@@ -48,5 +48,9 @@ export function useReviewActions() {
     },
   });
 
-  return { approve, reject, batchAction };
+  const approvingId = approve.isPending ? (approve.variables as string) : null;
+  const rejectingId = reject.isPending ? (reject.variables as string) : null;
+  const isBatchPending = batchAction.isPending;
+
+  return { approve, reject, batchAction, approvingId, rejectingId, isBatchPending };
 }

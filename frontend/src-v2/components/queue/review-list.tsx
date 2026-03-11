@@ -16,6 +16,9 @@ interface ReviewListProps {
   onBatchApprove: (ids: string[]) => void;
   onBatchReject: (ids: string[]) => void;
   isLoading?: boolean;
+  approvingId?: string | null;
+  rejectingId?: string | null;
+  isBatchPending?: boolean;
 }
 
 function BatchBar({
@@ -25,6 +28,7 @@ function BatchBar({
   onToggle,
   onBatchApprove,
   onBatchReject,
+  isBatchPending,
 }: {
   total: number;
   selectedCount: number;
@@ -32,6 +36,7 @@ function BatchBar({
   onToggle: () => void;
   onBatchApprove: () => void;
   onBatchReject: () => void;
+  isBatchPending?: boolean;
 }) {
   return (
     <div className="flex items-center gap-3 border-b border-border-subtle bg-bg-inset px-4 py-2.5">
@@ -51,6 +56,8 @@ function BatchBar({
             <Button
               variant="success"
               onClick={onBatchApprove}
+              loading={isBatchPending}
+              disabled={isBatchPending}
               className="px-3 py-1.5 text-[10px]"
             >
               <Check size={12} />
@@ -59,6 +66,8 @@ function BatchBar({
             <Button
               variant="danger"
               onClick={onBatchReject}
+              loading={isBatchPending}
+              disabled={isBatchPending}
               className="px-3 py-1.5 text-[10px]"
             >
               <X size={12} />
@@ -78,6 +87,8 @@ interface ReviewItemProps {
   onApprove: () => void;
   onReject: () => void;
   onPreview: () => void;
+  isApproving?: boolean;
+  isRejecting?: boolean;
 }
 
 function ReviewItem({
@@ -87,6 +98,8 @@ function ReviewItem({
   onApprove,
   onReject,
   onPreview,
+  isApproving,
+  isRejecting,
 }: ReviewItemProps) {
   const job = application.job;
 
@@ -125,6 +138,8 @@ function ReviewItem({
               <Button
                 variant="success"
                 onClick={onApprove}
+                loading={isApproving}
+                disabled={isApproving || isRejecting}
                 className="px-3 py-1 text-[10px]"
               >
                 Approve
@@ -132,6 +147,8 @@ function ReviewItem({
               <Button
                 variant="danger"
                 onClick={onReject}
+                loading={isRejecting}
+                disabled={isApproving || isRejecting}
                 className="px-3 py-1 text-[10px]"
               >
                 Reject
@@ -162,6 +179,9 @@ export function ReviewList({
   onPreview,
   onBatchApprove,
   onBatchReject,
+  approvingId,
+  rejectingId,
+  isBatchPending,
 }: ReviewListProps) {
   const allSelected = applications.length > 0 && selectedIds.size === applications.length;
   const selectedCount = selectedIds.size;
@@ -184,6 +204,7 @@ export function ReviewList({
         onToggle={allSelected ? onDeselectAll : onSelectAll}
         onBatchApprove={() => onBatchApprove(Array.from(selectedIds))}
         onBatchReject={() => onBatchReject(Array.from(selectedIds))}
+        isBatchPending={isBatchPending}
       />
 
       <div className="divide-y divide-border-subtle">
@@ -196,6 +217,8 @@ export function ReviewList({
             onApprove={() => onApprove(app.id)}
             onReject={() => onReject(app.id)}
             onPreview={() => onPreview(app)}
+            isApproving={approvingId === app.id}
+            isRejecting={rejectingId === app.id}
           />
         ))}
       </div>

@@ -29,6 +29,6 @@ export function useQueueStatus() {
   return useQuery({
     queryKey: ["queue-status"],
     queryFn: () => api.get<QueueStatus>("/api/auto-apply/queue"),
-    refetchInterval: 10_000,
+    refetchInterval: 60_000,
   });
 }

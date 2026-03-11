@@ -16,9 +16,10 @@ interface JobCardProps {
   job: Job;
   onApply: (jobId: string) => void;
   onClick: (job: Job) => void;
+  isApplying?: boolean;
 }
 
-export function JobCard({ job, onApply, onClick }: JobCardProps) {
+export function JobCard({ job, onApply, onClick, isApplying }: JobCardProps) {
   const salary = formatSalaryRange(
     job.salary_min,
     job.salary_max,
@@ -93,10 +94,12 @@ export function JobCard({ job, onApply, onClick }: JobCardProps) {
         <Button
           variant="primary"
           onClick={() => onApply(job.id)}
+          loading={isApplying}
+          disabled={isApplying}
           className="px-3 py-1.5 text-[10px] gap-1.5"
         >
-          Apply
-          <ApplyPilotMark size={10} color="currentColor" />
+          {isApplying ? "Sending" : "Apply"}
+          {!isApplying && <ApplyPilotMark size={10} color="currentColor" />}
         </Button>
       </div>
     </div>

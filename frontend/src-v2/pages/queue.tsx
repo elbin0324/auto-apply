@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { SkeletonJRow } from "@/components/ui/skeleton";
 import { useApplications, useApplicationStats, useQueueStatus } from "@/hooks/use-applications";
 import { useReviewActions } from "@/hooks/use-review-actions";
+import { useSSE } from "@/hooks/use-sse";
 import { InFlightMonitor } from "@/components/queue/in-flight-monitor";
 import { TabBar } from "@/components/queue/tab-bar";
 import { ReviewList } from "@/components/queue/review-list";
@@ -15,6 +16,7 @@ function statusForTab(tab: string): string {
 }
 
 export default function QueuePage() {
+  useSSE();
   const [activeTab, setActiveTab] = useState("pending_review");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
@@ -25,7 +27,7 @@ export default function QueuePage() {
   const { data: appData, isLoading: appsLoading } = useApplications({ status, page });
   const { data: stats } = useApplicationStats();
   const { data: queue } = useQueueStatus();
-  const { approve, reject, batchAction } = useReviewActions();
+  const { approve, reject, batchAction, approvingId, rejectingId, isBatchPending } = useReviewActions();
 
   const applications = appData?.applications ?? [];
   const totalPages = appData?.pages ?? 1;
@@ -167,6 +169,9 @@ export default function QueuePage() {
             onPreview={handlePreview}
             onBatchApprove={handleBatchApprove}
             onBatchReject={handleBatchReject}
+            approvingId={approvingId}
+            rejectingId={rejectingId}
+            isBatchPending={isBatchPending}
           />
         ) : (
           <ApplicationList

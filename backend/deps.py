@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import AuthApiError
 from sqlalchemy import select
@@ -66,6 +66,47 @@ async def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+# ── SSE auth (query-param JWT — EventSource can't set headers) ───────────────
+
+
+async def get_sse_user(
+    token: Annotated[str, Query()],
+    db: DbSession,
+) -> User:
+    """Verify Supabase JWT from a query parameter. Same logic as get_current_user."""
+    from utils.supabase import get_supabase
+
+    supabase = get_supabase()
+
+    try:
+        user_response = supabase.auth.get_user(token)
+    except AuthApiError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid token: {e}",
+        )
+
+    auth_user = user_response.user
+    if not auth_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+
+    result = await db.execute(select(User).where(User.supabase_uid == auth_user.id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found — sign up first",
+        )
+
+    return user
+
+
+SSEUser = Annotated[User, Depends(get_sse_user)]
 
 
 # ── Admin auth ────────────────────────────────────────────────────────────────

@@ -16,7 +16,9 @@
       "Bash(gh pr:*)",
       "Bash(poetry run:*)",
       "Bash(pnpm typecheck:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)"
     ]
   }
 }

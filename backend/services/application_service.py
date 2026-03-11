@@ -12,6 +12,7 @@ from models.application import Application
 from models.job import Job
 from schemas.application import ApplicationListResponse, ApplicationStats
 from schemas.auto_apply import ApplyResult, ProgressUpdate
+from infra.event_publisher import publish_user_event
 from services.ats_registry_service import record_result as record_ats_result
 
 logger = logging.getLogger(__name__)
@@ -167,6 +168,17 @@ async def process_progress_update(
 
     await db.flush()
 
+    await publish_user_event(
+        application.user_id,
+        "progress",
+        {
+            "application_id": str(application.id),
+            "status": application.status,
+            "current_phase": application.current_phase,
+            "phase_message": application.phase_message,
+        },
+    )
+
     logger.info(
         "Progress update for application %s: phase=%s message=%s",
         application.id,
@@ -229,6 +241,16 @@ async def process_agent_result(
             await record_ats_result(db, job.ats_platform, result.success)
 
     await db.flush()
+
+    await publish_user_event(
+        application.user_id,
+        "result",
+        {
+            "application_id": str(application.id),
+            "status": application.status,
+            "current_phase": application.current_phase,
+        },
+    )
 
     logger.info(
         "Processed agent result for application %s: status=%s",

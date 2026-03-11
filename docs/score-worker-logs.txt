@@ -1,0 +1,126 @@
+2026-03-11T06:09:48.208302509Z [inf]  Starting Container
+2026-03-11T06:09:50.698944317Z [inf]  Using Anthropic scoring provider, model=claude-haiku-4-5-20251001
+2026-03-11T06:09:50.698949147Z [inf]  LLM scoring enabled, provider=AnthropicProvider, model=claude-haiku-4-5-20251001
+2026-03-11T06:09:50.698953987Z [inf]  Health check listening on port 8080
+2026-03-11T06:09:50.698959917Z [inf]  Score worker starting
+2026-03-11T06:09:50.698965037Z [inf]  Queue depth: score:jobs = 0
+2026-03-11T06:10:30.474917209Z [inf]  Task dequeued
+2026-03-11T06:10:34.122642193Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:10:34.136141314Z [wrn]  LLM returned non-JSON for batch 0
+2026-03-11T06:10:35.074675807Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:10:35.074685547Z [wrn]  LLM returned non-JSON for batch 2
+2026-03-11T06:10:36.066435274Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:10:36.066441944Z [wrn]  LLM returned non-JSON for batch 1
+2026-03-11T06:10:42.995301736Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:10:42.997469719Z [wrn]  LLM returned non-JSON for batch 3
+2026-03-11T06:10:44.825711422Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:10:44.825715322Z [wrn]  LLM returned non-JSON for batch 4
+2026-03-11T06:10:46.099705202Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:10:46.099712872Z [wrn]  LLM returned non-JSON for batch 5
+2026-03-11T06:10:52.814229429Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:10:52.814235219Z [wrn]  LLM returned non-JSON for batch 7
+2026-03-11T06:10:52.967391252Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:10:52.968679407Z [wrn]  LLM returned non-JSON for batch 6
+2026-03-11T06:10:56.456831713Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:10:56.458788037Z [wrn]  LLM returned non-JSON for batch 8
+2026-03-11T06:11:01.428337296Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:01.428344716Z [wrn]  LLM returned non-JSON for batch 9
+2026-03-11T06:11:02.846077410Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:02.846082350Z [wrn]  LLM returned non-JSON for batch 10
+2026-03-11T06:11:06.238260176Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:06.240514609Z [wrn]  LLM returned non-JSON for batch 11
+2026-03-11T06:11:10.846059371Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:10.846064971Z [wrn]  LLM returned non-JSON for batch 12
+2026-03-11T06:11:11.393950616Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:11.393962726Z [wrn]  LLM returned non-JSON for batch 13
+2026-03-11T06:11:17.053428933Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:17.053440313Z [wrn]  LLM returned non-JSON for batch 14
+2026-03-11T06:11:18.588667545Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:18.588674025Z [wrn]  LLM returned non-JSON for batch 15
+2026-03-11T06:11:21.107883364Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:21.655177240Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:21.655181590Z [wrn]  LLM returned non-JSON for batch 16
+2026-03-11T06:11:21.915633247Z [inf]  LLM scored 86 jobs for user 4790875b-8413-42fe-a270-afaee9ee74a6, upserted 1 scores (force=False)
+2026-03-11T06:11:21.964156675Z [inf]  Score jobs complete: user=4790875b-8413-42fe-a270-afaee9ee74a6, {'jobs_filtered': 86, 'jobs_scored': 86, 'scores_upserted': 1}
+2026-03-11T06:11:21.970318807Z [inf]  Task completed
+2026-03-11T06:11:21.977655166Z [inf]  Task dequeued
+2026-03-11T06:11:41.976118571Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:41.976124451Z [wrn]  LLM returned non-JSON for batch 1
+2026-03-11T06:11:41.976128091Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:41.976131651Z [wrn]  LLM returned non-JSON for batch 0
+2026-03-11T06:11:41.976135521Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:41.976139841Z [wrn]  LLM returned non-JSON for batch 2
+2026-03-11T06:11:41.976144061Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:11:41.976888998Z [inf]  Retrying request to /v1/messages in 6.000000 seconds
+2026-03-11T06:11:43.122208285Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:43.124323419Z [wrn]  LLM returned non-JSON for batch 4
+2026-03-11T06:11:43.273127332Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:43.274683508Z [wrn]  LLM returned non-JSON for batch 3
+2026-03-11T06:11:43.275886754Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:11:43.275893284Z [inf]  Retrying request to /v1/messages in 9.000000 seconds
+2026-03-11T06:11:43.512420359Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:11:43.512426129Z [inf]  Retrying request to /v1/messages in 9.000000 seconds
+2026-03-11T06:11:50.006256184Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:11:50.006259474Z [wrn]  LLM returned non-JSON for batch 5
+2026-03-11T06:11:50.184209651Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:11:50.184212931Z [inf]  Retrying request to /v1/messages in 8.000000 seconds
+2026-03-11T06:11:52.444769427Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:11:52.444783287Z [inf]  Retrying request to /v1/messages in 6.000000 seconds
+2026-03-11T06:11:52.657521423Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:11:52.657534152Z [inf]  Retrying request to /v1/messages in 6.000000 seconds
+2026-03-11T06:12:12.662462003Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:12:12.662469833Z [wrn]  LLM returned non-JSON for batch 8
+2026-03-11T06:12:12.662474813Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:12:12.662478213Z [wrn]  LLM returned non-JSON for batch 6
+2026-03-11T06:12:12.662481713Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:12:12.662485563Z [inf]  Retrying request to /v1/messages in 3.000000 seconds
+2026-03-11T06:12:13.188923582Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:12:13.190709237Z [wrn]  LLM returned non-JSON for batch 9
+2026-03-11T06:12:13.326850116Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:12:13.329290009Z [inf]  Retrying request to /v1/messages in 6.000000 seconds
+2026-03-11T06:12:15.011665335Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:12:15.011670305Z [wrn]  LLM returned non-JSON for batch 7
+2026-03-11T06:12:15.133965355Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:12:15.133972485Z [inf]  Retrying request to /v1/messages in 8.000000 seconds
+2026-03-11T06:12:19.480000563Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:12:19.480006663Z [inf]  Retrying request to /v1/messages in 3.000000 seconds
+2026-03-11T06:12:22.758319683Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:12:22.758326263Z [wrn]  LLM returned non-JSON for batch 10
+2026-03-11T06:12:23.015695385Z [inf]  Retrying request to /v1/messages in 6.000000 seconds
+2026-03-11T06:12:23.015699985Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:12:23.319978758Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:12:23.321316414Z [inf]  Retrying request to /v1/messages in 6.000000 seconds
+2026-03-11T06:12:32.112437616Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:12:32.112442896Z [wrn]  LLM returned non-JSON for batch 11
+2026-03-11T06:12:32.112447546Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:12:32.112450946Z [inf]  Retrying request to /v1/messages in 3.000000 seconds
+2026-03-11T06:12:36.714391241Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:12:36.716619944Z [wrn]  LLM returned non-JSON for batch 13
+2026-03-11T06:12:37.105861945Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:12:37.105864935Z [inf]  Retrying request to /v1/messages in 4.000000 seconds
+2026-03-11T06:12:38.553295515Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:12:38.553299675Z [wrn]  LLM returned non-JSON for batch 12
+2026-03-11T06:12:38.697126420Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:12:38.697132980Z [inf]  Retrying request to /v1/messages in 9.000000 seconds
+2026-03-11T06:12:41.062826348Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:12:41.062831708Z [inf]  Retrying request to /v1/messages in 6.000000 seconds
+2026-03-11T06:12:44.738530907Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:12:44.738535577Z [wrn]  LLM returned non-JSON for batch 14
+2026-03-11T06:12:47.141239723Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:12:47.141250273Z [wrn]  Rate limited (attempt 1/3), backing off 1s
+2026-03-11T06:12:47.834092807Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:12:47.834098327Z [inf]  Retrying request to /v1/messages in 6.000000 seconds
+2026-03-11T06:12:48.272120134Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2026-03-11T06:12:48.272124803Z [inf]  Retrying request to /v1/messages in 5.000000 seconds
+2026-03-11T06:13:08.277614384Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:13:08.277618734Z [wrn]  LLM returned non-JSON for batch 15
+2026-03-11T06:13:08.277621994Z [inf]  HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-03-11T06:13:08.277625224Z [wrn]  LLM returned non-JSON for batch 16
+2026-03-11T06:13:08.277628864Z [inf]  LLM scored 85 jobs for user 4790875b-8413-42fe-a270-afaee9ee74a6, upserted 0 scores (force=False)
+2026-03-11T06:13:08.277631794Z [inf]  Score jobs complete: user=4790875b-8413-42fe-a270-afaee9ee74a6, {'jobs_filtered': 86, 'jobs_scored': 85, 'scores_upserted': 0}
+2026-03-11T06:13:08.279888636Z [inf]  Task completed
+2026-03-11T06:14:58.486933492Z [inf]  Queue depth: score:jobs = 0
+2026-03-11T06:19:59.268559153Z [inf]  Queue depth: score:jobs = 0
+2026-03-11T06:24:59.081494753Z [inf]  Queue depth: score:jobs = 0
+2026-03-11T06:29:59.622286748Z [inf]  Queue depth: score:jobs = 0
+2026-03-11T06:34:59.499807522Z [inf]  Queue depth: score:jobs = 0

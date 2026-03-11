@@ -32,6 +32,7 @@ interface SidePanelProps {
   onApply?: (jobId: string) => void;
   onApprove?: (appId: string) => void;
   onReject?: (appId: string) => void;
+  isApplying?: boolean;
 }
 
 type Tab = "match" | "details";
@@ -478,6 +479,7 @@ export function SidePanel({
   onApply,
   onApprove,
   onReject,
+  isApplying,
 }: SidePanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("match");
 
@@ -599,9 +601,11 @@ export function SidePanel({
               <Button
                 variant="primary"
                 onClick={() => onApply(displayJob.id)}
+                loading={isApplying}
+                disabled={isApplying}
                 className="flex-1"
               >
-                Apply
+                {isApplying ? "Sending" : "Apply"}
               </Button>
             )}
             {isPendingReview && application && onApprove && onReject && (

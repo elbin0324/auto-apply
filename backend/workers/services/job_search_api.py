@@ -326,8 +326,8 @@ def _parse_salary(salary_raw: dict | None) -> tuple[float | None, float | None, 
     if not isinstance(value, dict):
         return None, None, currency
 
-    salary_min = value.get("minValue")
-    salary_max = value.get("maxValue")
+    salary_min = _to_numeric(value.get("minValue"))
+    salary_max = _to_numeric(value.get("maxValue"))
     return salary_min, salary_max, currency
 
 

@@ -122,7 +122,7 @@ export default function LoginPage() {
             className={cn(
               "w-full rounded-[var(--radius)] border border-border-main bg-bg-inset px-4 py-2.5",
               "font-mono text-[11px] font-semibold tracking-[.03em] uppercase text-t-700",
-              "transition-colors hover:border-t-400",
+              "transition-colors hover:border-pri",
             )}
           >
             Sign in with Google

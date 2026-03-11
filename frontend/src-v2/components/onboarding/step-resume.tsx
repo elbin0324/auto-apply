@@ -157,7 +157,7 @@ function DropZone({
       onClick={onClick}
       className={cn(
         "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed py-12 transition-colors",
-        dragOver ? "border-pri bg-[var(--pri-bg)]" : "border-border-main hover:border-t-400",
+        dragOver ? "border-pri bg-[var(--pri-bg)]" : "border-border-main hover:border-pri",
       )}
     >
       <Upload size={32} color="var(--color-t-400)" />

@@ -27,6 +27,7 @@ Full frontend rebuild with new design system (Deep Ocean theme), aviation-inspir
 | 10 — Polish | `phase-10-polish.md` | COMPLETE | Loading states, errors, responsive, perf |
 | 11 — UI Polish | `phase-11-ui-polish.md` | COMPLETE | Card outlines, icon colors, custom dropdowns, upload box, tracker cards, settings layout |
 | BE — Backend Mods | `phase-be-backend-mods.md` | COMPLETE | Priority 1+2 done, all 335 tests pass |
+| 12 — Job Data Display | `phase-12-job-data-display.md` | COMPLETE | Replace tags/category with real metadata, AI enrichment in side panel |
 
 ## Parallelization Notes
 
@@ -165,5 +166,10 @@ frontend/src-v2/
 | 2026-03-11 | 11.4.2 Outline Buttons + Resume Upload Box | contact-card, resume-card, experience-editor: ghost → outline for Edit/Upload/Add buttons. resume-display.tsx: ResumeInfo redesigned as centered upload-box with dashed pri border |
 | 2026-03-11 | 11.5 Tracker Colored Cards | tracker-stats.tsx: replaced left-border style with colored bg fills (bg-inset for Total, ok-bg for Landed/Success, warn-bg for Pending, fail-bg for Failed), center-aligned text |
 | 2026-03-11 | 11.6 Settings Layout | subscription-card.tsx: plan name and Upgrade button in same row with flex justify-between, Upgrade uses outline variant |
+
+| 2026-03-11 | 12.1 Update Job Type | Added AIEnrichment, AISalary interfaces. Added ai_enrichment, country, city to Job. Made tags optional. Updated MatchBreakdown with structured fields. Removed category. |
+| 2026-03-11 | 12.2 Formatting Utilities | Added formatSalaryRange (with AI fallback), formatSalaryFull, formatLocationType, formatExperienceLevel, formatEmploymentType to utils.ts |
+| 2026-03-11 | 12.3 Job Card Redesign | Replaced meaningless tags with location_type/experience_level/employment_type badges. Remote badge uses pri color. Enhanced salary display with AI fallback. |
+| 2026-03-11 | 12.4 Side Panel AI Enrichment | Added Compensation (full salary + benefits), Details (visa, hours, education, office days), Requirements, Responsibilities, Skills/Keywords sections. All conditional. Section dividers. Match breakdown uses structured fields with legacy fallback. |
 
 **Config changes:** Updated tsconfig.json + tsconfig.app.json path aliases from `src/` to `src-v2/`. Updated tsconfig.app.json include from `src` to `src-v2`.

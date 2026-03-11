@@ -5,6 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { X, Check } from "@/icons";
 import { matchScoreColor, matchScoreLabel, statusColor, statusLabel } from "@/theme/tokens";
+import {
+  formatSalaryRange,
+  formatSalaryFull,
+  formatLocationType,
+  formatExperienceLevel,
+  formatEmploymentType,
+} from "@/lib/utils";
 
 interface SidePanelProps {
   job: Job | null;
@@ -36,6 +43,10 @@ function SectionHeader({ children, color }: { children: React.ReactNode; color?:
   );
 }
 
+function SectionDivider() {
+  return <div className="border-t border-border-subtle" />;
+}
+
 export function SidePanel({
   job,
   application,
@@ -59,19 +70,41 @@ export function SidePanel({
 
   const score = job.match_score;
   const scoreColor = score != null ? matchScoreColor(score) : undefined;
-  const scoreLabel = score != null ? matchScoreLabel(score) : undefined;
+  const scoreLbl = score != null ? matchScoreLabel(score) : undefined;
   const isPendingReview = application?.status === "pending_review";
   const isNewJob = !application;
+  const ai = job.ai_enrichment;
 
+  // Quick facts meta tags
   const metaTags = [
     job.location,
-    job.location_type,
-    job.employment_type,
-    job.experience_level,
-    job.salary_min || job.salary_max
-      ? `$${job.salary_min ?? "?"}k-$${job.salary_max ?? "?"}k`
-      : null,
+    formatLocationType(job.location_type),
+    formatExperienceLevel(job.experience_level),
+    formatEmploymentType(job.employment_type),
+    formatSalaryRange(job.salary_min, job.salary_max, job.salary_currency, ai?.salary),
   ].filter(Boolean);
+
+  // Salary detail (from AI enrichment, more precise)
+  const salaryDetail = ai?.salary
+    ? formatSalaryFull(ai.salary.min_value, ai.salary.max_value, ai.salary.currency, ai.salary.unit_text)
+    : "";
+  const benefits = ai?.benefits?.filter(Boolean) ?? [];
+
+  // Skills / keywords
+  const skills = ai?.skills?.filter(Boolean) ?? [];
+  const keywords = ai?.keywords?.filter(Boolean) ?? [];
+  const displaySkills = skills.length > 0 ? skills.slice(0, 10) : keywords.slice(0, 10);
+
+  // Match breakdown: prefer structured fields, fall back to legacy
+  const summary = matchBreakdown?.summary ?? matchBreakdown?.reasoning;
+  const strengths = matchBreakdown?.strengths ??
+    (matchBreakdown?.matched_skills?.length ? matchBreakdown.matched_skills : null);
+  const concerns = matchBreakdown?.concerns ??
+    (matchBreakdown?.missing_skills?.length ? matchBreakdown.missing_skills : null);
+  const keyMatches = matchBreakdown?.key_matches ??
+    (matchBreakdown?.matched_skills?.length ? matchBreakdown.matched_skills : null);
+  const keyGaps = matchBreakdown?.key_gaps ??
+    (matchBreakdown?.missing_skills?.length ? matchBreakdown.missing_skills : null);
 
   return (
     <>
@@ -118,7 +151,7 @@ export function SidePanel({
             </Badge>
           )}
 
-          {/* Meta tags */}
+          {/* Quick facts */}
           {metaTags.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {metaTags.map((tag) => (
@@ -127,43 +160,140 @@ export function SidePanel({
             </div>
           )}
 
+          {/* Salary detail + benefits */}
+          {(salaryDetail || benefits.length > 0) && (
+            <>
+              <SectionDivider />
+              <div>
+                <SectionHeader>Compensation</SectionHeader>
+                {salaryDetail && (
+                  <p className="font-sans text-[14px] font-semibold text-t-900">{salaryDetail}</p>
+                )}
+                {benefits.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {benefits.map((b) => (
+                      <Badge key={b} color="ok">{b}</Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Job details (visa, hours, education, office days) */}
+          {(ai?.visa_sponsorship != null ||
+            ai?.working_hours != null ||
+            (ai?.education_level && ai.education_level.length > 0) ||
+            ai?.work_arrangement_office_days != null) && (
+            <>
+              <SectionDivider />
+              <div>
+                <SectionHeader>Details</SectionHeader>
+                <div className="space-y-1.5">
+                  {ai?.visa_sponsorship != null && (
+                    <DetailRow
+                      label="Visa Sponsorship"
+                      value={ai.visa_sponsorship ? "Yes" : "No"}
+                    />
+                  )}
+                  {ai?.working_hours != null && (
+                    <DetailRow label="Working Hours" value={`${ai.working_hours} hrs/week`} />
+                  )}
+                  {ai?.education_level && ai.education_level.length > 0 && (
+                    <DetailRow label="Education" value={ai.education_level.join(", ")} />
+                  )}
+                  {ai?.work_arrangement_office_days != null && (
+                    <DetailRow
+                      label="Office Days"
+                      value={`${ai.work_arrangement_office_days} days/week`}
+                    />
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Requirements summary */}
+          {ai?.requirements_summary && (
+            <>
+              <SectionDivider />
+              <div>
+                <SectionHeader>Requirements</SectionHeader>
+                <p className="font-sans text-[13px] leading-[1.7] text-t-700">
+                  {ai.requirements_summary}
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Core responsibilities */}
+          {ai?.core_responsibilities && (
+            <>
+              <SectionDivider />
+              <div>
+                <SectionHeader>Responsibilities</SectionHeader>
+                <p className="font-sans text-[13px] leading-[1.7] text-t-700">
+                  {ai.core_responsibilities}
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Skills / Keywords */}
+          {displaySkills.length > 0 && (
+            <>
+              <SectionDivider />
+              <div>
+                <SectionHeader>{skills.length > 0 ? "Skills" : "Keywords"}</SectionHeader>
+                <div className="flex flex-wrap gap-1.5">
+                  {displaySkills.map((s) => (
+                    <Badge key={s} color="pri">{s}</Badge>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Match score */}
           {score != null && scoreColor && (
-            <div className="flex items-center gap-3">
-              <div
-                className="flex h-10 w-10 items-center justify-center rounded-full font-mono text-[14px] font-bold"
-                style={{
-                  border: `2px solid ${scoreColor}`,
-                  color: scoreColor,
-                }}
-              >
-                {score}
+            <>
+              <SectionDivider />
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-full font-mono text-[14px] font-bold"
+                  style={{
+                    border: `2px solid ${scoreColor}`,
+                    color: scoreColor,
+                  }}
+                >
+                  {score}
+                </div>
+                <div>
+                  <p className="font-mono text-[11px] font-semibold" style={{ color: scoreColor }}>
+                    {scoreLbl}
+                  </p>
+                  <p className="font-mono text-[10px] text-t-400">/100</p>
+                </div>
               </div>
-              <div>
-                <p className="font-mono text-[11px] font-semibold" style={{ color: scoreColor }}>
-                  {scoreLabel}
-                </p>
-                <p className="font-mono text-[10px] text-t-400">/100</p>
-              </div>
-            </div>
+            </>
           )}
 
           {/* Summary */}
-          {matchBreakdown?.reasoning && (
+          {summary && (
             <div>
               <SectionHeader>Summary</SectionHeader>
               <p className="font-sans text-[13px] leading-[1.7] text-t-700">
-                {matchBreakdown.reasoning}
+                {summary}
               </p>
             </div>
           )}
 
           {/* Strengths */}
-          {matchBreakdown?.matched_skills && matchBreakdown.matched_skills.length > 0 && (
+          {strengths && strengths.length > 0 && (
             <div>
               <SectionHeader color="var(--color-ok-dim)">Strengths</SectionHeader>
               <ul className="space-y-1.5">
-                {matchBreakdown.matched_skills.map((skill) => (
+                {strengths.map((skill) => (
                   <li key={skill} className="flex items-start gap-2 text-[12px] text-t-700">
                     <Check size={14} color="var(--color-ok)" className="mt-0.5 shrink-0" />
                     {skill}
@@ -174,11 +304,11 @@ export function SidePanel({
           )}
 
           {/* Concerns */}
-          {matchBreakdown?.missing_skills && matchBreakdown.missing_skills.length > 0 && (
+          {concerns && concerns.length > 0 && (
             <div>
               <SectionHeader color="var(--color-warn-dim)">Concerns</SectionHeader>
               <ul className="space-y-1.5">
-                {matchBreakdown.missing_skills.map((skill) => (
+                {concerns.map((skill) => (
                   <li key={skill} className="flex items-start gap-2 text-[12px] text-t-700">
                     <span
                       className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
@@ -192,13 +322,13 @@ export function SidePanel({
           )}
 
           {/* Key Matches & Key Gaps */}
-          {matchBreakdown && (
+          {(keyMatches?.length || keyGaps?.length) && (
             <div className="grid grid-cols-2 gap-4">
-              {matchBreakdown.matched_skills && matchBreakdown.matched_skills.length > 0 && (
+              {keyMatches && keyMatches.length > 0 && (
                 <div>
                   <SectionHeader>Key Matches</SectionHeader>
                   <ul className="space-y-1">
-                    {matchBreakdown.matched_skills.slice(0, 5).map((s) => (
+                    {keyMatches.slice(0, 5).map((s) => (
                       <li key={s} className="flex items-center gap-1.5">
                         <span className="h-1 w-1 rounded-full bg-ok" />
                         <span className="font-mono text-[10px] text-t-500">{s}</span>
@@ -207,11 +337,11 @@ export function SidePanel({
                   </ul>
                 </div>
               )}
-              {matchBreakdown.missing_skills && matchBreakdown.missing_skills.length > 0 && (
+              {keyGaps && keyGaps.length > 0 && (
                 <div>
                   <SectionHeader>Key Gaps</SectionHeader>
                   <ul className="space-y-1">
-                    {matchBreakdown.missing_skills.slice(0, 5).map((s) => (
+                    {keyGaps.slice(0, 5).map((s) => (
                       <li key={s} className="flex items-center gap-1.5">
                         <span className="h-1 w-1 rounded-full bg-warn" />
                         <span className="font-mono text-[10px] text-t-500">{s}</span>
@@ -246,5 +376,14 @@ export function SidePanel({
         )}
       </div>
     </>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="font-mono text-[10px] text-t-400">{label}</span>
+      <span className="font-mono text-[11px] text-t-700">{value}</span>
+    </div>
   );
 }

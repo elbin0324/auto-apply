@@ -65,8 +65,8 @@ class Settings(BaseSettings):
     # LLM Scoring
     scoring_provider: str = "anthropic"  # "anthropic" | "openai_compat"
     scoring_model: str = "claude-haiku-4-5-20251001"
-    scoring_max_tokens: int = 1024
-    scoring_batch_size: int = 5  # jobs per LLM call
+    scoring_max_tokens: int = 4096
+    scoring_batch_size: int = 10  # jobs per LLM call
     scoring_concurrency: int = 3  # max parallel LLM calls per worker
     scoring_use_llm: bool = True  # False = heuristic only (rollback)
     scoring_openai_base_url: str = ""  # for openai_compat provider (Ollama, vLLM, etc.)

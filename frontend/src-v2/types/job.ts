@@ -24,6 +24,29 @@ export interface MatchFactors {
   latency_ms?: number;
 }
 
+export interface AISalary {
+  currency?: string | null;
+  min_value?: number | null;
+  max_value?: number | null;
+  unit_text?: string | null;
+}
+
+export interface AIEnrichment {
+  salary?: AISalary | null;
+  skills?: string[];
+  benefits?: string[];
+  keywords?: string[];
+  taxonomies?: string[];
+  education_level?: string[];
+  visa_sponsorship?: boolean | null;
+  working_hours?: number | null;
+  job_language?: string | null;
+  remote_location?: string | null;
+  requirements_summary?: string | null;
+  core_responsibilities?: string | null;
+  work_arrangement_office_days?: number | null;
+}
+
 export interface Job {
   id: string;
   external_id?: string | null;
@@ -43,11 +66,13 @@ export interface Job {
   years_experience_min?: number | null;
   years_experience_max?: number | null;
   enriched_at?: string | null;
-  tags: string[];
+  tags?: string[];
   url: string;
   apply_url?: string | null;
   source: string;
-  category?: string | null;
+  country?: string | null;
+  city?: string | null;
+  ai_enrichment?: AIEnrichment | null;
   posted_at?: string | null;
   is_active: boolean;
   match_score?: number | null;
@@ -65,10 +90,21 @@ export interface JobListResponse {
 }
 
 export interface MatchBreakdown {
-  combined_method: string;
-  model: string;
-  matched_skills: string[];
-  missing_skills: string[];
-  preferred_skills: string[];
-  reasoning: string;
+  job_id?: string;
+  score?: number;
+  label?: string;
+  summary?: string | null;
+  strengths?: string[];
+  concerns?: string[];
+  key_matches?: string[];
+  key_gaps?: string[];
+  factors?: MatchFactors | null;
+  computed_at?: string;
+  // Legacy fields from factors (used by existing code)
+  combined_method?: string;
+  model?: string;
+  matched_skills?: string[];
+  missing_skills?: string[];
+  preferred_skills?: string[];
+  reasoning?: string;
 }

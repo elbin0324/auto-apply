@@ -1,6 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MatchDot } from "@/components/shared/match-dot";
+import {
+  formatSalaryRange,
+  formatLocationType,
+  formatExperienceLevel,
+  formatEmploymentType,
+} from "@/lib/utils";
 import type { Job } from "@/types/job";
 
 interface JobCardProps {
@@ -13,20 +19,31 @@ function companyCode(name: string): string {
   return name.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
 }
 
-function formatSalary(min?: number | null, max?: number | null): string {
-  if (!min && !max) return "";
-  const fmt = (n: number) => (n >= 1000 ? `$${Math.round(n / 1000)}k` : `$${n}`);
-  if (min && max) return `${fmt(min)}-${fmt(max)}`;
-  if (min) return `${fmt(min)}+`;
-  return `Up to ${fmt(max!)}`;
-}
-
 export function JobCard({ job, onApply, onClick }: JobCardProps) {
-  const meta = [job.company, job.location, formatSalary(job.salary_min, job.salary_max)]
-    .filter(Boolean)
-    .join(" / ");
+  const salary = formatSalaryRange(
+    job.salary_min,
+    job.salary_max,
+    job.salary_currency,
+    job.ai_enrichment?.salary,
+  );
 
-  const tags = job.tags?.slice(0, 4) ?? [];
+  const meta = [job.company, job.location, salary].filter(Boolean).join(" / ");
+
+  const badges: { label: string; color: "pri" | "muted" }[] = [];
+
+  const locType = formatLocationType(job.location_type);
+  if (locType) {
+    badges.push({
+      label: locType,
+      color: job.location_type === "remote" ? "pri" : "muted",
+    });
+  }
+
+  const expLevel = formatExperienceLevel(job.experience_level);
+  if (expLevel) badges.push({ label: expLevel, color: "muted" });
+
+  const empType = formatEmploymentType(job.employment_type);
+  if (empType) badges.push({ label: empType, color: "muted" });
 
   return (
     <div
@@ -49,11 +66,11 @@ export function JobCard({ job, onApply, onClick }: JobCardProps) {
           {job.title}
         </p>
         <p className="truncate font-mono text-[11px] text-t-400">{meta}</p>
-        {tags.length > 0 && (
+        {badges.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {tags.map((tag) => (
-              <Badge key={tag} color="muted">
-                {tag}
+            {badges.map((b) => (
+              <Badge key={b.label} color={b.color}>
+                {b.label}
               </Badge>
             ))}
           </div>

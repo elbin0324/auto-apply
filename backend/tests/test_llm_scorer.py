@@ -112,6 +112,11 @@ def _mock_job(job_id: uuid.UUID = _JOB_ID_1, **kw: object) -> SimpleNamespace:
         "Requirements: Python, FastAPI, PostgreSQL, Redis, Docker, Kubernetes. "
         "Nice to have: Go, GraphQL.",
         "is_active": True,
+        "ai_enrichment": None,
+        "experience_level": None,
+        "employment_type": None,
+        "years_experience_min": None,
+        "years_experience_max": None,
     }
     defaults.update(kw)
     return SimpleNamespace(**defaults)

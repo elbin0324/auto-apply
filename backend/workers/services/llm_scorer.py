@@ -51,11 +51,13 @@ Score guidelines:
 - 0-29: Poor match. Wrong field, level, or location entirely.
 
 Consider these factors (in order of importance):
-1. Skills overlap — does the candidate have the required technical skills?
+1. Skills overlap — does the candidate have the required technical skills? Use keywords and core responsibilities for matching.
 2. Experience level — does the candidate's seniority match the role?
 3. Title relevance — is this the type of role the candidate is targeting?
 4. Location fit — does the job location/type match candidate preferences?
 5. Industry/domain — is there relevant domain experience?
+6. Compensation alignment — does the salary range match expectations?
+7. Additional signals — benefits, visa sponsorship, and other contextual factors.
 
 Return ONLY valid JSON — an array of objects, one per job, in the same order:
 [
@@ -162,7 +164,6 @@ def _build_jobs_batch_prompt(jobs: list[Job]) -> str:
     parts = ["Score the following jobs against the candidate profile:\n"]
 
     for i, job in enumerate(jobs):
-        desc = (job.description or "")[:800]
         parts.append(f"--- JOB {i} ---")
         parts.append(f"Title: {job.title}")
         if job.company:
@@ -173,7 +174,52 @@ def _build_jobs_batch_prompt(jobs: list[Job]) -> str:
             parts.append(f"Work type: {job.location_type}")
         if job.salary_min or job.salary_max:
             parts.append(f"Salary: ${job.salary_min or '?'}-${job.salary_max or '?'}")
-        parts.append(f"Description: {desc}")
+
+        # Enrichment columns (always include when present)
+        if job.experience_level:
+            parts.append(f"Experience level: {job.experience_level}")
+        if job.employment_type:
+            parts.append(f"Employment type: {job.employment_type}")
+        if job.years_experience_min or job.years_experience_max:
+            parts.append(
+                f"Years experience: {job.years_experience_min or '?'}-{job.years_experience_max or '?'}"
+            )
+
+        enrichment = job.ai_enrichment
+        if enrichment and isinstance(enrichment, dict):
+            # Use structured enrichment fields instead of raw description
+            if enrichment.get("requirements_summary"):
+                parts.append(f"Requirements: {enrichment['requirements_summary']}")
+            if enrichment.get("core_responsibilities"):
+                parts.append(f"Responsibilities: {enrichment['core_responsibilities']}")
+            if enrichment.get("keywords"):
+                parts.append(f"Keywords: {', '.join(enrichment['keywords'])}")
+            if enrichment.get("benefits"):
+                parts.append(f"Benefits: {enrichment['benefits']}")
+            salary_info = enrichment.get("salary")
+            if salary_info and isinstance(salary_info, dict):
+                sal_parts = []
+                if salary_info.get("currency"):
+                    sal_parts.append(salary_info["currency"])
+                if salary_info.get("min_value"):
+                    sal_parts.append(f"min={salary_info['min_value']}")
+                if salary_info.get("max_value"):
+                    sal_parts.append(f"max={salary_info['max_value']}")
+                if salary_info.get("unit_text"):
+                    sal_parts.append(f"per {salary_info['unit_text']}")
+                if sal_parts:
+                    parts.append(f"Salary detail: {' '.join(sal_parts)}")
+            if enrichment.get("education_level"):
+                parts.append(f"Education: {', '.join(enrichment['education_level'])}")
+            if enrichment.get("visa_sponsorship") is not None:
+                parts.append(f"Visa sponsorship: {'Yes' if enrichment['visa_sponsorship'] else 'No'}")
+            if enrichment.get("work_arrangement_office_days") is not None:
+                parts.append(f"Office days/week: {enrichment['work_arrangement_office_days']}")
+        else:
+            # Fallback to raw description when no enrichment available
+            desc = (job.description or "")[:800]
+            parts.append(f"Description: {desc}")
+
         parts.append("")
 
     return "\n".join(parts)
@@ -222,7 +268,12 @@ async def _score_batch_llm(
         return results, latency_ms
 
     except json.JSONDecodeError:
-        logger.warning("LLM returned non-JSON for batch %d", batch_index)
+        snippet = response_text[:200] if response_text else "(empty)"
+        logger.warning(
+            "LLM returned non-JSON for batch %d — first 200 chars: %s",
+            batch_index,
+            snippet,
+        )
         return [], 0
     except Exception:
         logger.exception("LLM scoring failed for batch %d", batch_index)

@@ -4,6 +4,31 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
+class AISalary(BaseModel):
+    currency: str | None = None
+    min_value: float | None = None
+    max_value: float | None = None
+    unit_text: str | None = None
+
+
+class AIEnrichment(BaseModel):
+    skills: list[str] = []
+    core_responsibilities: str | None = None
+    requirements_summary: str | None = None
+    benefits: str | None = None
+    keywords: list[str] = []
+    taxonomies: list[str] = []
+    education_level: list[str] = []
+    visa_sponsorship: bool | None = None
+    working_hours: int | None = None
+    job_language: str | None = None
+    hiring_manager_name: str | None = None
+    hiring_manager_email: str | None = None
+    work_arrangement_office_days: int | None = None
+    remote_location: str | None = None
+    salary: AISalary | None = None
+
+
 class JobSearchParams(BaseModel):
     query: str | None = None
     location: str | None = None
@@ -43,6 +68,12 @@ class JobResponse(BaseModel):
     url: str
     apply_url: str | None = None
     source: str = "adzuna"
+    source_domain: str | None = None
+    organization_url: str | None = None
+    domain_derived: str | None = None
+    country: str | None = None
+    city: str | None = None
+    ai_enrichment: AIEnrichment | None = None
     category: str | None = None
     posted_at: datetime | None = None
     is_active: bool = True

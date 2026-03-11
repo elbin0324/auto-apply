@@ -49,7 +49,10 @@ class ApplicationStats(BaseModel):
     total: int
     applied: int
     pending: int
+    queued: int = 0
+    in_progress: int = 0
     failed: int
     skipped: int
     this_week: int
+    today: int = 0
     success_rate: float  # applied / (applied + failed) * 100

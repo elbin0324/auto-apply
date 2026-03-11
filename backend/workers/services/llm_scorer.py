@@ -24,7 +24,7 @@ from models.job import Job
 from models.job_match_score import JobMatchScore
 from models.profile import Education, Experience, Profile
 from models.user import User
-from schemas.scoring import LLMScoreFactors, LLMScoreResult
+from schemas.scoring import LLMScoreFactors, LLMScoreResult, StructuredAnalysis
 from workers.services.job_filter import (
     filter_candidate_jobs,
     get_unscored_job_ids,
@@ -40,7 +40,8 @@ logger = logging.getLogger(__name__)
 
 SCORING_SYSTEM_PROMPT = """\
 You are a job-candidate match scorer. You will receive a candidate profile \
-and a batch of job listings. For each job, output a match score and skills analysis.
+and a batch of job listings. For each job, output a match score, skills analysis, \
+and structured fit analysis.
 
 Score guidelines:
 - 90-100: Near-perfect match. Candidate meets all required skills, experience level, and preferences.
@@ -64,7 +65,17 @@ Return ONLY valid JSON — an array of objects, one per job, in the same order:
     "matched_skills": ["Python", "FastAPI", "PostgreSQL"],
     "missing_skills": ["Kubernetes", "Terraform"],
     "preferred_skills": ["Go"],
-    "reasoning": "Strong backend match but lacks infrastructure experience"
+    "reasoning": "Strong backend match but lacks infrastructure experience",
+    "summary": "Build and maintain backend services for a fintech platform.",
+    "strengths": [
+      "Your Python and FastAPI experience directly matches the core requirements",
+      "Your production deployment experience demonstrates operational maturity"
+    ],
+    "concerns": [
+      "No direct infrastructure/DevOps experience with Kubernetes"
+    ],
+    "key_matches": ["Python", "FastAPI", "PostgreSQL", "REST APIs"],
+    "key_gaps": ["Kubernetes", "Terraform", "CI/CD pipelines"]
   }
 ]
 
@@ -73,6 +84,11 @@ Rules:
 - missing_skills: skills the job REQUIRES that the candidate LACKS
 - preferred_skills: skills the job lists as PREFERRED/NICE-TO-HAVE that the candidate HAS
 - reasoning: one sentence explaining the score (under 20 words)
+- summary: 1-2 sentence plain English summary of what the role involves
+- strengths: 2-4 specific reasons this is a good match, referencing the candidate's actual experience. Write in second person ("your experience with...")
+- concerns: 0-2 notable gaps or risks, be honest but constructive
+- key_matches: top 4-7 qualifications the candidate has that the job values
+- key_gaps: top 3-5 qualifications the job requires that the candidate lacks
 - Be accurate about skill matching — don't inflate scores
 - If the job description is sparse, score conservatively (40-60 range)
 - Keep skills lists concise (top 5-8 each, most relevant first)"""
@@ -271,12 +287,20 @@ async def _score_jobs_for_user(
                     batch_id=batch_id,
                     latency_ms=latency_ms,
                 )
+                analysis = StructuredAnalysis(
+                    summary=result.summary,
+                    strengths=result.strengths,
+                    concerns=result.concerns,
+                    key_matches=result.key_matches,
+                    key_gaps=result.key_gaps,
+                )
                 score_rows.append(
                     {
                         "user_id": user.id,
                         "job_id": job.id,
                         "score": llm_score,
                         "factors": factors.model_dump(),
+                        "structured_analysis": analysis.model_dump(),
                         "computed_at": now,
                     }
                 )
@@ -353,6 +377,7 @@ async def score_new_jobs_llm(
                 set_={
                     "score": stmt.excluded.score,
                     "factors": stmt.excluded.factors,
+                    "structured_analysis": stmt.excluded.structured_analysis,
                     "computed_at": stmt.excluded.computed_at,
                 },
             )

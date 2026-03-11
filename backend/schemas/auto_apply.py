@@ -161,6 +161,24 @@ class SubmitAnswersRequest(BaseModel):
     answers: dict[str, str]  # field_name → value
 
 
+class BatchReviewRequest(BaseModel):
+    """Request body for batch review of applications."""
+
+    application_ids: list[UUID]
+    action: str = Field(pattern="^(approve|reject)$")
+
+
+class BatchReviewItemResult(BaseModel):
+    application_id: str
+    status: str
+
+
+class BatchReviewResponse(BaseModel):
+    processed: int
+    results: list[BatchReviewItemResult]
+    errors: list[dict]
+
+
 # ── Agent result ─────────────────────────────────────────────────────────
 
 

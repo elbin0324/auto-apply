@@ -1,0 +1,188 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  /* Background tokens */
+  --color-bg-deep: #060d14;
+  --color-bg-sidebar: #081018;
+  --color-bg-body: #0c1520;
+  --color-bg-card: #111c2a;
+  --color-bg-inset: #0e1824;
+  --color-bg-muted: #182838;
+
+  /* Primary (Teal Aqua) */
+  --color-pri: #2ec4b6;
+  --color-pri-dim: #1a9a8e;
+  --color-pri-light: #50dace;
+
+  /* Success (Ice Blue) */
+  --color-ok: #64b5cf;
+  --color-ok-dim: #3a8eaa;
+
+  /* Warning (Amber) */
+  --color-warn: #e0a850;
+  --color-warn-dim: #b88030;
+
+  /* Failure (Red) */
+  --color-fail: #d06060;
+  --color-fail-dim: #a84040;
+
+  /* Muted */
+  --color-muted: #4a6070;
+
+  /* Text on dark */
+  --color-t-900: #e0e8f0;
+  --color-t-700: #b0c0d0;
+  --color-t-500: #708090;
+  --color-t-400: #506070;
+  --color-t-300: #384858;
+
+  /* Borders */
+  --color-border-main: #1e2e3e;
+  --color-border-subtle: #182838;
+
+  /* Fonts */
+  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Radius */
+  --radius: 8px;
+  --radius-lg: 12px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-elevated: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-panel: -8px 0 30px rgba(0, 0, 0, 0.15);
+}
+
+/* Semantic rgba-based tokens that need CSS custom properties */
+:root {
+  /* Primary */
+  --pri-bg: rgba(46, 196, 182, 0.07);
+  --pri-border: rgba(46, 196, 182, 0.2);
+  --pri-glow: rgba(46, 196, 182, 0.1);
+
+  /* Success */
+  --ok-bg: rgba(100, 181, 207, 0.07);
+  --ok-border: rgba(100, 181, 207, 0.18);
+
+  /* Warning */
+  --warn-bg: rgba(224, 168, 80, 0.07);
+  --warn-border: rgba(224, 168, 80, 0.18);
+
+  /* Failure */
+  --fail-bg: rgba(208, 96, 96, 0.07);
+  --fail-border: rgba(208, 96, 96, 0.18);
+
+  /* Muted */
+  --muted-bg: rgba(74, 96, 112, 0.12);
+  --muted-border: rgba(74, 96, 112, 0.2);
+
+  /* Sidebar text (always dark bg) */
+  --tw-90: rgba(255, 255, 255, 0.88);
+  --tw-60: rgba(255, 255, 255, 0.55);
+  --tw-40: rgba(255, 255, 255, 0.35);
+  --tw-20: rgba(255, 255, 255, 0.15);
+  --tw-10: rgba(255, 255, 255, 0.08);
+
+  /* Overlay */
+  --overlay: rgba(0, 0, 0, 0.3);
+}
+
+/* Light theme overrides */
+.light {
+  --color-bg-body: #f0f4f7;
+  --color-bg-card: #ffffff;
+  --color-bg-inset: #e8eef4;
+  --color-bg-muted: #dce4ec;
+
+  --color-t-900: #0c1520;
+  --color-t-700: #283848;
+  --color-t-500: #506878;
+  --color-t-400: #8094a6;
+  --color-t-300: #b0c0cc;
+
+  --color-border-main: #d0dae4;
+  --color-border-subtle: #e4ecf2;
+
+  --color-muted: #8a9aaa;
+
+  --pri-bg: rgba(46, 196, 182, 0.06);
+  --pri-border: rgba(46, 196, 182, 0.18);
+
+  --ok-bg: #edf5f8;
+  --ok-border: rgba(100, 181, 207, 0.2);
+
+  --warn-bg: #fdf8ee;
+  --warn-border: rgba(224, 168, 80, 0.2);
+
+  --fail-bg: #faf0f0;
+
+  --muted-bg: #edf1f5;
+  --muted-border: rgba(138, 154, 170, 0.15);
+}
+
+/* Note: sidebar always stays dark — bgDeep/bgSidebar not overridden in .light */
+
+/* Base styles — must be in @layer base so Tailwind utilities can override */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-bg-body);
+    color: var(--color-t-900);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Shimmer animation for skeletons */
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+
+@utility animate-shimmer {
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Page enter animation */
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@utility animate-page-in {
+  animation: pageIn 0.3s ease-out;
+}
+
+/* Ticker scroll animation */
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@utility animate-ticker {
+  animation: ticker 28s linear infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-t-300);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-t-400);
+}

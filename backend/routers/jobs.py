@@ -10,6 +10,7 @@ from models.auto_apply_config import AutoApplyConfig
 from models.job import Job
 from models.job_match_score import JobMatchScore
 from schemas.job import JobListResponse, JobResponse
+from schemas.scoring import MatchBreakdownResponse, score_to_label
 from services.job_scope import apply_config_scope
 
 logger = logging.getLogger(__name__)
@@ -173,10 +174,10 @@ async def get_job(job_id: uuid.UUID, user: CurrentUser, db: DbSession) -> JobRes
 # ── Match score endpoint ──────────────────────────────────────────────────────
 
 
-@router.get("/{job_id}/match")
+@router.get("/{job_id}/match", response_model=MatchBreakdownResponse)
 async def get_job_match(
     job_id: uuid.UUID, user: CurrentUser, db: DbSession
-) -> dict:
+) -> MatchBreakdownResponse:
     score_result = await db.execute(
         select(JobMatchScore).where(
             JobMatchScore.user_id == user.id,
@@ -189,12 +190,21 @@ async def get_job_match(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Match score not computed yet for this job",
         )
-    return {
-        "job_id": str(job_id),
-        "score": score_row.score,
-        "factors": score_row.factors,
-        "computed_at": score_row.computed_at.isoformat(),
-    }
+
+    analysis = score_row.structured_analysis or {}
+
+    return MatchBreakdownResponse(
+        job_id=str(job_id),
+        score=score_row.score,
+        label=score_to_label(score_row.score),
+        summary=analysis.get("summary") or None,
+        strengths=analysis.get("strengths") or None,
+        concerns=analysis.get("concerns") or None,
+        key_matches=analysis.get("key_matches") or None,
+        key_gaps=analysis.get("key_gaps") or None,
+        factors=score_row.factors,
+        computed_at=score_row.computed_at.isoformat(),
+    )
 
 
 # ── Rescore ──────────────────────────────────────────────────────────────────

@@ -34,6 +34,14 @@ class Job(Base, TimestampMixin):
     tags: Mapped[list | None] = mapped_column(JSONB)
     ats_platform: Mapped[str | None] = mapped_column(String, index=True)
 
+    # API-sourced metadata
+    source_domain: Mapped[str | None] = mapped_column(String)
+    organization_url: Mapped[str | None] = mapped_column(String)
+    domain_derived: Mapped[str | None] = mapped_column(String)
+    country: Mapped[str | None] = mapped_column(String)
+    city: Mapped[str | None] = mapped_column(String)
+    ai_enrichment: Mapped[dict | None] = mapped_column(JSONB)
+
     # Enrichment fields (populated by LLM enrichment worker)
     experience_level: Mapped[str | None] = mapped_column(String)  # entry, mid, senior, lead, executive
     employment_type: Mapped[str | None] = mapped_column(String)  # full_time, part_time, contract, internship

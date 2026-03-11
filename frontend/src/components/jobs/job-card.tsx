@@ -75,7 +75,27 @@ export function JobCard({ job }: JobCardProps) {
               {formatRelativeDate(job.posted_at)}
             </span>
           )}
+          {job.ai_enrichment?.visa_sponsorship === true && (
+            <Badge variant="outline" className="text-xs py-0 px-1.5 text-accent-green border-accent-green/40">
+              Visa
+            </Badge>
+          )}
         </div>
+        {/* Top skills from AI enrichment */}
+        {job.ai_enrichment?.skills && job.ai_enrichment.skills.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {job.ai_enrichment.skills.slice(0, 3).map((skill) => (
+              <Badge key={skill} variant="secondary" className="text-[10px] py-0 px-1.5">
+                {skill}
+              </Badge>
+            ))}
+            {job.ai_enrichment.skills.length > 3 && (
+              <span className="text-[10px] text-text-muted">
+                +{job.ai_enrichment.skills.length - 3}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Right side: score + status + actions */}

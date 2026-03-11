@@ -187,6 +187,13 @@ async def _upsert_jobs(
             "ats_platform": stmt.excluded.ats_platform,
             "posted_at": stmt.excluded.posted_at,
             "is_active": stmt.excluded.is_active,
+            "expires_at": stmt.excluded.expires_at,
+            "source_domain": stmt.excluded.source_domain,
+            "organization_url": stmt.excluded.organization_url,
+            "domain_derived": stmt.excluded.domain_derived,
+            "country": stmt.excluded.country,
+            "city": stmt.excluded.city,
+            "ai_enrichment": stmt.excluded.ai_enrichment,
         },
     ).returning(Job.id)
 

@@ -28,6 +28,7 @@ class JobMatchScore(Base):
     )
     score: Mapped[float] = mapped_column(Float, nullable=False)
     factors: Mapped[dict | None] = mapped_column(JSONB)
+    structured_analysis: Mapped[dict | None] = mapped_column(JSONB)
     computed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=text("now()"),

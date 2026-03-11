@@ -61,6 +61,7 @@ def _mock_score(**overrides: object) -> SimpleNamespace:
         "job_id": _JOB_ID,
         "score": 72.5,
         "factors": {"skill_score": 35.0, "title_score": 22.5, "location_score": 15.0},
+        "structured_analysis": None,
         "computed_at": datetime(2026, 2, 27, tzinfo=timezone.utc),
     }
     defaults.update(overrides)
@@ -280,7 +281,34 @@ class TestJobMatch:
         assert resp.status_code == 200
         data = resp.json()
         assert data["score"] == 72.5
+        assert data["label"] == "Good match"
         assert data["factors"]["skill_score"] == 35.0
+        # No structured_analysis → null fields
+        assert data["summary"] is None
+        assert data["strengths"] is None
+
+    def test_match_with_structured_analysis(self) -> None:
+        analysis = {
+            "summary": "Build payment infrastructure products.",
+            "strengths": ["Your Python experience matches"],
+            "concerns": ["No payments domain experience"],
+            "key_matches": ["Python", "FastAPI"],
+            "key_gaps": ["Payments"],
+        }
+        score = _mock_score(score=92.0, structured_analysis=analysis)
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = score
+        self.session.execute = AsyncMock(return_value=result)
+
+        resp = client.get(f"/api/jobs/{_JOB_ID}/match")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["score"] == 92.0
+        assert data["label"] == "Exceptional match"
+        assert data["summary"] == "Build payment infrastructure products."
+        assert len(data["strengths"]) == 1
+        assert len(data["concerns"]) == 1
+        assert data["key_matches"] == ["Python", "FastAPI"]
 
 
 # ── Heuristic scorer unit tests ──────────────────────────────────────────────

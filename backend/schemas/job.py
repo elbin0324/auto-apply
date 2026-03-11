@@ -15,7 +15,7 @@ class AIEnrichment(BaseModel):
     skills: list[str] = []
     core_responsibilities: str | None = None
     requirements_summary: str | None = None
-    benefits: str | None = None
+    benefits: list[str] | str | None = None
     keywords: list[str] = []
     taxonomies: list[str] = []
     education_level: list[str] = []
@@ -25,7 +25,7 @@ class AIEnrichment(BaseModel):
     hiring_manager_name: str | None = None
     hiring_manager_email: str | None = None
     work_arrangement_office_days: int | None = None
-    remote_location: str | None = None
+    remote_location: list[str] | str | None = None
     salary: AISalary | None = None
 
 

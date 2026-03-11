@@ -10,12 +10,37 @@ from sqlalchemy.orm import selectinload
 
 from models.application import Application
 from models.job import Job
+from models.job_match_score import JobMatchScore
 from schemas.application import ApplicationListResponse, ApplicationStats
 from schemas.auto_apply import ApplyResult, ProgressUpdate
 from infra.event_publisher import publish_user_event
 from services.ats_registry_service import record_result as record_ats_result
 
 logger = logging.getLogger(__name__)
+
+
+async def _attach_match_scores(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    applications: list[Application],
+) -> None:
+    """Batch-load match scores and set them on each application's job."""
+    job_ids = [app.job.id for app in applications if app.job]
+    if not job_ids:
+        return
+
+    stmt = select(JobMatchScore.job_id, JobMatchScore.score, JobMatchScore.factors).where(
+        JobMatchScore.user_id == user_id,
+        JobMatchScore.job_id.in_(job_ids),
+    )
+    rows = await db.execute(stmt)
+    scores = {row.job_id: (row.score, row.factors) for row in rows}
+
+    for app in applications:
+        if app.job and app.job.id in scores:
+            score, factors = scores[app.job.id]
+            app.job.match_score = score
+            app.job.match_factors = factors
 
 
 async def list_applications(
@@ -52,7 +77,9 @@ async def list_applications(
         .limit(per_page)
     )
     result = await db.execute(stmt)
-    applications = result.scalars().all()
+    applications = list(result.scalars().all())
+
+    await _attach_match_scores(db, user_id, applications)
 
     return ApplicationListResponse(
         applications=applications,
@@ -80,6 +107,9 @@ async def get_application(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Application not found",
         )
+
+    await _attach_match_scores(db, user_id, [application])
+
     return application
 
 

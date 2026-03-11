@@ -1,6 +1,6 @@
 import { StatCard } from "@/components/ui/stat-card";
 import { SkeletonStatCard } from "@/components/ui/skeleton";
-import { Plane, Check, Chart, Target, ApplyPilotMark } from "@/icons";
+import { Check, Chart, Target, ApplyPilotMark } from "@/icons";
 import type { ApplicationStats } from "@/types/application";
 
 interface StatsRowProps {

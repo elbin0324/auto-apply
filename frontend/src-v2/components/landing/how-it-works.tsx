@@ -1,5 +1,5 @@
 import { Reveal } from "./reveal";
-import { Doc, Gauge, Plane, Target } from "@/icons";
+import { ApplyPilotMark, Doc, Gauge, Target } from "@/icons";
 
 const STEPS = [
   {
@@ -18,7 +18,7 @@ const STEPS = [
     n: "03",
     title: "HIT LAUNCH",
     desc: "ApplyPilot finds matching roles, tailors your resume for each one, fills out the application, and submits. All while you do something better with your time.",
-    icon: Plane,
+    icon: ApplyPilotMark,
   },
   {
     n: "04",

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { Plane } from "@/icons";
+import { ApplyPilotMark } from "@/icons";
 
 const NAV_LINKS = ["Features", "How It Works", "Pricing"] as const;
 
@@ -27,7 +27,7 @@ export function LandingNav() {
       {/* Logo */}
       <div className="flex items-center gap-2.5">
         <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-pri">
-          <Plane size={13} color="#060d14" />
+          <ApplyPilotMark size={13} color="#060d14" />
         </div>
         <span className="font-mono text-sm font-bold" style={{ color: "var(--tw-90)" }}>
           APPLY<span className="text-pri">PILOT</span>

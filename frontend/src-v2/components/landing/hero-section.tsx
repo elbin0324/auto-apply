@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Reveal } from "./reveal";
 import { RadarCanvas } from "./radar-canvas";
-import { Plane } from "@/icons";
+import { ApplyPilotMark } from "@/icons";
 
 const STATS = [
   { value: "12,400+", label: "APPS SENT" },
@@ -98,7 +98,7 @@ export function HeroSection() {
               className="flex items-center gap-2.5 rounded-lg bg-pri px-[30px] py-[15px] font-mono text-xs font-bold uppercase tracking-[.04em] transition-all duration-250 hover:-translate-y-0.5 hover:shadow-[0_4px_30px_var(--pri-glow)]"
               style={{ color: "#060d14" }}
             >
-              <Plane size={14} color="#060d14" />
+              <ApplyPilotMark size={14} color="#060d14" />
               Get Started Free
             </Link>
             <a

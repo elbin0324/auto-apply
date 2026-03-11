@@ -1,4 +1,4 @@
-import { Plane } from "@/icons";
+import { ApplyPilotMark } from "@/icons";
 
 const LINKS = ["Privacy", "Terms", "Status", "Docs", "Twitter"];
 
@@ -15,7 +15,7 @@ export function LandingFooter() {
         {/* Logo + info */}
         <div className="flex items-center gap-2.5">
           <div className="flex h-[22px] w-[22px] items-center justify-center rounded bg-pri">
-            <Plane size={10} color="#060d14" />
+            <ApplyPilotMark size={10} color="#060d14" />
           </div>
           <span
             className="font-mono text-[11px] font-bold"

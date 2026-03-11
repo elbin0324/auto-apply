@@ -18,7 +18,7 @@ export function MatchSignal({ score, showNum = true }: MatchSignalProps) {
         display: "flex",
         alignItems: "center",
         gap: 6,
-        minWidth: showNum ? 60 : 30,
+        width: showNum ? 105 : 30,
       }}
     >
       <div style={{ display: "flex", alignItems: "flex-end", gap: 1.5, marginTop: -2 }}>

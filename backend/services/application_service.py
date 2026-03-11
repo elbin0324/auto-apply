@@ -219,6 +219,38 @@ async def process_progress_update(
     return application
 
 
+async def reap_stale_applications(
+    db: AsyncSession,
+    timeout_minutes: int = 10,
+) -> int:
+    """Mark stale in_progress/queued applications as failed.
+
+    Applications stuck in non-terminal states for longer than *timeout_minutes*
+    are presumed to have been dropped by the runner (crash, network issue, etc.).
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
+
+    stmt = select(Application).where(
+        Application.status.in_(["in_progress", "queued"]),
+        Application.updated_at < cutoff,
+    )
+    result = await db.execute(stmt)
+    stale = list(result.scalars().all())
+
+    for app in stale:
+        app.status = "failed"
+        app.current_phase = "failed"
+        app.error_message = (
+            f"Timed out: no progress for {timeout_minutes} minutes"
+        )
+
+    if stale:
+        await db.flush()
+        logger.info("Reaped %d stale applications (cutoff=%s)", len(stale), cutoff)
+
+    return len(stale)
+
+
 async def process_agent_result(
     db: AsyncSession,
     result: ApplyResult,
@@ -258,7 +290,7 @@ async def process_agent_result(
 
     # Store generated application artifact if present
     if result.generated_application:
-        application.generated_application = result.generated_application.model_dump()
+        application.generated_application = result.generated_application.model_dump(mode="json")
 
     # Merge metadata
     if result.metadata:

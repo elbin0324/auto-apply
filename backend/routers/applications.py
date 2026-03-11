@@ -21,6 +21,7 @@ from services.application_service import (
     list_applications,
     process_agent_result,
     process_progress_update,
+    reap_stale_applications,
 )
 from services.auto_apply_service import build_user_profile_for_agent, run_matching_for_user
 from services.queue_service import push_apply_task
@@ -220,3 +221,17 @@ async def trigger_fetch(db: DbSession, settings: SettingsDep) -> dict:
 
     logger.info("Cron fetch: enqueued %d fetch tasks", len(configs))
     return {"users_enqueued": len(configs)}
+
+
+@scheduler_router.post(
+    "/reap-stale",
+    dependencies=[Depends(verify_internal_api_key)],
+    status_code=status.HTTP_200_OK,
+)
+async def trigger_reap_stale(db: DbSession) -> dict:
+    """Reap applications stuck in queued/in_progress for too long.
+
+    Called by Railway cron job every 5 minutes.
+    """
+    reaped = await reap_stale_applications(db)
+    return {"reaped": reaped}

@@ -6,7 +6,7 @@ and service unit tests.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -749,3 +749,98 @@ class TestApplicationServiceUnit:
 
         result = ApplyResult(application_id=_APP_ID, status="success")
         assert result.application_id == _APP_ID
+
+
+# ── Stale application reaper ─────────────────────────────────────────────
+
+
+class TestReapStaleEndpoint:
+    """Tests for POST /api/internal/scheduler/reap-stale."""
+
+    def setup_method(self) -> None:
+        self.session = _mock_db_session()
+        _apply_internal_key_override()
+        _apply_overrides(session=self.session)
+
+    def teardown_method(self) -> None:
+        _clear_overrides()
+
+    @patch("routers.applications.reap_stale_applications", new_callable=AsyncMock)
+    def test_reap_stale_returns_count(self, mock_reap: AsyncMock) -> None:
+        mock_reap.return_value = 3
+
+        resp = client.post("/api/internal/scheduler/reap-stale")
+        assert resp.status_code == 200
+        assert resp.json() == {"reaped": 3}
+        mock_reap.assert_called_once()
+
+    @patch("routers.applications.reap_stale_applications", new_callable=AsyncMock)
+    def test_reap_stale_zero(self, mock_reap: AsyncMock) -> None:
+        mock_reap.return_value = 0
+
+        resp = client.post("/api/internal/scheduler/reap-stale")
+        assert resp.status_code == 200
+        assert resp.json() == {"reaped": 0}
+
+    def test_reap_stale_requires_internal_key(self) -> None:
+        _clear_overrides()
+        resp = client.post("/api/internal/scheduler/reap-stale")
+        assert resp.status_code in (403, 422)
+
+
+class TestReapStaleService:
+    """Unit tests for reap_stale_applications service function."""
+
+    def setup_method(self) -> None:
+        self.session = _mock_db_session()
+
+    @patch("services.application_service.select")
+    async def test_reaps_stale_apps(self, mock_select: MagicMock) -> None:
+        from services.application_service import reap_stale_applications
+
+        stale_app = _mock_application(
+            status="in_progress",
+            updated_at=datetime.now(timezone.utc) - timedelta(minutes=30),
+        )
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.all.return_value = [stale_app]
+        self.session.execute = AsyncMock(return_value=result_mock)
+
+        count = await reap_stale_applications(self.session, timeout_minutes=10)
+
+        assert count == 1
+        assert stale_app.status == "failed"
+        assert stale_app.current_phase == "failed"
+        assert "10 minutes" in stale_app.error_message
+        self.session.flush.assert_called_once()
+
+    @patch("services.application_service.select")
+    async def test_reaps_nothing_when_none_stale(self, mock_select: MagicMock) -> None:
+        from services.application_service import reap_stale_applications
+
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.all.return_value = []
+        self.session.execute = AsyncMock(return_value=result_mock)
+
+        count = await reap_stale_applications(self.session, timeout_minutes=10)
+
+        assert count == 0
+        self.session.flush.assert_not_called()
+
+    @patch("services.application_service.select")
+    async def test_reaps_queued_apps(self, mock_select: MagicMock) -> None:
+        from services.application_service import reap_stale_applications
+
+        stale_queued = _mock_application(
+            id=_APP_ID_2,
+            status="queued",
+            updated_at=datetime.now(timezone.utc) - timedelta(minutes=15),
+        )
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.all.return_value = [stale_queued]
+        self.session.execute = AsyncMock(return_value=result_mock)
+
+        count = await reap_stale_applications(self.session, timeout_minutes=10)
+
+        assert count == 1
+        assert stale_queued.status == "failed"

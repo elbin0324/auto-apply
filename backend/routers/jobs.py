@@ -3,13 +3,15 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select, text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from deps import CurrentUser, DbSession
 from models.application import Application
+from models.auto_apply_config import AutoApplyConfig
 from models.job import Job
 from models.job_match_score import JobMatchScore
 from schemas.job import JobListResponse, JobResponse
+from schemas.scoring import MatchBreakdownResponse, score_to_label
+from services.job_scope import apply_config_scope
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -40,6 +42,12 @@ async def list_jobs(
     Only returns jobs that have a JobMatchScore for this user.
     Includes application pipeline status for queue management.
     """
+    # Load user's config (may be None)
+    config_result = await db.execute(
+        select(AutoApplyConfig).where(AutoApplyConfig.user_id == user.id)
+    )
+    config = config_result.scalar_one_or_none()
+
     # Base query: INNER JOIN on JobMatchScore scopes to user's scored jobs
     stmt = (
         select(
@@ -57,8 +65,10 @@ async def list_jobs(
             Application,
             (Application.job_id == Job.id) & (Application.user_id == user.id),
         )
-        .where(Job.is_active.is_(True))
     )
+
+    # Unified config scope (handles is_active + user preference filters)
+    stmt = apply_config_scope(stmt, config)
 
     # Status filter
     if status_filter == "new":
@@ -164,10 +174,10 @@ async def get_job(job_id: uuid.UUID, user: CurrentUser, db: DbSession) -> JobRes
 # ── Match score endpoint ──────────────────────────────────────────────────────
 
 
-@router.get("/{job_id}/match")
+@router.get("/{job_id}/match", response_model=MatchBreakdownResponse)
 async def get_job_match(
     job_id: uuid.UUID, user: CurrentUser, db: DbSession
-) -> dict:
+) -> MatchBreakdownResponse:
     score_result = await db.execute(
         select(JobMatchScore).where(
             JobMatchScore.user_id == user.id,
@@ -180,12 +190,21 @@ async def get_job_match(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Match score not computed yet for this job",
         )
-    return {
-        "job_id": str(job_id),
-        "score": score_row.score,
-        "factors": score_row.factors,
-        "computed_at": score_row.computed_at.isoformat(),
-    }
+
+    analysis = score_row.structured_analysis or {}
+
+    return MatchBreakdownResponse(
+        job_id=str(job_id),
+        score=score_row.score,
+        label=score_to_label(score_row.score),
+        summary=analysis.get("summary") or None,
+        strengths=analysis.get("strengths") or None,
+        concerns=analysis.get("concerns") or None,
+        key_matches=analysis.get("key_matches") or None,
+        key_gaps=analysis.get("key_gaps") or None,
+        factors=score_row.factors,
+        computed_at=score_row.computed_at.isoformat(),
+    )
 
 
 # ── Rescore ──────────────────────────────────────────────────────────────────

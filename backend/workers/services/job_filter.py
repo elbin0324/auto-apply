@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 from models.auto_apply_config import AutoApplyConfig
 from models.job import Job
 from models.job_match_score import JobMatchScore
-from models.profile import Education, Experience, Profile
+from models.profile import Profile
 from models.user import User
 
 
@@ -44,53 +44,12 @@ async def filter_candidate_jobs(
 ) -> list[Job]:
     """Pre-filter active jobs by user preferences from AutoApplyConfig.
 
-    Filters applied:
-    - Job.is_active == True
-    - Title ILIKE any of config.target_titles
-    - location_type IN config.location_type_pref (NULL passes through)
-    - salary_min >= config.min_salary (NULL passes through)
-    - salary_max <= config.max_salary (NULL passes through)
-    - company NOT ILIKE any excluded company name
+    Delegates to the shared ``get_scoped_jobs`` so that all filter logic
+    lives in one place (``services.job_scope``).
     """
-    stmt = select(Job).where(Job.is_active.is_(True))
+    from services.job_scope import get_scoped_jobs
 
-    # Title filter — match any target title
-    titles = list(config.target_titles or [])
-    if titles:
-        from sqlalchemy import or_
-
-        title_conditions = [Job.title.ilike(f"%{t}%") for t in titles]
-        stmt = stmt.where(or_(*title_conditions))
-
-    # Location type filter
-    location_prefs = list(config.location_type_pref or [])
-    if location_prefs:
-        stmt = stmt.where(
-            Job.location_type.in_(location_prefs) | Job.location_type.is_(None)
-        )
-
-    # Salary filters (NULL passes through)
-    if config.min_salary is not None:
-        stmt = stmt.where(
-            (Job.salary_min >= config.min_salary) | Job.salary_min.is_(None)
-        )
-    if config.max_salary is not None:
-        stmt = stmt.where(
-            (Job.salary_max <= config.max_salary) | Job.salary_max.is_(None)
-        )
-
-    # Excluded companies
-    excluded = list(config.excluded_companies or [])
-    if excluded:
-        from sqlalchemy import and_
-
-        for company_name in excluded:
-            stmt = stmt.where(
-                (Job.company.is_(None)) | ~Job.company.ilike(f"%{company_name}%")
-            )
-
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
+    return await get_scoped_jobs(db, config)
 
 
 async def get_unscored_job_ids(

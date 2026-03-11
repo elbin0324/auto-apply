@@ -367,6 +367,17 @@ def parse_fantastic_result(result: dict[str, Any]) -> dict[str, Any]:
     # Salary — Schema.org MonetaryAmount format, with AI fallback
     salary_min, salary_max, salary_currency = _parse_salary(result.get("salary_raw"))
 
+    # AI salary fallback when salary_raw is empty
+    if salary_min is None and salary_max is None:
+        ai_sal_min = result.get("ai_salary_minvalue")
+        ai_sal_max = result.get("ai_salary_maxvalue")
+        ai_currency = result.get("ai_salary_currency")
+        if ai_sal_min is not None or ai_sal_max is not None:
+            salary_min = ai_sal_min
+            salary_max = ai_sal_max
+            if ai_currency:
+                salary_currency = ai_currency
+
     # Organization — plain string in Active Jobs DB
     company_name = result.get("organization")
     company_logo = result.get("organization_logo")
@@ -411,6 +422,62 @@ def parse_fantastic_result(result: dict[str, Any]) -> dict[str, Any]:
         result.get("date_posted") or result.get("date_created")
     )
 
+    # Expiry date — map date_validthrough to expires_at
+    expires_at = _parse_posted_at(result.get("date_validthrough"))
+
+    # Country and city — flat address fields from API
+    country = result.get("addressCountry")
+    city = result.get("addressLocality")
+
+    # Build ai_enrichment JSONB
+    ai_sal_data = None
+    ai_sal_currency = result.get("ai_salary_currency")
+    ai_sal_min_val = result.get("ai_salary_minvalue")
+    ai_sal_max_val = result.get("ai_salary_maxvalue")
+    ai_sal_unit = result.get("ai_salary_unittext")
+    if ai_sal_currency or ai_sal_min_val is not None or ai_sal_max_val is not None:
+        ai_sal_data = {
+            "currency": ai_sal_currency,
+            "min_value": ai_sal_min_val,
+            "max_value": ai_sal_max_val,
+            "unit_text": ai_sal_unit,
+        }
+
+    ai_enrichment: dict[str, Any] = {
+        "skills": result.get("ai_skills") or [],
+        "core_responsibilities": result.get("ai_core_responsibilities"),
+        "requirements_summary": result.get("ai_requirements_summary"),
+        "benefits": result.get("ai_benefits"),
+        "keywords": result.get("ai_keywords") or [],
+        "taxonomies": result.get("ai_taxonomies_a") or [],
+        "education_level": result.get("ai_education_level") or [],
+        "visa_sponsorship": result.get("ai_visa_sponsorship"),
+        "working_hours": result.get("ai_working_hours"),
+        "job_language": result.get("ai_job_language"),
+        "hiring_manager_name": result.get("ai_hiring_manager_name"),
+        "hiring_manager_email": result.get("ai_hiring_manager_email_address"),
+        "work_arrangement_office_days": result.get("ai_work_arrangement_office_days"),
+        "remote_location": (
+            result.get("ai_remote_location") or result.get("ai_remote_location_derived")
+        ),
+        "salary": ai_sal_data,
+    }
+
+    # Only store ai_enrichment if it has any meaningful data
+    has_ai_data = any([
+        ai_enrichment["skills"],
+        ai_enrichment["core_responsibilities"],
+        ai_enrichment["requirements_summary"],
+        ai_enrichment["benefits"],
+        ai_enrichment["keywords"],
+        ai_enrichment["taxonomies"],
+        ai_enrichment["education_level"],
+        ai_enrichment["visa_sponsorship"] is not None,
+        ai_enrichment["working_hours"] is not None,
+        ai_enrichment["salary"] is not None,
+    ])
+    ai_enrichment_value = ai_enrichment if has_ai_data else None
+
     return {
         "external_id": f"fantastic:{job_id}",
         "title": result.get("title") or "",
@@ -432,6 +499,13 @@ def parse_fantastic_result(result: dict[str, Any]) -> dict[str, Any]:
         "ats_platform": result.get("source"),  # "greenhouse", "lever", etc.
         "is_active": True,
         "posted_at": posted_at,
+        "expires_at": expires_at,
+        "source_domain": result.get("source_domain"),
+        "organization_url": result.get("organization_url"),
+        "domain_derived": result.get("domain_derived"),
+        "country": country,
+        "city": city,
+        "ai_enrichment": ai_enrichment_value,
     }
 
 

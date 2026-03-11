@@ -11,6 +11,9 @@ from schemas.auto_apply import (
     ApplyTask,
     AutoApplyConfigResponse,
     AutoApplyConfigUpdate,
+    BatchReviewItemResult,
+    BatchReviewRequest,
+    BatchReviewResponse,
     QueueStatus,
 )
 from services.auto_apply_service import (
@@ -183,3 +186,79 @@ async def review_application(
     application.status = "skipped"
     await db.flush()
     return {"application_id": str(application_id), "status": "skipped"}
+
+
+# ── Batch Review ────────────────────────────────────────────────────────
+
+
+@router.post("/review/batch", response_model=BatchReviewResponse)
+async def batch_review_applications(
+    body: BatchReviewRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> BatchReviewResponse:
+    """Approve or reject multiple pending_review applications at once."""
+    results: list[BatchReviewItemResult] = []
+    errors: list[dict] = []
+
+    for app_id in body.application_ids:
+        result = await db.execute(
+            select(Application).where(
+                Application.id == app_id,
+                Application.user_id == user.id,
+            )
+        )
+        application = result.scalar_one_or_none()
+
+        if not application:
+            errors.append({"application_id": str(app_id), "error": "Not found"})
+            continue
+
+        if application.status != "pending_review":
+            errors.append({
+                "application_id": str(app_id),
+                "error": f"Not pending review (current: {application.status})",
+            })
+            continue
+
+        if body.action == "approve":
+            application.status = "queued"
+            application.task_mode = "full_auto"
+            await db.flush()
+
+            job_result = await db.execute(
+                select(Job.url, Job.apply_url).where(Job.id == application.job_id)
+            )
+            job_row = job_result.one_or_none()
+            job_url = (job_row.apply_url or job_row.url) if job_row else ""
+
+            user_profile, resume_text, resume_url = await build_user_profile_for_agent(
+                db, user.id
+            )
+
+            task = ApplyTask(
+                application_id=application.id,
+                user_id=user.id,
+                job_id=application.job_id,
+                job_url=job_url,
+                resume_url=resume_url,
+                resume_text=resume_text,
+                user_profile=user_profile,
+                mode="full_auto",
+            )
+            await push_apply_task(task)
+            results.append(BatchReviewItemResult(
+                application_id=str(app_id), status="queued"
+            ))
+        else:
+            application.status = "skipped"
+            await db.flush()
+            results.append(BatchReviewItemResult(
+                application_id=str(app_id), status="skipped"
+            ))
+
+    return BatchReviewResponse(
+        processed=len(results),
+        results=results,
+        errors=errors,
+    )

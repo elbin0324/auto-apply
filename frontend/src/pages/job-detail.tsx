@@ -10,6 +10,11 @@ import {
   Undo2,
   CheckCircle2,
   XCircle,
+  Globe,
+  GraduationCap,
+  Briefcase,
+  Heart,
+  Plane,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -319,6 +324,135 @@ export default function JobDetailPage() {
               {tag}
             </Badge>
           ))}
+        </div>
+      )}
+
+      {/* AI Enrichment */}
+      {job.ai_enrichment && (
+        <>
+          {/* Skills */}
+          {job.ai_enrichment.skills.length > 0 && (
+            <div className="rounded-xl border border-border-subtle bg-bg-card p-5">
+              <h2 className="mb-3 text-sm font-semibold text-text-primary flex items-center gap-2">
+                <Briefcase className="h-4 w-4" />
+                Skills
+              </h2>
+              <div className="flex flex-wrap gap-1.5">
+                {job.ai_enrichment.skills.map((skill) => (
+                  <Badge key={skill} variant="secondary" className="text-xs">
+                    {skill}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* AI Analysis */}
+          {(job.ai_enrichment.core_responsibilities || job.ai_enrichment.requirements_summary) && (
+            <div className="rounded-xl border border-border-subtle bg-bg-card p-6 space-y-4">
+              <h2 className="text-sm font-semibold text-text-primary">
+                AI Analysis
+              </h2>
+              {job.ai_enrichment.core_responsibilities && (
+                <div>
+                  <h3 className="text-xs font-medium text-text-muted mb-1">Core Responsibilities</h3>
+                  <p className="text-sm text-text-secondary whitespace-pre-wrap">
+                    {job.ai_enrichment.core_responsibilities}
+                  </p>
+                </div>
+              )}
+              {job.ai_enrichment.requirements_summary && (
+                <div>
+                  <h3 className="text-xs font-medium text-text-muted mb-1">Requirements Summary</h3>
+                  <p className="text-sm text-text-secondary whitespace-pre-wrap">
+                    {job.ai_enrichment.requirements_summary}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Benefits */}
+          {job.ai_enrichment.benefits && (
+            <div className="rounded-xl border border-border-subtle bg-bg-card p-5">
+              <h2 className="mb-2 text-sm font-semibold text-text-primary flex items-center gap-2">
+                <Heart className="h-4 w-4" />
+                Benefits
+              </h2>
+              <p className="text-sm text-text-secondary whitespace-pre-wrap">
+                {job.ai_enrichment.benefits}
+              </p>
+            </div>
+          )}
+
+          {/* Metadata row: visa, education, taxonomies */}
+          {(job.ai_enrichment.visa_sponsorship != null ||
+            job.ai_enrichment.education_level.length > 0 ||
+            job.ai_enrichment.taxonomies.length > 0) && (
+            <div className="rounded-xl border border-border-subtle bg-bg-card p-5 space-y-3">
+              {job.ai_enrichment.visa_sponsorship != null && (
+                <div className="flex items-center gap-2">
+                  <Plane className="h-4 w-4 text-text-muted" />
+                  <span className="text-sm text-text-secondary">Visa Sponsorship:</span>
+                  <Badge variant={job.ai_enrichment.visa_sponsorship ? "default" : "outline"}>
+                    {job.ai_enrichment.visa_sponsorship ? "Available" : "Not Available"}
+                  </Badge>
+                </div>
+              )}
+              {job.ai_enrichment.education_level.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4 text-text-muted" />
+                  <span className="text-sm text-text-secondary">Education:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {job.ai_enrichment.education_level.map((level) => (
+                      <Badge key={level} variant="outline" className="text-xs capitalize">
+                        {level}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {job.ai_enrichment.taxonomies.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-text-muted" />
+                  <span className="text-sm text-text-secondary">Industry:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {job.ai_enrichment.taxonomies.map((tax) => (
+                      <Badge key={tax} variant="outline" className="text-xs">
+                        {tax}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Company info */}
+      {(job.organization_url || job.domain_derived) && (
+        <div className="rounded-xl border border-border-subtle bg-bg-card p-5">
+          <h2 className="mb-2 text-sm font-semibold text-text-primary flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            Company Info
+          </h2>
+          <div className="flex flex-wrap gap-3 text-sm text-text-secondary">
+            {job.organization_url && (
+              <a
+                href={job.organization_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-accent-purple hover:text-accent-purple-light"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Company Website
+              </a>
+            )}
+            {job.domain_derived && (
+              <span className="text-text-muted">{job.domain_derived}</span>
+            )}
+          </div>
         </div>
       )}
 

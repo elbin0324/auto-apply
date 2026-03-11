@@ -29,7 +29,11 @@ async def list_applications(
     base = select(Application).where(Application.user_id == user_id)
 
     if status_filter:
-        base = base.where(Application.status == status_filter)
+        statuses = [s.strip() for s in status_filter.split(",") if s.strip()]
+        if len(statuses) == 1:
+            base = base.where(Application.status == statuses[0])
+        else:
+            base = base.where(Application.status.in_(statuses))
     if date_from:
         base = base.where(Application.created_at >= date_from)
     if date_to:
@@ -87,6 +91,7 @@ async def get_application_stats(
     week_start = (now - timedelta(days=now.weekday())).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     stmt = select(
         func.count(Application.id).label("total"),
@@ -101,10 +106,15 @@ async def get_application_stats(
                 )
             )
         ).label("pending"),
+        func.count(case((Application.status == "queued", 1))).label("queued"),
+        func.count(case((Application.status == "in_progress", 1))).label("in_progress"),
         func.count(case((Application.status == "failed", 1))).label("failed"),
         func.count(case((Application.status == "skipped", 1))).label("skipped"),
         func.count(case((Application.created_at >= week_start, 1))).label(
             "this_week"
+        ),
+        func.count(case((Application.created_at >= today_start, 1))).label(
+            "today"
         ),
     ).where(Application.user_id == user_id)
 
@@ -120,9 +130,12 @@ async def get_application_stats(
         total=row.total,
         applied=applied,
         pending=row.pending,
+        queued=row.queued,
+        in_progress=row.in_progress,
         failed=failed,
         skipped=row.skipped,
         this_week=row.this_week,
+        today=row.today,
         success_rate=success_rate,
     )
 

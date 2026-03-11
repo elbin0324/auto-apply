@@ -1,3 +1,28 @@
+export interface AISalary {
+  currency?: string | null;
+  min_value?: number | null;
+  max_value?: number | null;
+  unit_text?: string | null;
+}
+
+export interface AIEnrichment {
+  skills: string[];
+  core_responsibilities?: string | null;
+  requirements_summary?: string | null;
+  benefits?: string | null;
+  keywords: string[];
+  taxonomies: string[];
+  education_level: string[];
+  visa_sponsorship?: boolean | null;
+  working_hours?: number | null;
+  job_language?: string | null;
+  hiring_manager_name?: string | null;
+  hiring_manager_email?: string | null;
+  work_arrangement_office_days?: number | null;
+  remote_location?: string | null;
+  salary?: AISalary | null;
+}
+
 export interface JobSearchParams {
   query?: string | null;
   location?: string | null;
@@ -34,6 +59,12 @@ export interface JobResponse {
   tags: string[];
   url: string;
   source: string;
+  source_domain?: string | null;
+  organization_url?: string | null;
+  domain_derived?: string | null;
+  country?: string | null;
+  city?: string | null;
+  ai_enrichment?: AIEnrichment | null;
   category?: string | null;
   posted_at?: string | null;
   is_active: boolean;

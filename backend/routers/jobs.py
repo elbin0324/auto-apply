@@ -107,7 +107,7 @@ async def list_jobs(
     # Sorting
     if sort_by == "salary":
         stmt = stmt.order_by(Job.salary_min.desc().nulls_last())
-    elif sort_by == "match_score":
+    elif sort_by in ("match_score", "match"):
         stmt = stmt.order_by(JobMatchScore.score.desc().nulls_last())
     else:
         stmt = stmt.order_by(Job.posted_at.desc().nulls_last())

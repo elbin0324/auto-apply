@@ -4,6 +4,7 @@ import type { Application } from "@/types/application";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CompanyLogo } from "@/components/shared/company-logo";
 import { X, Check } from "@/icons";
 import { matchScoreColor, matchScoreLabel, statusColor, statusLabel } from "@/theme/tokens";
 import { cn } from "@/theme/utils";
@@ -543,14 +544,10 @@ export function SidePanel({
         {/* Company block + meta — always visible */}
         <div className="space-y-4 px-5 pt-5 pb-3">
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-bg-deep">
-              <span className="font-mono text-[11px] font-bold text-pri">
-                {(displayJob.company ?? "")
-                  .replace(/[^A-Za-z]/g, "")
-                  .slice(0, 3)
-                  .toUpperCase()}
-              </span>
-            </div>
+            <CompanyLogo
+              company={displayJob.company ?? ""}
+              logoUrl={displayJob.company_logo_url}
+            />
             <div className="min-w-0">
               <h2 className="font-sans text-[16px] font-bold text-t-900">{displayJob.title}</h2>
               <p className="font-mono text-[12px] text-t-400">{displayJob.company}</p>

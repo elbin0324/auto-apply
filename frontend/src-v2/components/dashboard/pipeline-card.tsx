@@ -25,8 +25,8 @@ function PipelineBox({ label, value, variant }: PipelineBoxProps) {
 
   return (
     <div
-      className="flex flex-1 flex-col items-center rounded-lg py-3"
-      style={{ background: bgMap[variant] }}
+      className="flex flex-1 flex-col items-center rounded-lg border py-3"
+      style={{ background: bgMap[variant], borderColor: colorMap[variant], opacity: 0.85 }}
     >
       <span
         className="font-mono text-[20px] font-bold leading-none"
@@ -82,6 +82,7 @@ export function PipelineCard({
               job={{
                 id: app.job?.id ?? app.id,
                 company: app.job?.company ?? "Unknown",
+                company_logo_url: app.job?.company_logo_url,
                 title: app.job?.title ?? "Application",
                 location: app.job?.location ?? undefined,
                 salary_min: app.job?.salary_min ?? undefined,

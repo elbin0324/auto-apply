@@ -351,6 +351,23 @@ def _parse_ai_experience_level(raw: str | None) -> str | None:
     return AI_EXP_TO_INTERNAL.get(raw)
 
 
+def _to_numeric(value: Any) -> float | None:
+    """Coerce a value to float, returning None for empty/invalid inputs."""
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def _to_str_or_none(value: Any) -> str | None:
+    """Return None for empty strings, otherwise str."""
+    if value is None or value == "":
+        return None
+    return str(value)
+
+
 # ── Result parser ────────────────────────────────────────────────────────────
 
 
@@ -369,9 +386,9 @@ def parse_fantastic_result(result: dict[str, Any]) -> dict[str, Any]:
 
     # AI salary fallback when salary_raw is empty
     if salary_min is None and salary_max is None:
-        ai_sal_min = result.get("ai_salary_minvalue")
-        ai_sal_max = result.get("ai_salary_maxvalue")
-        ai_currency = result.get("ai_salary_currency")
+        ai_sal_min = _to_numeric(result.get("ai_salary_minvalue"))
+        ai_sal_max = _to_numeric(result.get("ai_salary_maxvalue"))
+        ai_currency = _to_str_or_none(result.get("ai_salary_currency"))
         if ai_sal_min is not None or ai_sal_max is not None:
             salary_min = ai_sal_min
             salary_max = ai_sal_max
@@ -426,15 +443,15 @@ def parse_fantastic_result(result: dict[str, Any]) -> dict[str, Any]:
     expires_at = _parse_posted_at(result.get("date_validthrough"))
 
     # Country and city — flat address fields from API
-    country = result.get("addressCountry")
-    city = result.get("addressLocality")
+    country = _to_str_or_none(result.get("addressCountry"))
+    city = _to_str_or_none(result.get("addressLocality"))
 
     # Build ai_enrichment JSONB
     ai_sal_data = None
-    ai_sal_currency = result.get("ai_salary_currency")
-    ai_sal_min_val = result.get("ai_salary_minvalue")
-    ai_sal_max_val = result.get("ai_salary_maxvalue")
-    ai_sal_unit = result.get("ai_salary_unittext")
+    ai_sal_currency = _to_str_or_none(result.get("ai_salary_currency"))
+    ai_sal_min_val = _to_numeric(result.get("ai_salary_minvalue"))
+    ai_sal_max_val = _to_numeric(result.get("ai_salary_maxvalue"))
+    ai_sal_unit = _to_str_or_none(result.get("ai_salary_unittext"))
     if ai_sal_currency or ai_sal_min_val is not None or ai_sal_max_val is not None:
         ai_sal_data = {
             "currency": ai_sal_currency,
@@ -500,9 +517,9 @@ def parse_fantastic_result(result: dict[str, Any]) -> dict[str, Any]:
         "is_active": True,
         "posted_at": posted_at,
         "expires_at": expires_at,
-        "source_domain": result.get("source_domain"),
-        "organization_url": result.get("organization_url"),
-        "domain_derived": result.get("domain_derived"),
+        "source_domain": _to_str_or_none(result.get("source_domain")),
+        "organization_url": _to_str_or_none(result.get("organization_url")),
+        "domain_derived": _to_str_or_none(result.get("domain_derived")),
         "country": country,
         "city": city,
         "ai_enrichment": ai_enrichment_value,

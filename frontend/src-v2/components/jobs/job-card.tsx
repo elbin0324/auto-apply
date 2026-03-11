@@ -55,7 +55,7 @@ export function JobCard({ job, onApply, onClick }: JobCardProps) {
 
   return (
     <div
-      className="grid cursor-pointer items-center gap-6 rounded-lg border border-transparent px-3 py-3 transition-all hover:border-[var(--pri-border)] hover:shadow-[0_0_0_2px_var(--pri-glow)] grid-cols-[48px_1fr_auto] md:grid-cols-[48px_1fr_auto_auto] lg:grid-cols-[48px_1fr_auto_auto_auto]"
+      className="grid cursor-pointer items-center gap-6 rounded-lg border border-transparent px-3 py-3 transition-all hover:border-[var(--pri-border)] hover:shadow-[0_0_0_2px_var(--pri-glow)] grid-cols-[48px_1fr_auto] md:grid-cols-[48px_1fr_auto_auto_auto]"
     >
       {/* Logo */}
       <div onClick={() => onClick(job)}>
@@ -72,7 +72,7 @@ export function JobCard({ job, onApply, onClick }: JobCardProps) {
 
       {/* Tags — hidden below xl */}
       {badges.length > 0 && (
-        <div className="hidden lg:flex shrink-0 gap-1.5">
+        <div className="hidden md:flex shrink-0 gap-1.5">
           {badges.map((b) => (
             <Badge key={b.label} color={b.color}>
               {b.label}
@@ -83,7 +83,7 @@ export function JobCard({ job, onApply, onClick }: JobCardProps) {
 
       {/* Match — hidden below md */}
       {job.match_score != null && (
-        <div className="hidden md:block">
+        <div className="hidden md:block pl-3">
           <MatchSignal score={job.match_score} />
         </div>
       )}

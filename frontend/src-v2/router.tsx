@@ -22,6 +22,7 @@ const AnalyticsPage = lazy(() => import("@/pages/analytics"));
 const SettingsPage = lazy(() => import("@/pages/settings"));
 const OnboardingPage = lazy(() => import("@/pages/onboarding"));
 const LandingPage = lazy(() => import("@/pages/landing"));
+const BillingPage = lazy(() => import("@/pages/billing"));
 const KitchenSinkPage = lazy(() => import("@/pages/kitchen-sink"));
 
 function PageSuspense({ children }: { children: React.ReactNode }) {
@@ -150,6 +151,13 @@ const settingsRoute = createRoute({
   beforeLoad: requireAuth,
 });
 
+const billingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/billing",
+  component: protectedPage(BillingPage),
+  beforeLoad: requireAuth,
+});
+
 // Kitchen sink (dev only, no auth)
 const kitchenSinkRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -187,6 +195,7 @@ const routeTree = rootRoute.addChildren([
   trackerRoute,
   analyticsRoute,
   settingsRoute,
+  billingRoute,
   kitchenSinkRoute,
 ]);
 

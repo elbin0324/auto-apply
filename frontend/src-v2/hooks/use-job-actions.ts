@@ -1,13 +1,15 @@
 import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useToastStore } from "@/stores/toast-store";
+import type { BillingError } from "@/types/billing";
 
 export function useJobActions() {
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const [applyingJobId, setApplyingJobId] = useState<string | null>(null);
   const [exitingJobId, setExitingJobId] = useState<string | null>(null);
+  const [billingError, setBillingError] = useState<BillingError | null>(null);
 
   const apply = useMutation({
     mutationFn: (jobId: string) => api.post(`/api/jobs/${jobId}/queue`),
@@ -18,8 +20,15 @@ export function useJobActions() {
       setApplyingJobId(null);
       setExitingJobId(jobId);
     },
-    onError: () => {
+    onError: (error) => {
       setApplyingJobId(null);
+      if (error instanceof ApiError && error.status === 403) {
+        const body = error.body as { detail?: BillingError } | undefined;
+        if (body?.detail?.code === "no_subscription" || body?.detail?.code === "quota_exceeded") {
+          setBillingError(body.detail);
+          return;
+        }
+      }
     },
   });
 
@@ -55,5 +64,13 @@ export function useJobActions() {
     },
   });
 
-  return { apply, skip, applyingJobId, exitingJobId, onExitComplete };
+  return {
+    apply,
+    skip,
+    applyingJobId,
+    exitingJobId,
+    onExitComplete,
+    billingError,
+    clearBillingError: () => setBillingError(null),
+  };
 }

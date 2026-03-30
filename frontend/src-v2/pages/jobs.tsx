@@ -11,6 +11,7 @@ import { Target } from "@/icons";
 import { useJobs, type UseJobsParams } from "@/hooks/use-jobs";
 import { useJobActions } from "@/hooks/use-job-actions";
 import { useJobDetail } from "@/hooks/use-job-detail";
+import { UpgradeModal } from "@/components/billing/upgrade-modal";
 import type { Job } from "@/types/job";
 
 export default function JobsPage() {
@@ -22,7 +23,7 @@ export default function JobsPage() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
   const { data, isLoading } = useJobs(filters);
-  const { apply, applyingJobId, exitingJobId, onExitComplete } = useJobActions();
+  const { apply, applyingJobId, exitingJobId, onExitComplete, billingError, clearBillingError } = useJobActions();
   const { job: jobDetail, match: matchDetail } = useJobDetail(selectedJobId);
 
   const jobs = data?.jobs ?? [];
@@ -155,6 +156,10 @@ export default function JobsPage() {
         onApply={handleApply}
         isApplying={!!applyingJobId && applyingJobId === selectedJobId}
       />
+
+      {billingError && (
+        <UpgradeModal error={billingError} onClose={clearBillingError} />
+      )}
     </>
   );
 }

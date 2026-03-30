@@ -239,6 +239,25 @@ async def get_user_detail(
     )
 
 
+@router.post("/users/{user_id}/whitelist")
+async def toggle_whitelist(
+    user_id: uuid.UUID, admin: AdminUser, db: DbSession
+) -> dict:
+    """Toggle is_whitelisted for a user (bypasses all billing checks)."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.is_whitelisted = not user.is_whitelisted
+    await db.flush()
+
+    return {
+        "user_id": str(user_id),
+        "is_whitelisted": user.is_whitelisted,
+    }
+
+
 # ── Queues ────────────────────────────────────────────────────────────────────
 
 

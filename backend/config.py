@@ -72,16 +72,13 @@ class Settings(BaseSettings):
     scoring_openai_base_url: str = ""  # for openai_compat provider (Ollama, vLLM, etc.)
     scoring_openai_api_key: str = ""  # for openai_compat provider
 
-    # Stripe — TODO: billing not yet implemented
+    # Stripe
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""
     stripe_webhook_secret: str = ""
+    stripe_starter_price_id: str = ""
     stripe_pro_price_id: str = ""
     stripe_premium_price_id: str = ""
-    stripe_credits_10_price_id: str = ""
-    stripe_credits_50_price_id: str = ""
-    stripe_credits_100_price_id: str = ""
-    stripe_credits_250_price_id: str = ""
 
     # Internal auth (agent → platform)
     internal_api_key: str

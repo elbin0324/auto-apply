@@ -11,7 +11,6 @@ from models.auto_apply_config import AutoApplyConfig
 from models.job import Job
 from models.job_match_score import JobMatchScore
 from models.profile import Profile
-from models.subscription import Subscription
 from schemas.auto_apply import (
     ApplyTask,
     EducationForAgent,
@@ -45,19 +44,6 @@ async def get_or_create_config(
     await db.flush()
     return config
 
-
-async def check_credits(db: AsyncSession, user_id: uuid.UUID) -> int:
-    """Return credits_remaining, or -1 if no subscription (allow anyway for now)."""
-    result = await db.execute(
-        select(Subscription).where(Subscription.user_id == user_id)
-    )
-    sub = result.scalar_one_or_none()
-    if not sub:
-        logger.warning(
-            "No subscription for user %s — billing not enforced", user_id
-        )
-        return -1
-    return sub.credits_remaining
 
 
 async def count_applications_today(

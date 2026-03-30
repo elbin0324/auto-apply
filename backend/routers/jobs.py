@@ -241,7 +241,22 @@ async def queue_job(job_id: uuid.UUID, user: CurrentUser, db: DbSession) -> dict
     """Manually queue a job for auto-apply. Creates Application with status 'queued'."""
     from schemas.auto_apply import ApplyTask
     from services.auto_apply_service import build_user_profile_for_agent, count_applications_today
+    from services.billing_service import check_subscription_access, increment_applications_used
     from services.queue_service import push_apply_task
+
+    # Billing check
+    access = await check_subscription_access(db, user)
+    if not access["allowed"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": access["reason"],
+                "message": "Subscription required to apply"
+                if access["reason"] == "no_subscription"
+                else "Monthly application quota exceeded",
+                **{k: v for k, v in access.items() if k not in ("allowed", "reason", "message")},
+            },
+        )
 
     # Verify job exists and is active
     job_result = await db.execute(
@@ -326,6 +341,7 @@ async def queue_job(job_id: uuid.UUID, user: CurrentUser, db: DbSession) -> dict
         user_profile=user_profile,
     )
     await push_apply_task(task)
+    await increment_applications_used(db, user.id)
 
     return {"application_id": str(application.id), "status": "queued"}
 

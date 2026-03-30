@@ -22,6 +22,7 @@ from schemas.auto_apply import (
 )
 from schemas.profile import ApplicationPreferences
 from services.ats_registry_service import get_enabled_ats_names
+from services.billing_service import increment_applications_used
 from services.queue_service import push_apply_task
 
 logger = logging.getLogger(__name__)
@@ -267,6 +268,7 @@ async def run_matching_for_user(
             user_profile=user_profile,
         )
         await push_apply_task(task)
+        await increment_applications_used(db, user_id)
 
         queued_count += 1
 

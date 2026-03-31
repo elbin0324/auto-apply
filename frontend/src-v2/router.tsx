@@ -122,12 +122,14 @@ const autopilotRoute = createRoute({
   beforeLoad: requireAuth,
 });
 
-// Profile routes — parent + tab sub-routes
+// Profile routes — parent redirects to /profile/resume
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/profile",
-  component: protectedPage(ProfilePage),
-  beforeLoad: requireAuth,
+  beforeLoad: () => {
+    requireAuth();
+    throw redirect({ to: "/profile/resume" });
+  },
 });
 
 const profileResumeRoute = createRoute({
@@ -172,6 +174,44 @@ const kitchenSinkRoute = createRoute({
   component: () => <PageSuspense><KitchenSinkPage /></PageSuspense>,
 });
 
+
+// Legacy redirects — old routes point to new locations
+const dashboardRedirect = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dashboard",
+  beforeLoad: () => { throw redirect({ to: "/" }); },
+});
+
+const jobsRedirect = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/jobs",
+  beforeLoad: () => { throw redirect({ to: "/" }); },
+});
+
+const queueRedirect = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/queue",
+  beforeLoad: () => { throw redirect({ to: "/applications" }); },
+});
+
+const trackerRedirect = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/tracker",
+  beforeLoad: () => { throw redirect({ to: "/applications" }); },
+});
+
+const analyticsRedirect = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/analytics",
+  beforeLoad: () => { throw redirect({ to: "/applications" }); },
+});
+
+const settingsRedirect = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings",
+  beforeLoad: () => { throw redirect({ to: "/profile/account" }); },
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -186,6 +226,13 @@ const routeTree = rootRoute.addChildren([
   profileAccountRoute,
   billingRoute,
   kitchenSinkRoute,
+  // Legacy redirects
+  dashboardRedirect,
+  jobsRedirect,
+  queueRedirect,
+  trackerRedirect,
+  analyticsRedirect,
+  settingsRedirect,
 ]);
 
 export const router = createRouter({ routeTree });

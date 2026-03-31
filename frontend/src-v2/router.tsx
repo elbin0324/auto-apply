@@ -92,20 +92,22 @@ function protectedPage(Page: React.LazyExoticComponent<() => React.JSX.Element>)
 }
 
 // Index route: Landing for unauthenticated, Jobs for authenticated
+function IndexPage() {
+  const { isAuthenticated } = useAuthStore();
+  if (!isAuthenticated) {
+    return <PageSuspense><LandingPage /></PageSuspense>;
+  }
+  return (
+    <ProtectedRoute>
+      <PageSuspense><JobsPage /></PageSuspense>
+    </ProtectedRoute>
+  );
+}
+
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: () => {
-    const { isAuthenticated } = useAuthStore();
-    if (!isAuthenticated) {
-      return <PageSuspense><LandingPage /></PageSuspense>;
-    }
-    return (
-      <ProtectedRoute>
-        <PageSuspense><JobsPage /></PageSuspense>
-      </ProtectedRoute>
-    );
-  },
+  component: IndexPage,
 });
 
 const applicationsRoute = createRoute({

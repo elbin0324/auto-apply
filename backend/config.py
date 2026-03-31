@@ -64,8 +64,8 @@ class Settings(BaseSettings):
     score_min_threshold: float = 15.0  # minimum combined score to store
 
     # LLM Scoring
-    scoring_provider: str = "anthropic"  # "anthropic" | "openai_compat"
-    scoring_model: str = "claude-haiku-4-5-20251001"
+    scoring_provider: str = "gemini"  # "anthropic" | "gemini" | "openai_compat"
+    scoring_model: str = "gemini-2.0-flash"
     scoring_max_tokens: int = 4096
     scoring_batch_size: int = 10  # jobs per LLM call
     scoring_concurrency: int = 3  # max parallel LLM calls per worker

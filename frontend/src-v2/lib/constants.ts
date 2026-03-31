@@ -1,7 +1,7 @@
 export const APP_NAME = "ApplyPilot";
 export const APP_VERSION = "2.0.0";
 
-export type NavSection = "MISSION CTRL" | "OPS" | "SYS";
+export type NavSection = "MAIN" | "ACCOUNT";
 
 export interface NavItem {
   id: string;
@@ -13,28 +13,24 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { id: "dashboard", label: "Dashboard", path: "/dashboard", icon: "Chart", section: "MISSION CTRL" },
-  { id: "jobs", label: "Job Radar", path: "/jobs", icon: "Target", section: "MISSION CTRL", hasBadge: true },
-  { id: "queue", label: "Flight Queue", path: "/queue", icon: "Queue", section: "MISSION CTRL", hasBadge: true },
-  { id: "profile", label: "Resume Hangar", path: "/profile", icon: "Doc", section: "MISSION CTRL" },
-  { id: "autopilot", label: "Autopilot", path: "/autopilot", icon: "Bot", section: "OPS" },
-  { id: "tracker", label: "Tracker", path: "/tracker", icon: "Radar", section: "OPS" },
-  { id: "analytics", label: "Analytics", path: "/analytics", icon: "Chart", section: "OPS" },
-  { id: "settings", label: "Settings", path: "/settings", icon: "Gear", section: "SYS" },
+  { id: "jobs", label: "Jobs", path: "/", icon: "Target", section: "MAIN", hasBadge: true },
+  { id: "applications", label: "Applications", path: "/applications", icon: "Radar", section: "MAIN", hasBadge: true },
+  { id: "autopilot", label: "Autopilot", path: "/autopilot", icon: "Bot", section: "MAIN" },
+  { id: "profile", label: "Profile", path: "/profile", icon: "Doc", section: "ACCOUNT" },
 ];
 
 export const PAGE_TITLES: Record<string, string> = {
-  "/dashboard": "DASHBOARD",
-  "/jobs": "JOB RADAR",
-  "/queue": "FLIGHT QUEUE",
-  "/profile": "RESUME HANGAR",
+  "/": "JOBS",
+  "/applications": "APPLICATIONS",
   "/autopilot": "AUTOPILOT",
-  "/tracker": "TRACKER",
-  "/analytics": "ANALYTICS",
-  "/settings": "SETTINGS",
+  "/profile": "PROFILE",
+  "/profile/resume": "PROFILE",
+  "/profile/preferences": "PROFILE",
+  "/profile/applications": "PROFILE",
+  "/profile/account": "PROFILE",
 };
 
-export const NAV_SECTIONS: NavSection[] = ["MISSION CTRL", "OPS", "SYS"];
+export const NAV_SECTIONS: NavSection[] = ["MAIN", "ACCOUNT"];
 
 export const STATUS_LABELS: Record<string, string> = {
   queued: "QUEUED",

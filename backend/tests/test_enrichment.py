@@ -177,10 +177,11 @@ async def test_enrich_single_job_parses_json() -> None:
         "key_responsibilities": ["Build things"],
     })
 
+    mock_provider = AsyncMock()
+    mock_provider.complete = AsyncMock(return_value=mock_response)
     with patch(
-        "workers.services.job_enrichment.chat_completion",
-        new_callable=AsyncMock,
-        return_value=mock_response,
+        "workers.services.job_enrichment.get_provider",
+        return_value=mock_provider,
     ):
         result = await enrich_single_job("Raw desc text", "Senior Engineer")
 
@@ -210,10 +211,11 @@ async def test_enrich_single_job_strips_markdown_fences() -> None:
     })
     mock_response = f"```json\n{inner_json}\n```"
 
+    mock_provider = AsyncMock()
+    mock_provider.complete = AsyncMock(return_value=mock_response)
     with patch(
-        "workers.services.job_enrichment.chat_completion",
-        new_callable=AsyncMock,
-        return_value=mock_response,
+        "workers.services.job_enrichment.get_provider",
+        return_value=mock_provider,
     ):
         result = await enrich_single_job("Raw desc", "Engineer")
 
@@ -225,10 +227,11 @@ async def test_enrich_single_job_strips_markdown_fences() -> None:
 async def test_enrich_single_job_returns_none_on_bad_json() -> None:
     from workers.services.job_enrichment import enrich_single_job
 
+    mock_provider = AsyncMock()
+    mock_provider.complete = AsyncMock(return_value="This is not valid JSON at all")
     with patch(
-        "workers.services.job_enrichment.chat_completion",
-        new_callable=AsyncMock,
-        return_value="This is not valid JSON at all",
+        "workers.services.job_enrichment.get_provider",
+        return_value=mock_provider,
     ):
         result = await enrich_single_job("Raw desc", "Engineer")
 
@@ -239,10 +242,11 @@ async def test_enrich_single_job_returns_none_on_bad_json() -> None:
 async def test_enrich_single_job_returns_none_on_exception() -> None:
     from workers.services.job_enrichment import enrich_single_job
 
+    mock_provider = AsyncMock()
+    mock_provider.complete = AsyncMock(side_effect=RuntimeError("API error"))
     with patch(
-        "workers.services.job_enrichment.chat_completion",
-        new_callable=AsyncMock,
-        side_effect=RuntimeError("API error"),
+        "workers.services.job_enrichment.get_provider",
+        return_value=mock_provider,
     ):
         result = await enrich_single_job("Raw desc", "Engineer")
 

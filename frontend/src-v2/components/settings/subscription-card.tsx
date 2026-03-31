@@ -33,7 +33,7 @@ export function SubscriptionCard() {
               Current Plan
             </p>
             <p className="mt-1 font-mono text-[11px] font-semibold text-pri">
-              {hasPlan ? sub.plan.toUpperCase() : "NO PLAN"}
+              {hasPlan ? sub.plan!.toUpperCase() : "NO PLAN"}
             </p>
           </div>
           {hasPlan ? (

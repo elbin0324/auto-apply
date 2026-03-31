@@ -71,7 +71,10 @@ export function Sidebar({ badges = {} }: SidebarProps) {
               {sec.label}
             </div>
             {sec.items.map((item) => {
-              const isActive = currentPath === item.path;
+              const isActive =
+                item.path === "/"
+                  ? currentPath === "/"
+                  : currentPath === item.path || currentPath.startsWith(item.path + "/");
               const badge = item.hasBadge ? badges[item.id] : undefined;
 
               return (

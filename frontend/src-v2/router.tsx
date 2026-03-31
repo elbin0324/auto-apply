@@ -12,14 +12,10 @@ import { AuthOnlyRoute } from "@/components/layout/auth-only-route";
 
 const LoginPage = lazy(() => import("@/pages/login"));
 const SignupPage = lazy(() => import("@/pages/signup"));
-const DashboardPage = lazy(() => import("@/pages/dashboard"));
 const JobsPage = lazy(() => import("@/pages/jobs"));
-const QueuePage = lazy(() => import("@/pages/queue"));
-const ProfilePage = lazy(() => import("@/pages/profile"));
+const ApplicationsPage = lazy(() => import("@/pages/applications"));
 const AutopilotPage = lazy(() => import("@/pages/autopilot"));
-const TrackerPage = lazy(() => import("@/pages/tracker"));
-const AnalyticsPage = lazy(() => import("@/pages/analytics"));
-const SettingsPage = lazy(() => import("@/pages/settings"));
+const ProfilePage = lazy(() => import("@/pages/profile"));
 const OnboardingPage = lazy(() => import("@/pages/onboarding"));
 const LandingPage = lazy(() => import("@/pages/landing"));
 const BillingPage = lazy(() => import("@/pages/billing"));
@@ -47,7 +43,7 @@ const rootRoute = createRootRoute({
 function redirectIfAuthenticated() {
   const { isAuthenticated } = useAuthStore.getState();
   if (isAuthenticated) {
-    throw redirect({ to: "/dashboard" });
+    throw redirect({ to: "/" });
   }
 }
 
@@ -95,31 +91,27 @@ function protectedPage(Page: React.LazyExoticComponent<() => React.JSX.Element>)
   );
 }
 
-const dashboardRoute = createRoute({
+// Index route: Landing for unauthenticated, Jobs for authenticated
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/dashboard",
-  component: protectedPage(DashboardPage),
-  beforeLoad: requireAuth,
+  path: "/",
+  component: () => {
+    const { isAuthenticated } = useAuthStore();
+    if (!isAuthenticated) {
+      return <PageSuspense><LandingPage /></PageSuspense>;
+    }
+    return (
+      <ProtectedRoute>
+        <PageSuspense><JobsPage /></PageSuspense>
+      </ProtectedRoute>
+    );
+  },
 });
 
-const jobsRoute = createRoute({
+const applicationsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/jobs",
-  component: protectedPage(JobsPage),
-  beforeLoad: requireAuth,
-});
-
-const queueRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/queue",
-  component: protectedPage(QueuePage),
-  beforeLoad: requireAuth,
-});
-
-const profileRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/profile",
-  component: protectedPage(ProfilePage),
+  path: "/applications",
+  component: protectedPage(ApplicationsPage),
   beforeLoad: requireAuth,
 });
 
@@ -130,24 +122,39 @@ const autopilotRoute = createRoute({
   beforeLoad: requireAuth,
 });
 
-const trackerRoute = createRoute({
+// Profile routes — parent + tab sub-routes
+const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/tracker",
-  component: protectedPage(TrackerPage),
+  path: "/profile",
+  component: protectedPage(ProfilePage),
   beforeLoad: requireAuth,
 });
 
-const analyticsRoute = createRoute({
+const profileResumeRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/analytics",
-  component: protectedPage(AnalyticsPage),
+  path: "/profile/resume",
+  component: protectedPage(ProfilePage),
   beforeLoad: requireAuth,
 });
 
-const settingsRoute = createRoute({
+const profilePreferencesRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/settings",
-  component: protectedPage(SettingsPage),
+  path: "/profile/preferences",
+  component: protectedPage(ProfilePage),
+  beforeLoad: requireAuth,
+});
+
+const profileApplicationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/profile/applications",
+  component: protectedPage(ProfilePage),
+  beforeLoad: requireAuth,
+});
+
+const profileAccountRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/profile/account",
+  component: protectedPage(ProfilePage),
   beforeLoad: requireAuth,
 });
 
@@ -165,36 +172,18 @@ const kitchenSinkRoute = createRoute({
   component: () => <PageSuspense><KitchenSinkPage /></PageSuspense>,
 });
 
-// Landing page for unauthenticated, redirect to dashboard for authenticated
-const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/",
-  beforeLoad: () => {
-    const { isAuthenticated } = useAuthStore.getState();
-    if (isAuthenticated) {
-      throw redirect({ to: "/dashboard" });
-    }
-  },
-  component: () => (
-    <PageSuspense>
-      <LandingPage />
-    </PageSuspense>
-  ),
-});
-
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   signupRoute,
   onboardingRoute,
-  dashboardRoute,
-  jobsRoute,
-  queueRoute,
-  profileRoute,
+  applicationsRoute,
   autopilotRoute,
-  trackerRoute,
-  analyticsRoute,
-  settingsRoute,
+  profileRoute,
+  profileResumeRoute,
+  profilePreferencesRoute,
+  profileApplicationsRoute,
+  profileAccountRoute,
   billingRoute,
   kitchenSinkRoute,
 ]);

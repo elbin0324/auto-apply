@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import get_settings
 from models.job import Job
 from schemas.enrichment import EnrichedJobData, EnrichmentStats
-from infra.ai_client import chat_completion
+from infra.llm_service import get_provider
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +63,9 @@ async def enrich_single_job(description: str, title: str) -> EnrichedJobData | N
     prompt = f"Job Title: {title}\n\nJob Description:\n{description}"
 
     try:
-        response_text = await chat_completion(
-            prompt=prompt,
+        provider = get_provider("gemini")
+        response_text = await provider.complete(
+            [{"role": "user", "content": prompt}],
             system=JOB_ENRICHMENT_SYSTEM,
             model=settings.enrichment_model,
             max_tokens=settings.enrichment_max_tokens,

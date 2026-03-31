@@ -50,6 +50,7 @@ class Settings(BaseSettings):
 
     # AI
     anthropic_api_key: str
+    gemini_api_key: str = ""
 
     # Job data — Active Jobs DB API (primary source via RapidAPI)
     rapidapi_key: str = ""  # RapidAPI key (Active Jobs DB API)

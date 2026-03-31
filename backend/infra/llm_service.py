@@ -139,6 +139,7 @@ class GeminiProvider:
         config = genai_types.GenerateContentConfig(
             max_output_tokens=max_tokens,
             temperature=0.0,
+            thinking_config=genai_types.ThinkingConfig(thinking_budget=0),
         )
         if system:
             config.system_instruction = system

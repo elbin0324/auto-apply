@@ -2,7 +2,7 @@ import json
 import logging
 
 from schemas.profile import ParsedResume
-from infra.ai_client import chat_completion
+from infra.llm_service import get_resume_provider, DEFAULT_RESUME_MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -60,10 +60,11 @@ Rules:
 
 
 async def parse_resume_text(raw_text: str) -> ParsedResume:
-    response_text = await chat_completion(
-        prompt=f"Parse this resume:\n\n{raw_text}",
+    provider = get_resume_provider()
+    response_text = await provider.complete(
+        [{"role": "user", "content": f"Parse this resume:\n\n{raw_text}"}],
         system=RESUME_PARSE_SYSTEM,
-        model="claude-sonnet-4-20250514",
+        model=DEFAULT_RESUME_MODEL,
         max_tokens=4096,
     )
 

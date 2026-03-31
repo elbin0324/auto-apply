@@ -30,7 +30,7 @@ from workers.services.job_filter import (
     get_unscored_job_ids,
     load_user_with_profile,
 )
-from workers.services.llm_provider import LLMProvider
+from infra.llm_service import LLMProvider
 
 logger = logging.getLogger(__name__)
 

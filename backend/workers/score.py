@@ -15,7 +15,7 @@ from schemas.task_envelope import TaskEnvelope
 from workers.base import BaseWorker
 from workers.queues.score import pop_score_jobs_task
 from workers.services.heuristic_scorer import score_new_jobs_for_user
-from workers.services.llm_provider import LLMProvider, get_scoring_provider
+from infra.llm_service import LLMProvider, get_scoring_provider
 from workers.services.llm_scorer import score_new_jobs_llm
 
 logger = logging.getLogger("score_worker")

@@ -2,7 +2,7 @@ from schemas.admin import QueueDepths, WorkerStatus
 from schemas.base_task import BaseTask
 from schemas.application import ApplicationDetail, ApplicationListResponse, ApplicationStats, ApplicationStatus
 from schemas.auto_apply import ApplyResult, ApplyTask, AutoApplyConfigResponse, AutoApplyConfigUpdate, AutoApplyStatus, QueueStatus
-from schemas.billing import CheckoutSession, CreditPurchase, PlanInfo, TransactionHistory, TransactionItem  # Not yet implemented
+from schemas.billing import CheckoutRequest, CheckoutSession, PlanDetail, PlansResponse, PortalSession, SubscriptionStatus
 from schemas.document import DocumentCreate, DocumentResponse, DocumentListResponse  # Not yet implemented
 from schemas.enrichment import EnrichedJobData, EnrichJobsTask, EnrichmentStats
 from schemas.job import JobListResponse, JobResponse, JobSearchParams
@@ -33,8 +33,8 @@ __all__ = [
     "AutoApplyConfigUpdate",
     "AutoApplyStatus",
     "BaseTask",
+    "CheckoutRequest",
     "CheckoutSession",
-    "CreditPurchase",
     "DocumentCreate",
     "DocumentListResponse",
     "DocumentResponse",
@@ -51,7 +51,9 @@ __all__ = [
     "JobSearchParams",
     "LLMScoreResult",
     "ParsedResume",
-    "PlanInfo",
+    "PlanDetail",
+    "PlansResponse",
+    "PortalSession",
     "ProfileResponse",
     "ProfileUpdate",
     "QueueDepths",
@@ -61,8 +63,7 @@ __all__ = [
     "SkillResponse",
     "TaskEnvelope",
     "TokenResponse",
-    "TransactionHistory",
-    "TransactionItem",
+    "SubscriptionStatus",
     "UserCreate",
     "UserResponse",
     "WorkerStatus",

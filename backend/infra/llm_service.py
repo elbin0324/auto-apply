@@ -25,10 +25,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 DEFAULT_SCORING_PROVIDER = "gemini"
-DEFAULT_SCORING_MODEL = "gemini-2.0-flash"
+DEFAULT_SCORING_MODEL = "gemini-2.5-flash"
 
 DEFAULT_RESUME_PROVIDER = "gemini"
-DEFAULT_RESUME_MODEL = "gemini-2.0-flash"
+DEFAULT_RESUME_MODEL = "gemini-2.5-flash"
 
 # ---------------------------------------------------------------------------
 # Protocol

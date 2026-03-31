@@ -65,7 +65,7 @@ class Settings(BaseSettings):
 
     # LLM Scoring
     scoring_provider: str = "gemini"  # "anthropic" | "gemini" | "openai_compat"
-    scoring_model: str = "gemini-2.0-flash"
+    scoring_model: str = "gemini-2.5-flash"
     scoring_max_tokens: int = 4096
     scoring_batch_size: int = 10  # jobs per LLM call
     scoring_concurrency: int = 3  # max parallel LLM calls per worker

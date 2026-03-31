@@ -117,6 +117,7 @@ def _mock_job(job_id: uuid.UUID = _JOB_ID_1, **kw: object) -> SimpleNamespace:
         "employment_type": None,
         "years_experience_min": None,
         "years_experience_max": None,
+        "posted_at": None,
     }
     defaults.update(kw)
     return SimpleNamespace(**defaults)
@@ -541,3 +542,214 @@ class TestSchemas:
         assert data["combined_method"] == "llm"
         assert data["matched_skills"] == ["Python"]
         assert data["model"] == "claude-haiku-4-5-20251001"
+
+
+# ---------------------------------------------------------------------------
+# Tests: scoring cap and recency ordering
+# ---------------------------------------------------------------------------
+
+
+class TestScoreNewJobsLLMCap:
+    """Tests for the SCORING_MAX_JOBS_PER_TASK cap and recency ordering."""
+
+    @pytest.mark.asyncio
+    async def test_caps_jobs_to_max_per_task(self) -> None:
+        """When more unscored jobs than the cap, only the cap number are scored."""
+        from datetime import timedelta
+
+        from workers.services.llm_scorer import SCORING_MAX_JOBS_PER_TASK, score_new_jobs_llm
+
+        mock_user = _mock_user()
+
+        base_time = datetime(2026, 3, 1, tzinfo=timezone.utc)
+        num_jobs = SCORING_MAX_JOBS_PER_TASK + 50
+        all_jobs = []
+        for i in range(num_jobs):
+            job = _mock_job(
+                uuid.uuid4(),
+                title=f"Job {i}",
+                posted_at=base_time + timedelta(days=i),
+            )
+            all_jobs.append(job)
+
+        all_job_ids = [j.id for j in all_jobs]
+        mock_db = AsyncMock()
+
+        with (
+            patch(
+                "workers.services.llm_scorer.load_user_with_profile",
+                new_callable=AsyncMock,
+                return_value=mock_user,
+            ),
+            patch(
+                "workers.services.llm_scorer.filter_candidate_jobs",
+                new_callable=AsyncMock,
+                return_value=all_jobs,
+            ),
+            patch(
+                "workers.services.llm_scorer.get_unscored_job_ids",
+                new_callable=AsyncMock,
+                return_value=all_job_ids,
+            ),
+            patch(
+                "workers.services.llm_scorer._score_jobs_for_user",
+                new_callable=AsyncMock,
+                return_value=[],
+            ) as mock_score,
+            patch("workers.services.llm_scorer.get_settings") as mock_settings,
+        ):
+            mock_settings.return_value = SimpleNamespace(
+                scoring_model="test-model",
+                scoring_max_tokens=1024,
+                scoring_batch_size=10,
+                scoring_concurrency=3,
+                scoring_use_llm=True,
+                score_min_threshold=15.0,
+            )
+            provider = AsyncMock()
+            await score_new_jobs_llm(mock_db, provider, _USER_ID)
+
+            scored_jobs = mock_score.call_args[0][2]
+            assert len(scored_jobs) == SCORING_MAX_JOBS_PER_TASK
+
+    @pytest.mark.asyncio
+    async def test_prioritizes_recent_jobs(self) -> None:
+        """Most recently posted jobs should be scored first."""
+        from datetime import timedelta
+
+        from workers.services.llm_scorer import SCORING_MAX_JOBS_PER_TASK, score_new_jobs_llm
+
+        mock_user = _mock_user()
+
+        base_time = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        all_jobs = []
+        for i in range(SCORING_MAX_JOBS_PER_TASK + 20):
+            job = _mock_job(
+                uuid.uuid4(),
+                title=f"Job {i}",
+                posted_at=base_time + timedelta(days=i),
+            )
+            all_jobs.append(job)
+
+        all_job_ids = [j.id for j in all_jobs]
+        mock_db = AsyncMock()
+
+        with (
+            patch(
+                "workers.services.llm_scorer.load_user_with_profile",
+                new_callable=AsyncMock,
+                return_value=mock_user,
+            ),
+            patch(
+                "workers.services.llm_scorer.filter_candidate_jobs",
+                new_callable=AsyncMock,
+                return_value=all_jobs,
+            ),
+            patch(
+                "workers.services.llm_scorer.get_unscored_job_ids",
+                new_callable=AsyncMock,
+                return_value=all_job_ids,
+            ),
+            patch(
+                "workers.services.llm_scorer._score_jobs_for_user",
+                new_callable=AsyncMock,
+                return_value=[],
+            ) as mock_score,
+            patch("workers.services.llm_scorer.get_settings") as mock_settings,
+        ):
+            mock_settings.return_value = SimpleNamespace(
+                scoring_model="test-model",
+                scoring_max_tokens=1024,
+                scoring_batch_size=10,
+                scoring_concurrency=3,
+                scoring_use_llm=True,
+                score_min_threshold=15.0,
+            )
+            provider = AsyncMock()
+            await score_new_jobs_llm(mock_db, provider, _USER_ID)
+
+            scored_jobs = mock_score.call_args[0][2]
+            posted_dates = [j.posted_at for j in scored_jobs]
+            assert posted_dates == sorted(posted_dates, reverse=True)
+
+
+# ---------------------------------------------------------------------------
+# Tests: partial failure handling
+# ---------------------------------------------------------------------------
+
+
+class TestPartialFailureHandling:
+    @pytest.mark.asyncio
+    async def test_saves_successful_batches_when_one_fails(self) -> None:
+        """If one batch raises an exception, results from other batches are still returned."""
+        call_count = 0
+
+        async def mock_complete(messages, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 2:
+                raise RuntimeError("Rate limit exhausted")
+            return _llm_response_json(
+                [{"job_index": 0, "score": 75, "matched_skills": ["Python"]}]
+            )
+
+        provider = AsyncMock()
+        provider.complete.side_effect = mock_complete
+
+        user = _mock_user()
+        jobs = [
+            _mock_job(_JOB_ID_1, title="Job A"),
+            _mock_job(_JOB_ID_2, title="Job B"),
+            _mock_job(_JOB_ID_3, title="Job C"),
+        ]
+
+        with patch("workers.services.llm_scorer.get_settings") as mock_settings:
+            mock_settings.return_value = SimpleNamespace(
+                scoring_model="test-model",
+                scoring_max_tokens=1024,
+                scoring_batch_size=1,
+                score_min_threshold=15.0,
+            )
+            rows = await _score_jobs_for_user(provider, user, jobs)
+
+        # Batch 1 and 3 succeed, batch 2 fails — should get 2 rows
+        assert len(rows) == 2
+
+    @pytest.mark.asyncio
+    async def test_gather_exception_does_not_lose_other_batches(self) -> None:
+        """If _score_batch_llm raises unexpectedly, other batch results survive."""
+        batch_call = 0
+
+        async def patched_score_batch(provider, user_context, jobs, batch_index):
+            nonlocal batch_call
+            batch_call += 1
+            if batch_call == 1:
+                raise ValueError("Unexpected error in batch")
+            return (
+                [LLMScoreResult(job_index=0, score=80, matched_skills=["Python"])],
+                100,
+            )
+
+        user = _mock_user()
+        jobs = [
+            _mock_job(_JOB_ID_1, title="Job A"),
+            _mock_job(_JOB_ID_2, title="Job B"),
+        ]
+
+        with (
+            patch("workers.services.llm_scorer.get_settings") as mock_settings,
+            patch(
+                "workers.services.llm_scorer._score_batch_llm",
+                side_effect=patched_score_batch,
+            ),
+        ):
+            mock_settings.return_value = SimpleNamespace(
+                scoring_model="test-model",
+                scoring_max_tokens=1024,
+                scoring_batch_size=1,
+                score_min_threshold=15.0,
+            )
+            rows = await _score_jobs_for_user(AsyncMock(), user, jobs)
+
+        assert len(rows) == 1
+        assert rows[0]["job_id"] == _JOB_ID_2

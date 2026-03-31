@@ -34,6 +34,8 @@ from infra.llm_service import LLMProvider
 
 logger = logging.getLogger(__name__)
 
+SCORING_MAX_JOBS_PER_TASK = 100
+
 # ---------------------------------------------------------------------------
 # Prompt
 # ---------------------------------------------------------------------------
@@ -309,12 +311,16 @@ async def _score_jobs_for_user(
         _score_batch_llm(provider, user_context, batch, idx)
         for idx, batch in enumerate(batches)
     ]
-    all_results = await asyncio.gather(*tasks)
+    all_results = await asyncio.gather(*tasks, return_exceptions=True)
 
     score_rows: list[dict] = []
     now = datetime.now(timezone.utc)
 
-    for batch, (results, latency_ms) in zip(batches, all_results):
+    for idx, (batch, result) in enumerate(zip(batches, all_results)):
+        if isinstance(result, BaseException):
+            logger.error("Batch %d failed: %s", idx, result)
+            continue
+        results, latency_ms = result
         for result in results:
             if result.job_index < 0 or result.job_index >= len(batch):
                 logger.warning(
@@ -416,6 +422,13 @@ async def score_new_jobs_llm(
             }
         unscored_set = set(unscored_ids)
         jobs_to_score = [j for j in jobs if j.id in unscored_set]
+
+    # Sort by posted_at descending (most recent first) and cap
+    jobs_to_score.sort(
+        key=lambda j: getattr(j, "posted_at", None) or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
+    jobs_to_score = jobs_to_score[:SCORING_MAX_JOBS_PER_TASK]
 
     score_rows = await _score_jobs_for_user(provider, user, jobs_to_score)
 

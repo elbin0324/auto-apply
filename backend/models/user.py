@@ -23,6 +23,9 @@ class User(Base, TimestampMixin):
     onboarding_completed: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=text("false")
     )
+    is_whitelisted: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
 
     # Relationships
     profile: Mapped["Profile"] = relationship(back_populates="user", uselist=False, lazy="noload")  # type: ignore[name-defined]  # noqa: F821

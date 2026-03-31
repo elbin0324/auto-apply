@@ -1,22 +1,32 @@
 from datetime import datetime
-from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
-class PlanInfo(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class PlanDetail(BaseModel):
+    name: str  # starter, pro, premium
+    display_name: str
+    price_cents: int  # 1900, 4900, 9900
+    quota: int  # 25, 100, 500
+    features: list[str]
 
-    plan: str  # free, pro, premium
-    status: str
-    credits_remaining: int
-    credits_used_total: int
+
+class PlansResponse(BaseModel):
+    plans: list[PlanDetail]
+
+
+class SubscriptionStatus(BaseModel):
+    plan: str | None = None  # None = no subscription
+    status: str | None = None
+    applications_used: int = 0
+    quota: int = 0
+    remaining: int = 0
     current_period_end: datetime | None = None
-    stripe_customer_id: str | None = None
+    is_whitelisted: bool = False
 
 
-class CreditPurchase(BaseModel):
-    credit_pack: str  # credits_10, credits_50, credits_100, credits_250
+class CheckoutRequest(BaseModel):
+    plan: str  # starter, pro, premium
 
 
 class CheckoutSession(BaseModel):
@@ -24,18 +34,5 @@ class CheckoutSession(BaseModel):
     session_id: str
 
 
-class TransactionItem(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    amount: int
-    reason: str | None = None
-    reference_id: UUID | None = None
-    created_at: datetime
-
-
-class TransactionHistory(BaseModel):
-    transactions: list[TransactionItem]
-    total: int
-    page: int
-    per_page: int
+class PortalSession(BaseModel):
+    portal_url: str

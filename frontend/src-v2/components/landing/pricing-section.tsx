@@ -5,15 +5,15 @@ import { Check } from "@/icons";
 const PLANS = [
   {
     name: "STARTER",
-    price: "Free",
-    desc: "Try it out. No credit card.",
+    price: "$19",
+    desc: "For getting started.",
     features: [
-      "5 applications / month",
-      "Basic resume tailoring",
-      "3 ATS platforms",
+      "25 applications / month",
+      "AI resume tailoring",
+      "All ATS platforms",
       "Application tracking",
     ],
-    cta: "Start Free",
+    cta: "Get Started",
     featured: false,
   },
   {
@@ -23,7 +23,7 @@ const PLANS = [
     features: [
       "100 applications / month",
       "AI resume + cover letters",
-      "All 50+ ATS platforms",
+      "All ATS platforms",
       "Priority processing",
       "Analytics dashboard",
     ],
@@ -31,17 +31,17 @@ const PLANS = [
     featured: true,
   },
   {
-    name: "UNLIMITED",
+    name: "PREMIUM",
     price: "$99",
-    desc: "No limits. No compromises.",
+    desc: "Maximum firepower.",
     features: [
-      "Unlimited applications",
+      "500 applications / month",
       "Everything in Pro",
       "Dedicated infrastructure",
       "Priority support",
-      "Early access to new features",
+      "Early access to features",
     ],
-    cta: "Go Unlimited",
+    cta: "Go Premium",
     featured: false,
   },
 ];

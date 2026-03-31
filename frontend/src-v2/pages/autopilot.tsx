@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   useAutoApplyConfig,
   useUpdateAutoApplyConfig,
@@ -9,6 +10,8 @@ import {
 import { EngageCard } from "@/components/autopilot/engage-card";
 import { TargetingCard } from "@/components/autopilot/targeting-card";
 import { ModeCard } from "@/components/autopilot/mode-card";
+import { UpgradeModal } from "@/components/billing/upgrade-modal";
+import { ApiError } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import type { AutoApplyConfig } from "@/types/auto-apply";
@@ -73,6 +76,9 @@ export default function AutopilotPage() {
   const updateConfig = useUpdateAutoApplyConfig();
   const startAutopilot = useStartAutopilot();
   const stopAutopilot = useStopAutopilot();
+  const [billingError, setBillingError] = useState<import("@/types/billing").BillingError | null>(
+    null,
+  );
 
   const handleSave = (data: Partial<AutoApplyConfig>) => {
     updateConfig.mutate(data);
@@ -86,7 +92,18 @@ export default function AutopilotPage() {
         config={config}
         queueStatus={queueStatus}
         stats={stats}
-        onEngage={() => startAutopilot.mutate()}
+        onEngage={() => {
+          startAutopilot.mutate(undefined, {
+            onError: (error) => {
+              if (error instanceof ApiError && error.status === 403) {
+                const body = error.body as { detail?: import("@/types/billing").BillingError } | undefined;
+                if (body?.detail?.code) {
+                  setBillingError(body.detail);
+                }
+              }
+            },
+          });
+        }}
         onDisengage={() => stopAutopilot.mutate()}
         isEngaging={startAutopilot.isPending}
         isDisengaging={stopAutopilot.isPending}
@@ -95,6 +112,10 @@ export default function AutopilotPage() {
         <TargetingCard config={config} onSave={handleSave} />
         <ModeCard config={config} onSave={handleSave} />
       </div>
+
+      {billingError && (
+        <UpgradeModal error={billingError} onClose={() => setBillingError(null)} />
+      )}
     </div>
   );
 }

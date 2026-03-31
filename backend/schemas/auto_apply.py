@@ -83,7 +83,6 @@ class AutoApplyStatus(BaseModel):
     is_active: bool
     jobs_matched_today: int
     applications_sent_today: int
-    credits_remaining: int
     daily_limit: int
 
 

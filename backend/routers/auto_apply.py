@@ -66,7 +66,22 @@ async def update_config(
 @router.post("/start")
 async def start_auto_apply(user: CurrentUser, db: DbSession) -> dict:
     from services.auto_apply_service import count_user_scores
+    from services.billing_service import check_subscription_access
     from infra.task_queue import enqueue_fetch_jobs
+
+    # Billing check
+    access = await check_subscription_access(db, user)
+    if not access["allowed"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": access["reason"],
+                "message": "Subscription required to use autopilot"
+                if access["reason"] == "no_subscription"
+                else "Monthly application quota exceeded",
+                **{k: v for k, v in access.items() if k not in ("allowed", "reason", "message")},
+            },
+        )
 
     config = await get_or_create_config(db, user.id)
 

@@ -575,28 +575,6 @@ class TestAutoApplyServiceUnit:
         assert config.target_titles == ["Dev"]
         session.add.assert_not_called()
 
-    async def test_check_credits_no_subscription(self) -> None:
-        from services.auto_apply_service import check_credits
-
-        session = AsyncMock()
-        result = MagicMock()
-        result.scalar_one_or_none.return_value = None
-        session.execute = AsyncMock(return_value=result)
-
-        credits = await check_credits(session, _USER_ID)
-        assert credits == -1
-
-    async def test_check_credits_with_subscription(self) -> None:
-        from services.auto_apply_service import check_credits
-
-        session = AsyncMock()
-        sub = SimpleNamespace(credits_remaining=42)
-        result = MagicMock()
-        result.scalar_one_or_none.return_value = sub
-        session.execute = AsyncMock(return_value=result)
-
-        credits = await check_credits(session, _USER_ID)
-        assert credits == 42
 
     async def test_count_applications_today(self) -> None:
         from services.auto_apply_service import count_applications_today

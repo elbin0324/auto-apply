@@ -1,7 +1,7 @@
 """billing_schema_changes
 
 Revision ID: b1c2d3e4f5a6
-Revises: 3515c02b8302
+Revises: a2b3c4d5e6f7
 Create Date: 2026-03-30 00:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "b1c2d3e4f5a6"
-down_revision: Union[str, None] = "3515c02b8302"
+down_revision: Union[str, None] = "a2b3c4d5e6f7"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

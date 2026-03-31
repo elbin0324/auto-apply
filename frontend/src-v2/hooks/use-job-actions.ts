@@ -52,7 +52,7 @@ export function useJobActions() {
     addToast({
       message: "Queued for takeoff.",
       variant: "success",
-      action: { label: "View Queue", href: "/queue" },
+      action: { label: "View Applications", href: "/applications" },
     });
   }, [exitingJobId, queryClient, addToast]);
 

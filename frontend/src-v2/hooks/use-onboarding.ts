@@ -17,7 +17,7 @@ export function useOnboarding() {
         setUser({ ...user, onboarding_completed: true });
       }
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-      navigate({ to: "/dashboard" });
+      navigate({ to: "/" });
     },
   });
 

@@ -58,7 +58,7 @@ export default function ApplicationsPage() {
           {STATUS_FILTERS.map((f) => (
             <Button
               key={f.value}
-              variant={statusFilter === f.value ? "default" : "ghost"}
+              variant={statusFilter === f.value ? "primary" : "ghost"}
               onClick={() => handleStatusChange(f.value)}
               className="px-3 py-1.5 text-[10px]"
             >

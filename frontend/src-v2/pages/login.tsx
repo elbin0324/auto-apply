@@ -19,7 +19,7 @@ export default function LoginPage() {
     try {
       const user = await login(email, password);
       if (user?.onboarding_completed) {
-        navigate({ to: "/dashboard" });
+        navigate({ to: "/" });
       } else {
         navigate({ to: "/onboarding" });
       }

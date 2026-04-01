@@ -111,51 +111,19 @@ export function ResumeDocCard({ profile }: ResumeDocCardProps) {
         />
 
         {hasResume ? (
-          <div className="space-y-3">
-            {/* PDF Preview */}
-            <div className="overflow-hidden rounded-lg border border-border-main bg-bg-inset">
-              <object
-                data={profile.raw_resume_url!}
-                type="application/pdf"
-                className="h-[400px] w-full"
-              >
-                {/* Fallback if browser can't embed PDF */}
-                <div className="flex h-[400px] flex-col items-center justify-center gap-2">
-                  <Upload size={24} color="var(--color-pri)" />
-                  <p className="font-mono text-[11px] text-t-400">
-                    PDF preview not available
-                  </p>
-                  <a
-                    href={profile.raw_resume_url!}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono text-[11px] text-pri underline"
-                  >
-                    Open in new tab
-                  </a>
-                </div>
-              </object>
-            </div>
-
-            {/* File metadata */}
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-[11px] text-t-400">
-                {profile.raw_resume_url!.split("/").pop() ?? "resume.pdf"}
-              </span>
-              {profile.resume_updated_at && (
-                <>
-                  <span className="font-mono text-[10px] text-t-300">&middot;</span>
-                  <span className="font-mono text-[10px] text-t-400">
-                    {formatDate(profile.resume_updated_at)}
-                  </span>
-                </>
-              )}
-              {isProcessing ? (
-                <Badge color="warn">Parsing...</Badge>
-              ) : (
-                <Badge color="ok">Parsed</Badge>
-              )}
-            </div>
+          <div className="flex flex-col items-center gap-2 rounded-[10px] border border-dashed border-pri p-7 text-center" style={{ backgroundColor: "var(--pri-bg)" }}>
+            <Upload size={20} color="var(--color-pri)" />
+            <p className="font-mono text-[12px] font-semibold text-t-900">
+              {profile.raw_resume_url!.split("/").pop() ?? "resume.pdf"}
+            </p>
+            <p className="font-mono text-[10px] text-t-400">
+              {profile.resume_updated_at && formatDate(profile.resume_updated_at)}
+            </p>
+            {isProcessing ? (
+              <Badge color="warn">Parsing...</Badge>
+            ) : (
+              <Badge color="ok">Parsed</Badge>
+            )}
           </div>
         ) : (
           <DropZone

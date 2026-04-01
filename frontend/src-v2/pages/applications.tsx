@@ -6,6 +6,7 @@ import { Pagination } from "@/components/shared/pagination";
 import { TrackerStats } from "@/components/tracker/tracker-stats";
 import { ApplicationTable } from "@/components/tracker/application-table";
 import { useApplications, useApplicationStats } from "@/hooks/use-applications";
+import { useJobDetail } from "@/hooks/use-job-detail";
 import type { Application } from "@/types/application";
 import type { Job } from "@/types/job";
 
@@ -46,6 +47,8 @@ export default function ApplicationsPage() {
   }, []);
 
   const panelJob: Job | null = selectedApp?.job ?? null;
+  const selectedJobId = selectedApp?.job_id ?? selectedApp?.job?.id ?? null;
+  const { job: jobDetail, match: matchDetail } = useJobDetail(selectedJobId);
 
   return (
     <>
@@ -82,9 +85,13 @@ export default function ApplicationsPage() {
 
       {/* Side Panel for application detail — read-only, no approve/reject */}
       <SidePanel
-        job={panelJob}
+        job={jobDetail.data ?? panelJob}
+        selectedJob={panelJob}
         application={selectedApp}
+        matchBreakdown={matchDetail.data ?? null}
         isOpen={selectedApp !== null}
+        isLoadingDetail={jobDetail.isLoading}
+        isLoadingMatch={matchDetail.isLoading}
         onClose={handleClosePanel}
       />
     </>

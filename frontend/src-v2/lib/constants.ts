@@ -1,7 +1,7 @@
 export const APP_NAME = "ApplyPilot";
 export const APP_VERSION = "2.0.0";
 
-export type NavSection = "MAIN" | "ACCOUNT";
+export type NavSection = "MAIN" | "PROFILE";
 
 export interface NavItem {
   id: string;
@@ -16,21 +16,23 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "jobs", label: "Jobs", path: "/", icon: "Target", section: "MAIN", hasBadge: true },
   { id: "applications", label: "Applications", path: "/applications", icon: "Radar", section: "MAIN", hasBadge: true },
   { id: "autopilot", label: "Autopilot", path: "/autopilot", icon: "Bot", section: "MAIN" },
-  { id: "profile", label: "Profile", path: "/profile", icon: "Doc", section: "ACCOUNT" },
+  { id: "resume", label: "Resume", path: "/profile/resume", icon: "Doc", section: "PROFILE" },
+  { id: "preferences", label: "Job Preferences", path: "/profile/preferences", icon: "Sliders", section: "PROFILE" },
+  { id: "app-prefs", label: "App Preferences", path: "/profile/applications", icon: "Layers", section: "PROFILE" },
+  { id: "account", label: "Account", path: "/profile/account", icon: "Gear", section: "PROFILE" },
 ];
 
 export const PAGE_TITLES: Record<string, string> = {
   "/": "JOBS",
   "/applications": "APPLICATIONS",
   "/autopilot": "AUTOPILOT",
-  "/profile": "PROFILE",
-  "/profile/resume": "PROFILE",
-  "/profile/preferences": "PROFILE",
-  "/profile/applications": "PROFILE",
-  "/profile/account": "PROFILE",
+  "/profile/resume": "RESUME",
+  "/profile/preferences": "JOB PREFERENCES",
+  "/profile/applications": "APP PREFERENCES",
+  "/profile/account": "ACCOUNT",
 };
 
-export const NAV_SECTIONS: NavSection[] = ["MAIN", "ACCOUNT"];
+export const NAV_SECTIONS: NavSection[] = ["MAIN", "PROFILE"];
 
 export const STATUS_LABELS: Record<string, string> = {
   queued: "QUEUED",

@@ -69,6 +69,7 @@ class JobResponse(BaseModel):
     apply_url: str | None = None
     source: str = "adzuna"
     source_domain: str | None = None
+    ats_platform: str | None = None
     organization_url: str | None = None
     domain_derived: str | None = None
     country: str | None = None

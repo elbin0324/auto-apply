@@ -47,3 +47,16 @@ export function useUpdateSkills() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["profile"] }),
   });
 }
+
+export function useUpdateEducation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (educations: unknown[]) => {
+      const payload = (educations as Record<string, unknown>[]).map(
+        ({ id: _id, profile_id: _pid, ...rest }) => rest,
+      );
+      return api.put("/api/profile/education", payload);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["profile"] }),
+  });
+}

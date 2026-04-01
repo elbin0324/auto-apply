@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CompanyLogo } from "@/components/shared/company-logo";
-import { X, Check } from "@/icons";
+import { X, Check, ExternalLink } from "@/icons";
 import { matchScoreColor, matchScoreLabel, statusColor, statusLabel } from "@/theme/tokens";
 import { cn } from "@/theme/utils";
 import {
@@ -570,6 +570,19 @@ export function SidePanel({
                 <MetaTag key={tag}>{tag}</MetaTag>
               ))}
             </div>
+          )}
+
+          {/* External link to job posting */}
+          {displayJob.url && (
+            <a
+              href={displayJob.apply_url || displayJob.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 font-mono text-[11px] text-pri hover:underline"
+            >
+              <ExternalLink size={12} />
+              View job posting
+            </a>
           )}
         </div>
 

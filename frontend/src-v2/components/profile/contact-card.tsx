@@ -16,6 +16,7 @@ export function ContactCard({ profile }: ContactCardProps) {
   const [phone, setPhone] = useState(profile.phone ?? "");
   const [location, setLocation] = useState(profile.location ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(profile.linkedin_url ?? "");
+  const [websiteUrl, setWebsiteUrl] = useState(profile.website_url ?? "");
 
   const updateProfile = useUpdateProfile();
 
@@ -25,6 +26,7 @@ export function ContactCard({ profile }: ContactCardProps) {
     setPhone(profile.phone ?? "");
     setLocation(profile.location ?? "");
     setLinkedinUrl(profile.linkedin_url ?? "");
+    setWebsiteUrl(profile.website_url ?? "");
   }, [profile]);
 
   const handleEdit = useCallback(() => {
@@ -45,12 +47,13 @@ export function ContactCard({ profile }: ContactCardProps) {
         phone: phone || null,
         location: location || null,
         linkedin_url: linkedinUrl || null,
+        website_url: websiteUrl || null,
       },
       {
         onSuccess: () => setEditing(false),
       },
     );
-  }, [fullName, email, phone, location, linkedinUrl, updateProfile]);
+  }, [fullName, email, phone, location, linkedinUrl, websiteUrl, updateProfile]);
 
   return (
     <Card>
@@ -103,6 +106,16 @@ export function ContactCard({ profile }: ContactCardProps) {
             onChange={editing ? setLinkedinUrl : undefined}
             readOnly={!editing}
             placeholder="https://linkedin.com/in/janedoe"
+            mono
+          />
+        </div>
+        <div className="mt-3">
+          <Input
+            label="Website URL"
+            value={editing ? websiteUrl : (profile.website_url ?? "")}
+            onChange={editing ? setWebsiteUrl : undefined}
+            readOnly={!editing}
+            placeholder="https://janedoe.dev"
             mono
           />
         </div>

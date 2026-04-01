@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useToastStore } from "@/stores/toast-store";
 
@@ -26,4 +26,13 @@ export function useResumeUpload() {
   });
 
   return { upload, parse };
+}
+
+export function useResumeUrl(hasResume: boolean) {
+  return useQuery({
+    queryKey: ["resume-url"],
+    queryFn: () => api.get<{ url: string }>("/api/profile/resume/url"),
+    enabled: hasResume,
+    staleTime: 50 * 60 * 1000, // 50 min (signed URL expires in 60)
+  });
 }

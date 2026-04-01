@@ -208,6 +208,29 @@ async def upload_resume_file(
     return ProfileResponse.model_validate(profile)
 
 
+@router.get("/resume/url")
+async def get_resume_url(user: CurrentUser, db: DbSession) -> dict:
+    """Return a short-lived signed URL for the user's uploaded resume."""
+    profile = await _get_or_create_profile(db, user.id)
+
+    if not profile.raw_resume_url:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No resume uploaded.",
+        )
+
+    from utils.storage import get_resume_signed_url
+
+    signed_url = get_resume_signed_url(profile.raw_resume_url)
+    if not signed_url:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not generate download URL.",
+        )
+
+    return {"url": signed_url}
+
+
 @router.post("/resume/parse", response_model=ParsedResume)
 async def parse_resume(user: CurrentUser, db: DbSession) -> ParsedResume:
     profile = await _get_or_create_profile(db, user.id)

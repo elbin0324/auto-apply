@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useResumeUpload } from "@/hooks/use-resume";
+import { useResumeUpload, useResumeUrl } from "@/hooks/use-resume";
 import { DropZone, formatFileSize } from "./resume-display";
 import { Upload } from "@/icons";
 import type { Profile } from "@/types/profile";
@@ -24,6 +24,8 @@ export function ResumeDocCard({ profile }: ResumeDocCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { upload, parse } = useResumeUpload();
+  const { data: resumeUrlData } = useResumeUrl(!!profile.raw_resume_url);
+  const signedUrl = resumeUrlData?.url ?? null;
   const isProcessing = upload.isPending || parse.isPending;
 
   const processFile = useCallback(
@@ -111,19 +113,49 @@ export function ResumeDocCard({ profile }: ResumeDocCardProps) {
         />
 
         {hasResume ? (
-          <div className="flex flex-col items-center gap-2 rounded-[10px] border border-dashed border-pri p-7 text-center" style={{ backgroundColor: "var(--pri-bg)" }}>
-            <Upload size={20} color="var(--color-pri)" />
-            <p className="font-mono text-[12px] font-semibold text-t-900">
-              {profile.raw_resume_url!.split("/").pop() ?? "resume.pdf"}
-            </p>
-            <p className="font-mono text-[10px] text-t-400">
-              {profile.resume_updated_at && formatDate(profile.resume_updated_at)}
-            </p>
-            {isProcessing ? (
-              <Badge color="warn">Parsing...</Badge>
-            ) : (
-              <Badge color="ok">Parsed</Badge>
+          <div className="space-y-3">
+            {/* PDF Preview — only when signed URL is available */}
+            {signedUrl && (
+              <div className="overflow-hidden rounded-lg border border-border-main bg-bg-inset">
+                <iframe
+                  src={signedUrl}
+                  title="Resume preview"
+                  className="h-[500px] w-full"
+                  sandbox="allow-same-origin"
+                />
+              </div>
             )}
+
+            {/* File info row */}
+            <div className="flex items-center gap-3">
+              <Upload size={14} color="var(--color-pri)" />
+              <span className="font-mono text-[11px] font-semibold text-t-900">
+                {profile.raw_resume_url!.split("/").pop() ?? "resume.pdf"}
+              </span>
+              {profile.resume_updated_at && (
+                <>
+                  <span className="font-mono text-[10px] text-t-300">&middot;</span>
+                  <span className="font-mono text-[10px] text-t-400">
+                    {formatDate(profile.resume_updated_at)}
+                  </span>
+                </>
+              )}
+              {isProcessing ? (
+                <Badge color="warn">Parsing...</Badge>
+              ) : (
+                <Badge color="ok">Parsed</Badge>
+              )}
+              {signedUrl && (
+                <a
+                  href={signedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto font-mono text-[10px] text-pri underline"
+                >
+                  Open
+                </a>
+              )}
+            </div>
           </div>
         ) : (
           <DropZone

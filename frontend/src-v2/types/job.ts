@@ -70,6 +70,7 @@ export interface Job {
   url: string;
   apply_url?: string | null;
   source: string;
+  ats_platform?: string | null;
   country?: string | null;
   city?: string | null;
   ai_enrichment?: AIEnrichment | null;

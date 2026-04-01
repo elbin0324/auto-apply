@@ -87,7 +87,7 @@ export function ApplicationTable({ applications, onRowClick, loading }: Applicat
               </td>
               <td className="px-4 py-2.5">
                 <span className="font-mono text-[10px] text-t-400">
-                  {app.job?.source ?? "-"}
+                  {app.job?.ats_platform ?? "-"}
                 </span>
               </td>
               <td className="px-4 py-2.5">

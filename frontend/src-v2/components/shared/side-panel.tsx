@@ -508,6 +508,7 @@ export function SidePanel({
 
   // Quick facts meta tags (available from list-level data too)
   const metaTags = [
+    displayJob.ats_platform,
     displayJob.location,
     formatLocationType(displayJob.location_type),
     formatExperienceLevel(displayJob.experience_level),
@@ -561,6 +562,18 @@ export function SidePanel({
             <Badge color={statusColor(application.status)}>
               {statusLabel(application.status)}
             </Badge>
+          )}
+
+          {/* Failure reason */}
+          {application && application.status === "failed" && application.error_message && (
+            <div className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2.5">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-danger">
+                Failure Reason
+              </p>
+              <p className="mt-1 font-sans text-[12px] leading-[1.6] text-t-700">
+                {application.error_message}
+              </p>
+            </div>
           )}
 
           {/* Quick facts */}

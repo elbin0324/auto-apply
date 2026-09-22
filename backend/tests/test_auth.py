@@ -73,7 +73,9 @@ def test_protected_without_token() -> None:
 def test_protected_with_bad_token() -> None:
     from supabase import AuthApiError
 
-    with patch("utils.supabase.get_supabase") as mock_get:
+    # Patch where it is looked up: routers.auth binds get_supabase at import time,
+    # so patching utils.supabase would leave that binding pointing at the real client.
+    with patch("routers.auth.get_supabase") as mock_get:
         mock_sb = MagicMock()
         mock_sb.auth.get_user.side_effect = AuthApiError("invalid token", 401, "invalid_token")
         mock_get.return_value = mock_sb

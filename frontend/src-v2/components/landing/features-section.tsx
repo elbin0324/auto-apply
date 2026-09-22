@@ -1,109 +1,108 @@
 import { Reveal } from "./reveal";
-import { Target, Layers, Doc, Radar, Shield, Zap } from "@/icons";
+import { FeatJobMatching } from "./feat-job-matching";
+import { FeatCoverLetters } from "./feat-cover-letters";
+import { FeatMultiPlatform } from "./feat-multi-platform";
+import { FeatTracking } from "./feat-tracking";
 
-const FEATURES = [
+interface FeatureCard {
+  tag: string;
+  tagBg: string;
+  tagBorder: string;
+  tagColor: string;
+  title: string;
+  desc: string;
+  ui: React.ReactNode;
+}
+
+const FEATURES: FeatureCard[] = [
   {
-    icon: Target,
-    title: "SMART MATCHING",
-    desc: "AI scores every job against your profile, skills, and experience. Only high-quality matches make the cut — no spray and pray.",
-    accent: "#2ec4b6",
+    tag: "🎯 Matching Engine",
+    tagBg: "rgba(100,181,207,.08)",
+    tagBorder: "rgba(100,181,207,.12)",
+    tagColor: "var(--accent-2)",
+    title: "Smart Job Matching",
+    desc: "Our AI scores every listing against your profile in real-time. Focus only on roles that actually match your skills, experience, and salary expectations.",
+    ui: <FeatJobMatching />,
   },
   {
-    icon: Layers,
-    title: "EVERY ATS, HANDLED",
-    desc: "Greenhouse, Lever, Ashby, Workday — we navigate 50+ applicant tracking systems so you never have to fight another form.",
-    accent: "#64b5cf",
+    tag: "✏️ AI Writer",
+    tagBg: "rgba(46,196,182,.08)",
+    tagBorder: "rgba(46,196,182,.12)",
+    tagColor: "var(--accent-1-light)",
+    title: "AI Cover Letters",
+    desc: "Unique, personalized cover letters for every application. Written by AI, indistinguishable from human-crafted.",
+    ui: <FeatCoverLetters />,
   },
   {
-    icon: Doc,
-    title: "TAILORED MATERIALS",
-    desc: "Every application gets a custom resume variant and cover letter, calibrated to the specific role's requirements and keywords.",
-    accent: "#50dace",
+    tag: "🔗 Integrations",
+    tagBg: "rgba(52,211,153,.08)",
+    tagBorder: "rgba(52,211,153,.12)",
+    tagColor: "var(--accent-green)",
+    title: "Multi-Platform Apply",
+    desc: "Submit across all major platforms simultaneously. One click, every job board.",
+    ui: <FeatMultiPlatform />,
   },
   {
-    icon: Radar,
-    title: "REAL-TIME TRACKING",
-    desc: "See exactly where every application stands — from submitted to interview. A live dashboard for your entire job search.",
-    accent: "#e0a850",
-  },
-  {
-    icon: Shield,
-    title: "UNDETECTABLE",
-    desc: "Cloud browsers with human-like behavior, anti-fingerprinting, and CAPTCHA handling. Applications that look like you sent them yourself.",
-    accent: "#d06060",
-  },
-  {
-    icon: Zap,
-    title: "APPLY AT SCALE",
-    desc: "Queue dozens of applications and let ApplyPilot work through them while you focus on prep, networking, or literally anything else.",
-    accent: "#2ec4b6",
+    tag: "📊 Analytics",
+    tagBg: "rgba(251,191,36,.08)",
+    tagBorder: "rgba(251,191,36,.12)",
+    tagColor: "var(--accent-amber)",
+    title: "Application Tracking Dashboard",
+    desc: "Track every application from submitted to interview. Visualize your pipeline, response rates, and progress in real-time.",
+    ui: <FeatTracking />,
   },
 ];
 
 export function FeaturesSection() {
   return (
-    <section
-      id="features"
-      className="scroll-mt-[60px] px-4 py-20 md:px-8 lg:px-12"
-      style={{ background: "#0c1520" }}
-    >
+    <section id="features" className="scroll-mt-[60px] px-6 py-36">
       <div className="mx-auto max-w-[1100px]">
         <Reveal>
-          <div className="mb-14 text-center">
-            <span className="mb-2.5 block font-mono text-[10px] font-bold uppercase tracking-[.16em] text-pri-dim">
-              {"// FEATURES"}
-            </span>
-            <h2
-              className="font-mono text-[26px] font-bold tracking-[-0.02em]"
-              style={{ color: "var(--tw-90)" }}
-            >
-              Everything you need to get hired faster
-            </h2>
-            <p className="mx-auto mt-2.5 max-w-[480px] font-mono text-[11px] leading-[1.7] text-t-400">
-              Powered by AI. Designed for humans.
-            </p>
+          <div className="mb-6 inline-flex rounded-full px-4 py-1.5 font-display text-[0.7rem] font-semibold uppercase tracking-[.1em]" style={{ background: "rgba(46,196,182,.06)", border: "1px solid rgba(46,196,182,.12)", color: "var(--accent-1-light)" }}>
+            Features
           </div>
+          <h2
+            className="mb-4 font-display font-extrabold leading-[1.06] tracking-[-0.045em]"
+            style={{ fontSize: "clamp(2.2rem, 4.8vw, 3.6rem)", color: "var(--tw-90)" }}
+          >
+            Everything you need
+            <br />
+            <span className="gradient-text">to get hired faster.</span>
+          </h2>
+          <p className="max-w-[520px] font-display text-[1rem] leading-[1.6]" style={{ color: "var(--tw-40)" }}>
+            Powered by AI. Designed for humans.
+          </p>
         </Reveal>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-2">
           {FEATURES.map((f, i) => (
-            <Reveal key={i} delay={i * 0.08}>
+            <Reveal key={i} delay={i * 0.08} className="h-full">
               <div
-                className="group relative h-full cursor-default overflow-hidden rounded-xl px-6 py-7 transition-all duration-250 hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(0,0,0,.2)]"
+                className="group relative flex h-full flex-col overflow-hidden rounded-3xl border transition-all duration-400 hover:-translate-y-1 hover:border-[var(--tw-20)]"
                 style={{
-                  background: "#111c2a",
-                  border: "1px solid #1e2e3e",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = f.accent;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "#1e2e3e";
+                  background: "var(--color-bg-card)",
+                  borderColor: "var(--tw-10)",
                 }}
               >
-                {/* Top accent bar */}
-                <div
-                  className="absolute top-0 left-0 right-0 h-0.5 opacity-50"
-                  style={{ background: f.accent }}
-                />
-
-                {/* Icon */}
-                <div
-                  className="mb-4.5 flex h-9 w-9 items-center justify-center rounded-lg bg-bg-deep"
-                  style={{ border: "1px solid var(--tw-20)" }}
-                >
-                  <f.icon size={16} color={f.accent} />
+                {/* Text content */}
+                <div className="px-10 pt-10">
+                  <span
+                    className="mb-[18px] inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-display text-[0.62rem] font-semibold uppercase tracking-[.08em]"
+                    style={{ background: f.tagBg, border: `1px solid ${f.tagBorder}`, color: f.tagColor }}
+                  >
+                    {f.tag}
+                  </span>
+                  <h3 className="mb-2.5 font-display text-[1.3rem] font-bold tracking-[-0.02em]" style={{ color: "var(--tw-90)" }}>{f.title}</h3>
+                  <p className="max-w-[440px] font-display text-[0.9rem] leading-[1.6]" style={{ color: "var(--tw-40)" }}>{f.desc}</p>
                 </div>
 
-                <h3
-                  className="mb-2 font-mono text-[11px] font-bold tracking-[.08em]"
-                  style={{ color: "var(--tw-90)" }}
+                {/* Mockup UI area */}
+                <div
+                  className="relative mx-10 mt-auto overflow-hidden rounded-t-2xl border border-b-0 pt-7"
+                  style={{ background: "rgba(255,255,255,.01)", borderColor: "var(--tw-10)", minHeight: 220 }}
                 >
-                  {f.title}
-                </h3>
-                <p className="font-mono text-[11px] leading-[1.7] text-t-500">
-                  {f.desc}
-                </p>
+                  {f.ui}
+                </div>
               </div>
             </Reveal>
           ))}

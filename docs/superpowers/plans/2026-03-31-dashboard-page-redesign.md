@@ -79,7 +79,7 @@ export const STATUS_COLORS: Record<string, string> = {
 
 - [ ] **Step 2: Verify the frontend compiles**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -20`
+Run: `cd frontend && pnpm build 2>&1 | tail -20`
 
 Expected: Build may have warnings about removed routes (dashboard, queue, etc.) but constants file itself should compile cleanly. Errors are expected at this stage because the router still references old pages — that's fixed in Task 2.
 
@@ -296,7 +296,7 @@ declare module "@tanstack/react-router" {
 
 - [ ] **Step 2: Verify the build**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -20`
+Run: `cd frontend && pnpm build 2>&1 | tail -20`
 
 Expected: May fail because `@/pages/applications` doesn't exist yet. That's OK — created in Task 3.
 
@@ -417,7 +417,7 @@ export default function ApplicationsPage() {
 
 - [ ] **Step 2: Verify the build compiles**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -20`
+Run: `cd frontend && pnpm build 2>&1 | tail -20`
 
 Expected: Should compile. The `useApplications` hook already supports an optional `status` filter param. The `TrackerStats`, `ApplicationTable`, `Pagination`, and `SidePanel` components are all existing.
 
@@ -582,7 +582,7 @@ export default function ProfilePage() {
 
 - [ ] **Step 2: Verify the build compiles**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -20`
+Run: `cd frontend && pnpm build 2>&1 | tail -20`
 
 Expected: Clean build. All imported components already exist.
 
@@ -628,7 +628,7 @@ This makes:
 
 - [ ] **Step 2: Verify the build compiles**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -20`
+Run: `cd frontend && pnpm build 2>&1 | tail -20`
 
 Expected: Clean build.
 
@@ -719,7 +719,7 @@ const routeTree = rootRoute.addChildren([
 
 - [ ] **Step 2: Verify the build compiles**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -20`
+Run: `cd frontend && pnpm build 2>&1 | tail -20`
 
 Expected: Clean build. Redirects don't need component definitions.
 
@@ -767,7 +767,7 @@ const profileRoute = createRoute({
 
 - [ ] **Step 2: Verify the build compiles**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -20`
+Run: `cd frontend && pnpm build 2>&1 | tail -20`
 
 Expected: Clean build.
 
@@ -786,19 +786,19 @@ git commit -m "fix: redirect /profile to /profile/resume"
 
 - [ ] **Step 1: Run full build**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -30`
+Run: `cd frontend && pnpm build 2>&1 | tail -30`
 
 Expected: Clean build with no errors. There may be unused import warnings for old page files (dashboard.tsx, queue.tsx, etc.) — that's fine, they're not imported anywhere.
 
 - [ ] **Step 2: Run TypeScript check**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm typecheck 2>&1 | tail -20`
+Run: `cd frontend && pnpm typecheck 2>&1 | tail -20`
 
 Expected: No type errors.
 
 - [ ] **Step 3: Run lint**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm lint 2>&1 | tail -20`
+Run: `cd frontend && pnpm lint 2>&1 | tail -20`
 
 Expected: Clean or only pre-existing warnings. Fix any new lint errors introduced by the changes.
 

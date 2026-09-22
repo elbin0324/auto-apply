@@ -23,14 +23,14 @@ Unified conventions for backend (FastAPI/Python) and frontend (React/TypeScript)
 
 All lowercase, hyphens only. Examples: `feat/billing-stripe`, `fix/resume-upload-timeout`.
 
-### Create-from-dev Flow
+### Create-from-main Flow
 
 ```bash
-git checkout dev && git pull origin dev
+git checkout main && git pull origin main
 git checkout -b feat/my-feature
 # ... implement, test, commit ...
 git push -u origin feat/my-feature
-gh pr create --base dev
+gh pr create --base main
 ```
 
 ### Commit Format
@@ -47,12 +47,12 @@ One logical unit per commit. Stage files explicitly — never `git add -A`.
 
 ### Guardrails
 
-- Never force-push to `main` or `dev`
+- Never force-push to `main`
 - Never commit `.env` files or secrets
 - Never use `git commit --no-verify`
 - Never amend pushed commits on shared branches
 - Always `git pull` before starting work on an existing branch
-- Branch protection hook blocks commits on `dev`/`main` — use feature branches
+- Branch protection hook blocks commits on `main` — use feature branches
 
 ---
 
@@ -195,4 +195,4 @@ After completing work, update `CHANGELOG.md`:
 - What was deleted
 ```
 
-Move `[Unreleased]` items to a dated section when merging to `dev`.
+Move `[Unreleased]` items to a dated section when merging to `main`.

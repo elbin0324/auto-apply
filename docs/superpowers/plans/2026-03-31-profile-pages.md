@@ -84,7 +84,7 @@ export function useUpdateApplicationPreferences() {
 
 - [ ] **Step 3: Verify build**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -5`
+Run: `cd frontend && pnpm build 2>&1 | tail -5`
 Expected: Clean build.
 
 - [ ] **Step 4: Commit**
@@ -289,7 +289,7 @@ export function ResumeDocCard({ profile }: ResumeDocCardProps) {
 
 - [ ] **Step 2: Verify build**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -5`
+Run: `cd frontend && pnpm build 2>&1 | tail -5`
 Expected: Clean build (component not yet used in any page).
 
 - [ ] **Step 3: Commit**
@@ -386,7 +386,7 @@ export function SummaryCard({ summary }: SummaryCardProps) {
 
 - [ ] **Step 2: Verify build**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -5`
+Run: `cd frontend && pnpm build 2>&1 | tail -5`
 Expected: Clean build.
 
 - [ ] **Step 3: Commit**
@@ -663,7 +663,7 @@ function EducationEntry({ education, onEdit, onDelete }: EducationEntryProps) {
 
 - [ ] **Step 3: Verify build**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -5`
+Run: `cd frontend && pnpm build 2>&1 | tail -5`
 Expected: Clean build.
 
 - [ ] **Step 4: Commit**
@@ -891,7 +891,7 @@ export function AppPreferencesContent() {
 
 - [ ] **Step 5: Verify build**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -5`
+Run: `cd frontend && pnpm build 2>&1 | tail -5`
 Expected: Clean build.
 
 - [ ] **Step 6: Commit**
@@ -1100,7 +1100,7 @@ export function JobPreferencesContent() {
 
 - [ ] **Step 2: Verify build**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -5`
+Run: `cd frontend && pnpm build 2>&1 | tail -5`
 Expected: Clean build.
 
 - [ ] **Step 3: Commit**
@@ -1443,7 +1443,7 @@ export function AppPreferencesContent() {
 
 - [ ] **Step 3: Verify build**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -5`
+Run: `cd frontend && pnpm build 2>&1 | tail -5`
 Expected: Clean build.
 
 - [ ] **Step 4: Commit**
@@ -1461,17 +1461,17 @@ git commit -m "feat: build App Preferences page with work auth, availability, co
 
 - [ ] **Step 1: Run full build**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm build 2>&1 | tail -10`
+Run: `cd frontend && pnpm build 2>&1 | tail -10`
 Expected: Clean build.
 
 - [ ] **Step 2: Run TypeScript check**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm typecheck 2>&1 | tail -10`
+Run: `cd frontend && pnpm typecheck 2>&1 | tail -10`
 Expected: No type errors.
 
 - [ ] **Step 3: Run lint**
 
-Run: `cd /Users/andycraig/GitHub/applypilot/auto-apply/frontend && pnpm lint 2>&1 | tail -30`
+Run: `cd frontend && pnpm lint 2>&1 | tail -30`
 Expected: No new errors from our changes.
 
 - [ ] **Step 4: Commit any fixes**

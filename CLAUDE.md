@@ -85,10 +85,10 @@ Tests use `FastAPI TestClient` with synchronous calls. External services (Supaba
 
 1. Read `CHANGELOG.md` to understand recent changes
 2. Run `/develop` to load coding conventions and branch workflow
-3. Create feature branch from `dev` (`feat/`, `fix/`, `chore/`, `hotfix/`)
+3. Create feature branch from `main` (`feat/`, `fix/`, `chore/`, `hotfix/`)
 4. Implement, test, commit with `<type>: <description>` format
 5. Update `CHANGELOG.md` with changes made
-6. Push and create PR to `dev`
+6. Push and create PR to `main`
 
 ## Environment
 

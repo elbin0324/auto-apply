@@ -80,6 +80,10 @@ class Settings(BaseSettings):
     stripe_starter_price_id: str = ""
     stripe_pro_price_id: str = ""
     stripe_premium_price_id: str = ""
+    stripe_credits_10_price_id: str = ""
+    stripe_credits_50_price_id: str = ""
+    stripe_credits_100_price_id: str = ""
+    stripe_credits_250_price_id: str = ""
 
     # Internal auth (agent → platform)
     internal_api_key: str

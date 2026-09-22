@@ -278,12 +278,21 @@ paths to `index.html`).
 
 ## Contributors
 
-Built by two people:
+AutoApply is built by two people. Per-commit attribution is preserved in full — `git shortlog -sne`
+shows exactly who wrote what.
 
-- **Jay Shin** — product direction, frontend architecture, landing page and design system
-- **Andy Craig** ([@AndyCraig200](https://github.com/AndyCraig200)) — backend, workers, and platform infrastructure
+### Jay Shin ([@elbin0324](https://github.com/elbin0324)) — co-founder
 
-Full per-commit attribution is preserved in the git history (`git shortlog -sne`).
+Owns the product surface: the marketing site and the design language the application is built in.
+
+- **Landing page** — 21 components, ~2,100 lines in [`frontend/src-v2/components/landing/`](frontend/src-v2/components/landing/): hero with an animated live-dashboard preview, scroll-reveal feature sections, logo marquee, testimonials, pricing with FAQ, and CTA
+- **Design system** — the dark, glassmorphic visual language: color and type scales, the shared `cubic-bezier(0.16, 1, 0.3, 1)` easing curve, and the animation vocabulary, specified in [`docs/landing-page-design-spec.md`](docs/landing-page-design-spec.md) and implemented as tokens in `frontend/src-v2/index.css` and `frontend/src-v2/theme/`
+- **Product direction** — feature scope, page structure, and positioning
+
+### Andy Craig ([@AndyCraig200](https://github.com/AndyCraig200)) — co-founder
+
+Owns the platform: FastAPI service, data model, the three-worker Redis pipeline, LLM scoring and
+enrichment, billing, and deployment infrastructure.
 
 ---
 

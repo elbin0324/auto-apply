@@ -1,73 +1,78 @@
-# React + TypeScript + Vite
+# AutoApply — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The React single-page app for [AutoApply](../README.md). See the root README for the full
+architecture; this file covers the client only.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+React 19 · Vite 7 · TypeScript 5.9 (strict) · Tailwind CSS 4 · shadcn/ui on Radix ·
+TanStack Router · TanStack Query · Zustand · React Hook Form + Zod · Motion
 
-## React Compiler
+## Layout
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src-v2/
+  main.tsx        Entry point
+  app.tsx         Providers (Query client, router, auth bootstrap)
+  router.tsx      Route tree — pages wrapped in ProtectedRoute + DashboardLayout,
+                  admin routes behind AdminRoute
+  pages/          Route-level pages (landing, dashboard, jobs, queue, tracker,
+                  autopilot, profile, analytics, billing, settings, onboarding,
+                  login, signup)
+  components/
+    ui/           shadcn/ui primitives
+    landing/      Marketing site sections
+    <domain>/     Feature components grouped by page domain
+  hooks/          TanStack Query hooks (use-jobs, use-profile, ...)
+  stores/         Zustand auth store
+  lib/            api.ts (fetch client, auto-attaches Supabase JWT),
+                  supabase.ts, shared constants and helpers
+  theme/          Design tokens
+  icons/          Icon components
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The Vite alias `@` resolves to `src-v2/`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+> `src-v1-deprecated/` was the first iteration of this client. It is retained in git history and
+> is not part of the build.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Local development
+
+```bash
+pnpm install
+cp .env.example .env.local   # then fill in the values below
+pnpm dev                     # http://localhost:5173
 ```
+
+| Variable | Purpose |
+|---|---|
+| `VITE_API_URL` | Base URL of the FastAPI backend (e.g. `http://localhost:8000`) |
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon (publishable) key |
+
+Only `VITE_`-prefixed variables reach the browser bundle. Never put a service-role key here.
+
+## Scripts
+
+| Command | Does |
+|---|---|
+| `pnpm dev` | Vite dev server with HMR |
+| `pnpm build` | `tsc -b` then production build |
+| `pnpm preview` | Serve the production build locally |
+| `pnpm typecheck` | Type-check without emitting |
+| `pnpm lint` | ESLint |
+| `pnpm format` | Prettier |
+
+From the repo root, `make fe-dev`, `make lint`, `make format`, and `make typecheck` wrap these.
+
+## Data fetching
+
+Components never call `fetch` directly. Every server interaction goes through a hook in `hooks/`
+built on TanStack Query, which calls the client in `lib/api.ts`. That client reads the current
+Supabase session and attaches the JWT as a bearer token on every request, so auth is not a
+per-call concern.
+
+## Deployment
+
+Deployed to Vercel. `vercel.json` rewrites all paths to `/index.html` so client-side routing works
+on hard navigation.

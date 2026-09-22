@@ -36,7 +36,7 @@ make enrich-worker                            # Enrichment worker
 - `deps.py` — FastAPI dependency injection: `CurrentUser` (JWT via Supabase), `AdminUser`, `DbSession`, `SettingsDep`, `verify_internal_api_key` (agent→platform auth via `X-Internal-API-Key` header)
 - `db/session.py` — Async SQLAlchemy engine + `get_db()` session generator with auto-commit/rollback
 
-**Routers:** `health`, `auth`, `profile`, `jobs`, `auto_apply`, `applications` (includes `internal_router` and `scheduler_router`), `admin`
+**Routers:** `health`, `auth`, `profile`, `jobs`, `auto_apply`, `dashboard`, `applications` (includes `internal_router` and `scheduler_router`), `sse`, `admin`, `billing`
 
 **Services:** Business logic layer — `auto_apply_service`, `queue_service` (Redis RPUSH), `resume_parser` (PDF→Claude→JSON), `application_service`, `ats_registry_service`
 
@@ -53,11 +53,11 @@ Worker infrastructure lives in `infra/`: `redis_pool`, `task_queue`, `dlq_servic
 
 React 19 + Vite + TypeScript + Tailwind CSS 4 + shadcn/ui
 
-- **Routing:** TanStack Router (`src/router.tsx`) — routes wrap pages in `ProtectedRoute` + `DashboardLayout`, admin routes use `AdminRoute`
-- **Data fetching:** TanStack Query via custom hooks in `src/hooks/` (e.g., `use-jobs.ts`, `use-profile.ts`)
-- **Auth state:** Zustand store (`src/stores/auth-store.ts`) + Supabase JS client (`src/lib/supabase.ts`)
-- **API client:** `src/lib/api.ts` — auto-attaches Supabase JWT to all requests, base URL from `VITE_API_URL`
-- **UI components:** shadcn/ui in `src/components/ui/`, custom components alongside pages
+- **Routing:** TanStack Router (`src-v2/router.tsx`) — routes wrap pages in `ProtectedRoute` + `DashboardLayout`, admin routes use `AdminRoute`
+- **Data fetching:** TanStack Query via custom hooks in `src-v2/hooks/` (e.g., `use-jobs.ts`, `use-profile.ts`)
+- **Auth state:** Zustand store (`src-v2/stores/auth-store.ts`) + Supabase JS client (`src-v2/lib/supabase.ts`)
+- **API client:** `src-v2/lib/api.ts` — auto-attaches Supabase JWT to all requests, base URL from `VITE_API_URL`
+- **UI components:** shadcn/ui in `src-v2/components/ui/`, custom components alongside pages
 
 ### Integration with apply-agents
 

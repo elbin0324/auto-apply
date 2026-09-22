@@ -7,6 +7,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/elbin0324/auto-apply/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/elbin0324/auto-apply/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white">
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.133-009688?logo=fastapi&logoColor=white">
   <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black">
@@ -175,7 +176,7 @@ docs/                 Design system, component library, API reference, specs
 ### Setup
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/elbin0324/auto-apply.git
 cd auto-apply
 
 make install      # backend (Poetry) + frontend (pnpm) dependencies

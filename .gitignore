@@ -21,7 +21,7 @@ htmlcov/
 coverage.xml
 
 # Poetry
-poetry.lock
+# poetry.lock IS committed — it pins the exact dependency set CI and Docker build from.
 
 # Alembic
 # Keep migrations, but not compiled artifacts
@@ -33,11 +33,16 @@ node_modules/
 frontend/dist/
 frontend/node_modules/
 
-# IDE
+# IDE / local tooling
 .vscode/
 .idea/
 *.swp
 *.swo
+.claude/settings.local.json
+**/.claude/settings.local.json
+
+# Supabase CLI scratch (holds the linked project ref — not source)
+supabase/.temp/
 
 # OS
 .DS_Store
